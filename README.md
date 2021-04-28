@@ -12,7 +12,7 @@ a model is retrained on the anonymized data, the model itself will also be consi
 anonymous. This may help exempt the model from different obligations and restrictions 
 set out in data protection regulations such as GDPR, CCPA, etc. 
 
-Official ai-privacy-toolkit documentation: <add link to readthedocs>
+Official ai-privacy-toolkit documentation: https://ai-privacy-toolkit.readthedocs.io/en/latest/
 
 **Related toolkits:**
 
