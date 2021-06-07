@@ -18,14 +18,14 @@ set out in data protection regulations such as GDPR, CCPA, etc.
    :maxdepth: 2
    :caption: Getting Started:
 
-   quick_start
+   source/quick_start
 
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: API
 
-   apt
+   source/apt
 
 
 
