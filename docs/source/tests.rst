@@ -12,14 +12,6 @@ tests.test\_anonymizer module
    :undoc-members:
    :show-inheritance:
 
-tests.utils module
-------------------
-
-.. automodule:: tests.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 
 Module contents
 ---------------
