@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'ai-privacy-toolkit'
-copyright = '2021, Abigail Goldsteen'
+copyright = '2021, IBM'
 author = 'Abigail Goldsteen'
 
 # The full version, including alpha/beta/rc tags
