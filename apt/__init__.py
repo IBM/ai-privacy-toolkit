@@ -1,3 +1,7 @@
+"""
+The AI Privacy Toolbox (apt).
+"""
+
 from apt import anonymization
 from apt import utils
 
