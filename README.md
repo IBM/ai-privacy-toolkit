@@ -14,6 +14,8 @@ set out in data protection regulations such as GDPR, CCPA, etc.
 
 Official ai-privacy-toolkit documentation: https://ai-privacy-toolkit.readthedocs.io/en/latest/
 
+Installation: pip install ai-privacy-toolkit
+
 **Related toolkits:**
 
 [ai-minimization-toolkit](https://github.com/IBM/ai-minimization-toolkit): A toolkit for 
