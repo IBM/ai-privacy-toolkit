@@ -26,5 +26,7 @@ general-purpose library for experimenting with, investigating and developing app
 differential privacy.
 
 [adversarial-robustness-toolbox](https://github.com/Trusted-AI/adversarial-robustness-toolbox):
-A Python library for Machine Learning Security.
+A Python library for Machine Learning Security. Includes an attack module called *inference* that contains privacy attacks on ML models 
+(membership inference, attribute inference, model inversion and database reconstruction) as well as a *privacy* metrics module that contains
+membership leakage metrics for ML models.
 
