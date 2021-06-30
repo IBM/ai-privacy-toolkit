@@ -12,5 +12,5 @@ Clone the ``ai-minimization-toolkit`` repository::
 
 Or download using pip::
 
-    pip install ai-privacy-toolkit==0.0.1
+    pip install ai-privacy-toolkit
 
