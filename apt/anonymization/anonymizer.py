@@ -4,6 +4,7 @@ from scipy.spatial import distance
 from collections import Counter
 
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import OneHotEncoder
 
 from typing import Union, Optional
 
@@ -26,7 +27,7 @@ class Anonymize:
         """
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
-        if not quasi_identifiers or len(quasi_identifiers) < 1:
+        if quasi_identifiers is None or len(quasi_identifiers) < 1:
             raise ValueError("The list of quasi-identifiers cannot be empty")
 
         self.k = k
@@ -54,10 +55,14 @@ class Anonymize:
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
         x_anonymizer_train = x[:, self.quasi_identifiers]
+        if x.dtype.kind not in 'iufc':
+            x_prepared = self._modify_categorical_features(x_anonymizer_train)
+        else:
+            x_prepared = x_anonymizer_train
         self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
-        self.anonymizer.fit(x_anonymizer_train, y)
-        cells_by_id = self._calculate_cells(x, x_anonymizer_train)
-        return self._anonymize_data_numpy(x, x_anonymizer_train, cells_by_id)
+        self.anonymizer.fit(x_prepared, y)
+        cells_by_id = self._calculate_cells(x, x_prepared)
+        return self._anonymize_data_numpy(x, x_prepared, cells_by_id)
 
     def _anonymize_pandas(self, x, y):
         if x.shape[0] != y.shape[0]:
@@ -147,19 +152,7 @@ class Anonymize:
                 x.at[i, feature] = cell['representative'][feature]
         return x
 
-    def _modify_categorical_features(self, x):  # only for pandas
-        self.categorical_values = {}
-        self.one_hot_to_features = {}
-        features_to_remove = []
-        for feature in self.categorical_features:
-            if feature in self.quasi_identifiers:
-                all_values = x.loc[:, feature]
-                values = list(all_values.unique())
-                self.categorical_values[feature] = values
-                x[feature] = pd.Categorical(x.loc[:, feature], categories=values, ordered=False)
-                one_hot_vector = pd.get_dummies(x[feature], prefix=feature)
-                for one_hot_vector_feature in one_hot_vector.columns:
-                    self.one_hot_to_features[one_hot_vector_feature] = feature
-                x = pd.concat([x, one_hot_vector], axis=1)
-                features_to_remove.append(feature)
-        return x.drop(features_to_remove, axis=1)
+    def _modify_categorical_features(self, x):
+        encoder = OneHotEncoder()
+        one_hot_encoded = encoder.fit_transform(x)
+        return one_hot_encoded
