@@ -15,7 +15,7 @@ Once the anonymized training data is returned, it can be used to retrain the mod
 The following figure depicts the overall process:
 
 <p align="center">
-  <img src="../../docs/images/AI_Privacy_project2.jpeg?raw=true" width="667" title="anonymization process">
+  <img src="../../docs/images/AI_Privacy_project2.jpg?raw=true" width="667" title="anonymization process">
 </p>
 <br />
 

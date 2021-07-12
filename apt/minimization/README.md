@@ -18,7 +18,7 @@ For more information about the method see: http://export.arxiv.org/pdf/2008.0411
 The following figure depicts the overall process:
 
 <p align="center">
-  <img src="../../docs/images/AI_Privacy_project.jpg?raw=true" width="667" title="data minimization process">
+  <img src="../../docs/images/AI_Privacy_project.jpeg?raw=true" width="667" title="data minimization process">
 </p>
 <br />
 
