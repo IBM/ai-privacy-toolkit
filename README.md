@@ -6,11 +6,15 @@
 
 A toolkit for tools and techniques related to the privacy and compliance of AI models.
 
-The first release of this toolkit contains a single module called [**anonymization**](apt/anonymization/README.md).
-This module contains methods for anonymizing ML model training data, so that when 
-a model is retrained on the anonymized data, the model itself will also be considered 
-anonymous. This may help exempt the model from different obligations and restrictions 
+The [**anonymization**](apt/anonymization/README.md) module contains methods for anonymizing ML model 
+training data, so that when a model is retrained on the anonymized data, the model itself will also be 
+considered anonymous. This may help exempt the model from different obligations and restrictions 
 set out in data protection regulations such as GDPR, CCPA, etc. 
+
+The [**minimization**](apt/minimization/README.md) module contains methods to help adhere to the data 
+minimization principle in GDPR for ML models. It enables to reduce the amount of 
+personal data needed to perform predictions with a machine learning model, while still enabling the model
+to make accurate predictions. This is done by by removing or generalizing some of the input features.
 
 Official ai-privacy-toolkit documentation: https://ai-privacy-toolkit.readthedocs.io/en/latest/
 
@@ -18,8 +22,7 @@ Installation: pip install ai-privacy-toolkit
 
 **Related toolkits:**
 
-[ai-minimization-toolkit](https://github.com/IBM/ai-minimization-toolkit): A toolkit for 
-reducing the amount of personal data needed to perform predictions with a machine learning model
+ai-minimization-toolkit - has been migrated into this toolkit.
 
 [differential-privacy-library](https://github.com/IBM/differential-privacy-library): A 
 general-purpose library for experimenting with, investigating and developing applications in, 

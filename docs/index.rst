@@ -8,11 +8,15 @@ Welcome to ai-privacy-toolkit's documentation!
 
 This project provides tools for assessing and improving the privacy and compliance of AI models.
 
-The first release of this toolkit contains a single module called anonymization. This
-module contains methods for anonymizing ML model training data, so that when
-a model is retrained on the anonymized data, the model itself will also be considered
-anonymous. This may help exempt the model from different obligations and restrictions
+The anonymization module contains methods for anonymizing ML model
+training data, so that when a model is retrained on the anonymized data, the model itself will also be
+considered anonymous. This may help exempt the model from different obligations and restrictions
 set out in data protection regulations such as GDPR, CCPA, etc.
+
+The minimization module contains methods to help adhere to the data
+minimization principle in GDPR for ML models. It enables to reduce the amount of
+personal data needed to perform predictions with a machine learning model, while still enabling the model
+to make accurate predictions. This is done by by removing or generalizing some of the input features.
 
 .. toctree::
    :maxdepth: 2

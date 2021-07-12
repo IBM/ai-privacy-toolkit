@@ -22,8 +22,9 @@ copyright = '2021, IBM'
 author = 'Abigail Goldsteen'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '0.0.3'
 
+master_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
 
