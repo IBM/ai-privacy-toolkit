@@ -1,5 +1,5 @@
-ai-privacy-toolkit
-==================
+ai-privacy-toolkit-extended
+===========================
 
 .. toctree::
    :maxdepth: 4
