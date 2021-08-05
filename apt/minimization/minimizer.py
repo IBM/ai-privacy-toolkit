@@ -579,7 +579,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     range_min = feature_ncp
                     remove_feature = feature
 
-        print('feature to remove: ' + (remove_feature if remove_feature else ''))
+        print('feature to remove: ' + (str(remove_feature) if remove_feature else ''))
         return remove_feature
 
     def _calculate_generalizations(self):
