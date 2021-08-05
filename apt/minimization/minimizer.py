@@ -409,30 +409,31 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             new_cells = []
             new_cells_by_id = {}
             nodes = self._get_nodes_level(level)
-            for node in nodes:
-                if self.dt_.tree_.feature[node] == -2: # leaf node
-                    new_cell = self.cells_by_id_[node]
-                else:
-                    left_child = self.dt_.tree_.children_left[node]
-                    right_child = self.dt_.tree_.children_right[node]
-                    left_cell = self.cells_by_id_[left_child]
-                    right_cell = self.cells_by_id_[right_child]
-                    new_cell = {'id': int(node), 'ranges': {}, 'categories': {},
-                                'label': None, 'representative': None}
-                    for feature in left_cell['ranges'].keys():
-                        new_cell['ranges'][feature] = {}
-                        new_cell['ranges'][feature]['start'] = left_cell['ranges'][feature]['start']
-                        new_cell['ranges'][feature]['end'] = right_cell['ranges'][feature]['start']
-                    for feature in left_cell['categories'].keys():
-                        new_cell['categories'][feature] = \
-                            list(set(left_cell['categories'][feature]) |
-                                 set(right_cell['categories'][feature]))
-                    self._calculate_level_cell_label(left_cell, right_cell, new_cell)
-                new_cells.append(new_cell)
-                new_cells_by_id[new_cell['id']] = new_cell
-            self.cells_ = new_cells
-            self.cells_by_id_ = new_cells_by_id
-        # else: nothing to do, stay with previous cells
+            if nodes:
+                for node in nodes:
+                    if self.dt_.tree_.feature[node] == -2: # leaf node
+                        new_cell = self.cells_by_id_[node]
+                    else:
+                        left_child = self.dt_.tree_.children_left[node]
+                        right_child = self.dt_.tree_.children_right[node]
+                        left_cell = self.cells_by_id_[left_child]
+                        right_cell = self.cells_by_id_[right_child]
+                        new_cell = {'id': int(node), 'ranges': {}, 'categories': {},
+                                    'label': None, 'representative': None}
+                        for feature in left_cell['ranges'].keys():
+                            new_cell['ranges'][feature] = {}
+                            new_cell['ranges'][feature]['start'] = left_cell['ranges'][feature]['start']
+                            new_cell['ranges'][feature]['end'] = right_cell['ranges'][feature]['start']
+                        for feature in left_cell['categories'].keys():
+                            new_cell['categories'][feature] = \
+                                list(set(left_cell['categories'][feature]) |
+                                     set(right_cell['categories'][feature]))
+                        self._calculate_level_cell_label(left_cell, right_cell, new_cell)
+                    new_cells.append(new_cell)
+                    new_cells_by_id[new_cell['id']] = new_cell
+                self.cells_ = new_cells
+                self.cells_by_id_ = new_cells_by_id
+            # else: nothing to do, stay with previous cells
 
     def _calculate_level_cell_label(self, left_cell, right_cell, new_cell):
         new_cell['hist'] = [x + y for x, y in zip(left_cell['hist'], right_cell['hist'])]
@@ -445,6 +446,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         stack = [(0, -1)]  # seed is the root node id and its parent depth
         while len(stack) > 0:
             node_id, parent_depth = stack.pop()
+            # depth = distance from root
             node_depth[node_id] = parent_depth + 1
 
             if self.dt_.tree_.children_left[node_id] != self.dt_.tree_.children_right[node_id]:
@@ -453,10 +455,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             else:
                 is_leaves[node_id] = True
 
+        # depth of entire tree
         max_depth = max(node_depth)
+        # depth of current level
         depth = max_depth - level
+        # level is higher than root
         if depth < 0:
             return None
+        # return all nodes with depth == level or leaves higher than level
         return [i for i, x in enumerate(node_depth) if x == depth or (x < depth and is_leaves[i])]
 
     def _attach_cells_representatives(self, samples, labels, level_nodes):
@@ -518,12 +524,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
             # replaces the values in the representative columns with the representative values
             # (leaves others untouched)
-            if not representatives.columns.empty:
+            if indexes and not representatives.columns.empty:
                 if len(indexes) > 1:
                     replace = pd.concat([representatives.loc[i].to_frame().T]*len(indexes)).reset_index(drop=True)
-                    replace.index = indexes
                 else:
-                    replace = representatives.loc[i].to_frame().T
+                    replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
+                replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
 
         return generalized.to_numpy()
