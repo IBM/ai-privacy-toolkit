@@ -304,12 +304,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # replace the values in the representative columns with the representative
             # values (leaves others untouched)
-            if not representatives.columns.empty:
+            if indexes and not representatives.columns.empty:
                 if len(indexes) > 1:
                     replace = pd.concat([representatives.loc[i].to_frame().T]*len(indexes)).reset_index(drop=True)
-                    replace.index = indexes
                 else:
-                    replace = representatives.loc[i].to_frame().T
+                    replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
+                replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
 
         return generalized.to_numpy()
