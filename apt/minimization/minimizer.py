@@ -117,6 +117,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.cells = params['cells']
         return self
 
+    @property
+    def generalizations(self):
+        return self.generalizations_
+
     def fit_transform(self, X=None, y=None):
         """Learns the generalizations based on training data, and applies them to the data.
 
@@ -206,40 +210,45 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             nodes = self._get_nodes_level(0)
             self._attach_cells_representatives(X_train, y_train, nodes)
             # self.cells_ currently holds the generalization created from the tree leaves
+            self._calculate_generalizations()
 
             # apply generalizations to test data
             generalized = self._generalize(X_test, nodes, self.cells_, self.cells_by_id_)
 
             # check accuracy
             accuracy = self.estimator.score(generalized, y_test)
-            print('Initial accuracy is %f' % accuracy)
+            print('Initial accuracy of model on generalized data, relative to original model predictions '
+                  '(base generalization derived from tree, before improvements): %f' % accuracy)
 
             # if accuracy above threshold, improve generalization
             if accuracy > self.target_accuracy:
+                print('Improving generalizations')
                 level = 1
                 while accuracy > self.target_accuracy:
                     nodes = self._get_nodes_level(level)
                     self._calculate_level_cells(level)
                     self._attach_cells_representatives(X_train, y_train, nodes)
+                    self._calculate_generalizations()
                     generalized = self._generalize(X_test, nodes, self.cells_,
                                                    self.cells_by_id_)
                     accuracy = self.estimator.score(generalized, y_test)
-                    print('Level: %d, accuracy: %f' % (level, accuracy))
+                    print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
                     level+=1
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
             if accuracy < self.target_accuracy:
+                print('Improving accuracy')
                 while accuracy < self.target_accuracy:
-                    self._calculate_generalizations()
                     removed_feature = self._remove_feature_from_generalization(X_test,
                                                                                nodes, y_test,
-                                                                               feature_data)
-                    if not removed_feature:
+                                                                               feature_data, accuracy)
+                    if removed_feature is None:
                         break
-                    generalized = self._generalize(X_test, nodes, self.cells_,
-                                                   self.cells_by_id_)
+
+                    self._calculate_generalizations()
+                    generalized = self._generalize(X_test, nodes, self.cells_, self.cells_by_id_)
                     accuracy = self.estimator.score(generalized, y_test)
-                    print('Removed feature: %s, accuracy: %f' % (removed_feature, accuracy))
+                    print('Removed feature: %s, new relative accuracy: %f' % (removed_feature, accuracy))
 
             # self.cells_ currently holds the chosen generalization based on target accuracy
 
@@ -545,14 +554,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         node_ids = self._find_sample_nodes(samples, nodes)
         return [cells_by_id[nodeId] for nodeId in node_ids]
 
-    def _remove_feature_from_generalization(self, samples, nodes, labels, feature_data):
-        feature = self._get_feature_to_remove(samples, nodes, labels, feature_data)
-        if not feature:
+    def _remove_feature_from_generalization(self, samples, nodes, labels, feature_data, current_accuracy):
+        feature = self._get_feature_to_remove(samples, nodes, labels, feature_data, current_accuracy)
+        if feature is None:
             return None
         GeneralizeToRepresentative._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
+        # del self.generalizations_['ranges'][feature]
+        # self.generalizations_['untouched'].append(feature)
         return feature
 
-    def _get_feature_to_remove(self, samples, nodes, labels, feature_data):
+    def _get_feature_to_remove(self, samples, nodes, labels, feature_data, current_accuracy):
         # We want to remove features with low iLoss (NCP) and high accuracy gain
         # (after removing them)
         ranges = self.generalizations_['ranges']
@@ -573,13 +584,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     cells_by_id = copy.deepcopy(self.cells_by_id_)
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
                     generalized = self._generalize(samples, nodes, new_cells, cells_by_id)
-                    accuracy = self.estimator.score(generalized, labels)
-                    feature_ncp = feature_ncp / accuracy
+                    accuracy_gain = self.estimator.score(generalized, labels) - current_accuracy
+                    if accuracy_gain < 0:
+                        accuracy_gain = 0
+                    if accuracy_gain != 0:
+                        feature_ncp = feature_ncp / accuracy_gain
+
                 if feature_ncp < range_min:
                     range_min = feature_ncp
                     remove_feature = feature
 
-        print('feature to remove: ' + (str(remove_feature) if remove_feature else ''))
+        print('feature to remove: ' + (str(remove_feature) if remove_feature is not None else 'none'))
         return remove_feature
 
     def _calculate_generalizations(self):
@@ -666,5 +681,3 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 del cell['categories'][feature]
             cell['untouched'].append(feature)
             cells_by_id[cell['id']] = cell.copy()
-
-
