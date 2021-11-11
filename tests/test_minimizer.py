@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
+import pandas as pd
 
 from sklearn.datasets import load_boston
+from sklearn.preprocessing import OneHotEncoder
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
@@ -56,6 +58,34 @@ def test_minimizer_fit(data):
     predictions = base_est.predict(X)
 
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5)
+    gen.fit(X, predictions)
+    transformed = gen.transform(X)
+    print(X)
+    print(transformed)
+
+
+def test_minimizer_fit_pandas(data):
+    features = ['age', 'height', 'sex']
+    X = np.array([[23, 165, 'f'],
+                  [45, 158, 'f'],
+                  [56, 123, 'f'],
+                  [67, 154, 'm'],
+                  [45, 149, 'f'],
+                  [42, 166, 'm'],
+                  [73, 172, 'm'],
+                  [94, 168, 'f'],
+                  [69, 175, 'm'],
+                  [24, 181, 'm'],
+                  [18, 190, 'm']])
+    X = pd.DataFrame(X, columns=features)
+    print(X)
+    y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
+    encoded = OneHotEncoder().fit_transform(X)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y)
+    predictions = base_est.predict(encoded)
+    categorical_features = ['sex']
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5, categorical_features=categorical_features)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     print(X)
