@@ -1,9 +1,14 @@
 import pytest
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 
 from sklearn.datasets import load_boston
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
@@ -38,6 +43,7 @@ def test_minimizer_params(data):
     transformed = gen.transform(X)
     print(transformed)
 
+
 def test_minimizer_fit(data):
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -65,27 +71,43 @@ def test_minimizer_fit(data):
 
 
 def test_minimizer_fit_pandas(data):
-    features = ['age', 'height', 'sex']
-    X = np.array([[23, 165, 'f'],
-                  [45, 158, 'f'],
-                  [56, 123, 'f'],
-                  [67, 154, 'm'],
-                  [45, 149, 'f'],
-                  [42, 166, 'm'],
-                  [73, 172, 'm'],
-                  [94, 168, 'f'],
-                  [69, 175, 'm'],
-                  [24, 181, 'm'],
-                  [18, 190, 'm']])
-    X = pd.DataFrame(X, columns=features)
-    print(X)
+    features = ['age', 'height', 'sex', 'ola']
+    X = np.array([[23, 165, 'f', 'aa'],
+                  [45, 158, 'f', 'aa'],
+                  [56, 123, 'f', 'bb'],
+                  [67, 154, 'm', 'aa'],
+                  [45, 149, 'f', 'bb'],
+                  [42, 166, 'm', 'bb'],
+                  [73, 172, 'm', 'bb'],
+                  [94, 168, 'f', 'aa'],
+                  [69, 175, 'm', 'aa'],
+                  [24, 181, 'm', 'bb'],
+                  [18, 190, 'm', 'bb']])
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
-    encoded = OneHotEncoder().fit_transform(X)
+    X = pd.DataFrame(X, columns=features)
+
+    numeric_features = ["age", "height"]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing'))]
+    )
+
+    categorical_features = ["sex", "ola"]
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(X)
     base_est = DecisionTreeClassifier()
     base_est.fit(encoded, y)
     predictions = base_est.predict(encoded)
-    categorical_features = ['sex']
-    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5, categorical_features=categorical_features)
+    # Append classifier to preprocessing pipeline.
+    # Now we have a full prediction pipeline.
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
+                                     categorical_features=categorical_features)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     print(X)
