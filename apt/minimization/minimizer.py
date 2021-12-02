@@ -79,7 +79,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.target_accuracy = target_accuracy
         self.features = features
         self.cells = cells
-        self.categorical_features = categorical_features
+        self.categorical_features = []
+        if categorical_features:
+            self.categorical_features = categorical_features
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -185,7 +187,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.cells_ = self.cells
         else:
             self.cells_ = {}
-        self.categoricalValues = {}
+        self.categorical_values = {}
+
+        if type(X) == np.ndarray:
+            self.type = 'np'
+            X = pd.DataFrame(X, columns=self._features)
+        else:
+            self.type = 'pd'
 
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
@@ -196,19 +204,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                                                 random_state=18)
 
             # collect feature data (such as min, max)
-            if type(X) == np.ndarray:
-                train_data = pd.DataFrame(X_train, columns=self._features)
-            else:
-                train_data = X_train
+
             feature_data = {}
             for feature in self._features:
                 if feature not in feature_data.keys():
                     fd = {}
-                    values = list(train_data.loc[:, feature])
+                    values = list(X.loc[:, feature])
                     if feature not in self.categorical_features:
                         fd['min'] = min(values)
                         fd['max'] = max(values)
-                        # fd['range'] = max(values) - min(values)
+                        fd['range'] = max(values) - min(values)
                     else:
                         fd['range'] = len(values)
                     feature_data[feature] = fd
@@ -216,7 +221,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # prepare data for DT
             categorical_features = list(self.categorical_features)
             numeric_transformer = Pipeline(
-                steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing'))]
+                steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
             )
 
             # numeric_features = list(self._features) - list(self.categorical_features)
@@ -251,10 +256,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             x_prepared_test = preprocessor.fit_transform(X_test)
             x_prepared_test = pd.DataFrame(x_prepared_test, columns=self.categorical_data.columns)
 
-            generalized = self._generalize(x_prepared_test, nodes, self.cells_, self.cells_by_id_)
+            generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
 
             # check accuracy
-            accuracy = self.estimator.score(generalized, y_test)
+            accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
             print('Initial accuracy of model on generalized data, relative to original model predictions '
                   '(base generalization derived from tree, before improvements): %f' % accuracy)
 
@@ -267,9 +272,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     self._calculate_level_cells(level)
                     self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
                     self._calculate_generalizations()
-                    generalized = self._generalize(x_prepared_test, nodes, self.cells_,
+                    generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                    self.cells_by_id_)
-                    accuracy = self.estimator.score(generalized, y_test)
+                    accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
                     print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
                     level += 1
 
@@ -277,16 +282,15 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if accuracy < self.target_accuracy:
                 print('Improving accuracy')
                 while accuracy < self.target_accuracy:
-                    y = X['age'][3]
-                    removed_feature = self._remove_feature_from_generalization(x_prepared_test,
+                    removed_feature = self._remove_feature_from_generalization(X_test, x_prepared_test,
                                                                                nodes, y_test,
                                                                                feature_data, accuracy)
                     if removed_feature is None:
                         break
 
                     self._calculate_generalizations()
-                    generalized = self._generalize(X_test, nodes, self.cells_, self.cells_by_id_)
-                    accuracy = self.estimator.score(generalized, y_test)
+                    generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
+                    accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
                     print('Removed feature: %s, new relative accuracy: %f' % (removed_feature, accuracy))
 
             # self.cells_ currently holds the chosen generalization based on target accuracy
@@ -319,7 +323,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         check_is_fitted(self, ['cells', 'features'], msg=msg)
 
         # Input validation
-        X = check_array(X, accept_sparse=True)
+        # X = check_array(X, accept_sparse=True)
         if X.shape[1] != self.n_features_ and self.n_features_ != 0:
             raise ValueError('Shape of input is different from what was seen'
                              'in `fit`')
@@ -359,8 +363,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
-
-        return generalized.to_numpy()
+        if self.type == 'np':
+            return generalized.to_numpy()
+        return generalized
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
         return [i for i, x in enumerate(X) if not mapped.item(i) and
@@ -379,24 +384,24 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return True
 
     def _modify_categorical_features(self, X):
-        self.categoricalValues = {}
+        self.categorical_values = {}
         self.oneHotVectorFeaturesToFeatures = {}
-        featuresToRemove = []
+        features_to_remove = []
         # print(self.data.columns)
         for feature in self.categorical_features:
             try:
-                allValues = X.loc[:, feature]
-                values = list(allValues.unique())
-                self.categoricalValues[feature] = values
+                all_values = X.loc[:, feature]
+                values = list(all_values.unique())
+                self.categorical_values[feature] = values
                 X[feature] = pd.Categorical(X.loc[:, feature], categories=values, ordered=False)
-                oneHotVector = pd.get_dummies(X[feature], prefix=feature)
-                for oneHotVectorFeature in oneHotVector.columns:
+                ohe = pd.get_dummies(X[feature], prefix=feature)
+                for oneHotVectorFeature in ohe.columns:
                     self.oneHotVectorFeaturesToFeatures[oneHotVectorFeature] = feature
-                X = pd.concat([X, oneHotVector], axis=1)
-                featuresToRemove.append(feature)
+                X = pd.concat([X, ohe], axis=1)
+                features_to_remove.append(feature)
             except KeyError:
                 print('feature not found: ' + feature)
-        self.categorical_data = X.drop(featuresToRemove, axis=1)
+        self.categorical_data = X.drop(features_to_remove, axis=1)
         # print(self.data.columns)
 
     def _cell_contains_numeric(self, f, range, x):
@@ -459,30 +464,31 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         cells = []
         features = self.categorical_data.columns
         for cell in self.cells_:
-            newCell = {'id': cell['id'], 'label': cell['label'], 'ranges': {}, 'categories': {}, 'hist': cell['hist'],
-                       'representative': None}
+            new_cell = {'id': cell['id'], 'label': cell['label'], 'ranges': {}, 'categories': {}, 'hist': cell['hist'],
+                        'representative': None}
             for feature in features:
                 if feature in self.oneHotVectorFeaturesToFeatures.keys():
                     # feature is categorical and should be mapped
-                    categoricalFeature = self.oneHotVectorFeaturesToFeatures[feature]
-                    if categoricalFeature not in newCell['categories'].keys():
-                        newCell['categories'][categoricalFeature] = self.categoricalValues[categoricalFeature].copy()
+                    categorical_feature = self.oneHotVectorFeaturesToFeatures[feature]
+                    if categorical_feature not in new_cell['categories'].keys():
+                        new_cell['categories'][categorical_feature] = self.categorical_values[
+                            categorical_feature].copy()
                     if feature in cell['ranges'].keys():
-                        categoricalValue = feature[len(categoricalFeature) + 1:]
+                        categorical_value = feature[len(categorical_feature) + 1:]
                         if cell['ranges'][feature]['start'] is not None:
                             # categorical feature must have this value
-                            newCell['categories'][categoricalFeature] = [categoricalValue]
+                            new_cell['categories'][categorical_feature] = [categorical_value]
                         else:
                             # categorical feature can not have this value
-                            if categoricalValue in newCell['categories'][categoricalFeature]:
-                                newCell['categories'][categoricalFeature].remove(categoricalValue)
+                            if categorical_value in new_cell['categories'][categorical_feature]:
+                                new_cell['categories'][categorical_feature].remove(categorical_value)
                 else:
                     if feature in cell['ranges'].keys():
-                        newCell['ranges'][feature] = cell['ranges'][feature]
+                        new_cell['ranges'][feature] = cell['ranges'][feature]
                     else:
-                        newCell['ranges'][feature] = {'start': None, 'end': None}
-            cells.append(newCell)
-            self.cells_by_id_[newCell['id']] = newCell
+                        new_cell['ranges'][feature] = {'start': None, 'end': None}
+            cells.append(new_cell)
+            self.cells_by_id_[new_cell['id']] = new_cell
         self.cells_ = cells
 
     def _calculate_level_cells(self, level):
@@ -557,16 +563,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             cell['representative'] = {}
             # get all rows in cell
             indexes = [i for i, x in enumerate(nodeIds) if x == cell['id']]
-            originalRows = originalTrainFeatures.iloc[indexes]
-            sampleRows = samples.iloc[indexes]
+            original_rows = originalTrainFeatures.iloc[indexes]
+            sample_rows = samples.iloc[indexes]
             sample_labels = labels_df.iloc[indexes]['label'].values.tolist()
             # get rows with matching label
             indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
-            # matchSamples = sampleRows.loc[sampleRows[labelFeature] == cell['label']].drop([labelFeature], axis=1)
-            matchSamples = sampleRows.iloc[indexes]
-            matchRows = originalRows.iloc[indexes]
+            # match_samples = sample_rows.loc[sample_rows[labelFeature] == cell['label']].drop([labelFeature], axis=1)
+            match_samples = sample_rows.iloc[indexes]
+            match_rows = original_rows.iloc[indexes]
             # find the "middle" of the cluster
-            array = matchSamples.values
+            array = match_samples.values
             # Only works with numpy 1.9.0 and higher!!!
             # median = np.percentile(array, 50, interpolation='nearest', axis=0)
             median = np.median(array, axis=0)
@@ -581,7 +587,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     min = i
                 i = i + 1
             # print('min = %d' % min)
-            row = matchRows.iloc[min]
+            row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
                 cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
@@ -592,13 +598,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         nodeSet = set(nodes)
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
-    def _generalize(self, data,  level_nodes, cells, cells_by_id):
+    def _generalize(self, original_data, data, level_nodes, cells, cells_by_id):
         representatives = pd.DataFrame(columns=self.features)  # empty except for columns
         generalized = pd.DataFrame(data, columns=self.categorical_data.columns, copy=True)
+        original_data_generalized = pd.DataFrame(original_data, columns=self.features, copy=True)
         mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
         # iterate over cells (leaves in decision tree)
         for i in range(len(cells)):
-            representative_columns = list()
             # This code just copies the representatives from the cells into another data structure
             # iterate over features
             for feature in self.features:
@@ -612,7 +618,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 elif feature in representatives.columns.tolist():
                     representatives = representatives.drop(feature, axis=1)
 
-
                 ###########################
                 # map representative columns
                 # representative_columns = list(self.categorical_data.columns)
@@ -625,9 +630,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 #        representative_columns.remove(item)
                 #############################
 
-
             # get the indexes of all records that map to this cell
             indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
+            mapped_indexes = list()
+            if indexes:
+                it = 0
+
+                for index, row in original_data_generalized.iterrows():
+                    if it in indexes:
+                        mapped_indexes.append(index)
+                    it = it + 1
+
             # replaces the values in the representative columns with the representative values
             # (leaves others untouched)
             if indexes and not representatives.columns.empty:
@@ -635,12 +648,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = pd.concat([representatives.loc[i].to_frame().T] * len(indexes)).reset_index(drop=True)
                 else:
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
-                replace.index = indexes
-                replace = self.preprocessor.transform(replace)
-                replace = pd.DataFrame(replace, indexes, columns=self.categorical_data.columns)
-                generalized.loc[indexes, representative_columns] = replace
+                replace.index = mapped_indexes
+                # replace = self.preprocessor.transform(replace)
+                replace = pd.DataFrame(replace, mapped_indexes, columns=self.features)
+                original_data_generalized.loc[mapped_indexes, representatives.columns.tolist()] = replace
 
-        return generalized
+        return original_data_generalized
 
     def _map_to_cells(self, samples, nodes, cells_by_id):
         mapping_to_cells = []
@@ -653,8 +666,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         node_ids = self._find_sample_nodes(samples, nodes)
         return [cells_by_id[nodeId] for nodeId in node_ids]
 
-    def _remove_feature_from_generalization(self, samples, nodes, labels, feature_data, current_accuracy):
-        feature = self._get_feature_to_remove(samples, nodes, labels, feature_data, current_accuracy)
+    def _remove_feature_from_generalization(self, original_data, samples, nodes, labels, feature_data,
+                                            current_accuracy):
+        feature = self._get_feature_to_remove(original_data, samples, nodes, labels, feature_data, current_accuracy)
         if feature is None:
             return None
         GeneralizeToRepresentative._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
@@ -662,11 +676,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # self.generalizations_['untouched'].append(feature)
         return feature
 
-    def _get_feature_to_remove(self, samples, nodes, labels, feature_data, current_accuracy):
+    def _get_feature_to_remove(self, original_data, samples, nodes, labels, feature_data, current_accuracy):
         # We want to remove features with low iLoss (NCP) and high accuracy gain
         # (after removing them)
         ranges = self.generalizations_['ranges']
-        range_counts = self._find_range_count(samples, ranges)
+        range_counts = self._find_range_count(original_data, ranges)
         total = samples.size
         range_min = sys.float_info.max
         remove_feature = None
@@ -682,8 +696,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     new_cells = copy.deepcopy(self.cells_)
                     cells_by_id = copy.deepcopy(self.cells_by_id_)
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
-                    generalized = self._generalize(samples, nodes, new_cells, cells_by_id)
-                    accuracy_gain = self.estimator.score(generalized, labels) - current_accuracy
+                    generalized = self._generalize(original_data, samples, nodes, new_cells, cells_by_id)
+                    accuracy_gain = self.estimator.score(self.preprocessor.transform(generalized),
+                                                         labels) - current_accuracy
                     if accuracy_gain < 0:
                         accuracy_gain = 0
                     if accuracy_gain != 0:
@@ -702,7 +717,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                  'untouched': GeneralizeToRepresentative._calculate_untouched(self.cells_)}
 
     def _find_range_count(self, samples, ranges):
-        samples_df = pd.DataFrame(samples, columns=self._features)
+        samples_df = pd.DataFrame(samples, columns=self.categorical_data.columns)
         range_counts = {}
         last_value = None
         for r in ranges.keys():
@@ -721,7 +736,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 range_counts[r].append(len(counter))
         return range_counts
 
-
     def _find_categories_count(self, samples, categories):
         category_counts = {}
         for c in categories.keys():
@@ -735,7 +749,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         ranges = generalizations['ranges']
         categories = generalizations['categories']
         range_counts = self._find_range_count(samples, ranges)
-        categoryCounts = self._find_categories_count(samples, categories)
+        category_counts = self._find_categories_count(samples, categories)
 
         total = samples.shape[0]
         total_ncp = 0
@@ -746,7 +760,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             total_ncp = total_ncp + feature_ncp
             total_features += 1
         for feature in categories.keys():
-            featureNCP = self._calc_ncp_categorical(categories[feature], categoryCounts[feature], feature_data[feature],
+            featureNCP = self._calc_ncp_categorical(categories[feature], category_counts[feature],
+                                                    feature_data[feature],
                                                     total)
             total_ncp = total_ncp + featureNCP
             total_features += 1
@@ -774,10 +789,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     @staticmethod
     def _calculate_categories(cells):
         categories = {}
-        categoricalFeaturesValues = GeneralizeToRepresentative._calculate_categorical_features_values(cells)
-        for feature in categoricalFeaturesValues.keys():
+        categorical_features_values = GeneralizeToRepresentative._calculate_categorical_features_values(cells)
+        for feature in categorical_features_values.keys():
             partitions = []
-            values = categoricalFeaturesValues[feature]
+            values = categorical_features_values[feature]
             assigned = []
             for i in range(len(values)):
                 value1 = values[i]
@@ -798,25 +813,25 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     @staticmethod
     def _calculate_categorical_features_values(cells):
-        categoricalFeaturesValues = {}
+        categorical_features_values = {}
         for cell in cells:
             for feature in [key for key in cell['categories'].keys() if
                             'untouched' not in cell or key not in cell['untouched']]:
-                if feature not in categoricalFeaturesValues.keys():
-                    categoricalFeaturesValues[feature] = []
+                if feature not in categorical_features_values.keys():
+                    categorical_features_values[feature] = []
                 for value in cell['categories'][feature]:
-                    if value not in categoricalFeaturesValues[feature]:
-                        categoricalFeaturesValues[feature].append(value)
-        return categoricalFeaturesValues
+                    if value not in categorical_features_values[feature]:
+                        categorical_features_values[feature].append(value)
+        return categorical_features_values
 
     @staticmethod
     def _are_inseparable(cells, feature, value1, value2):
         for cell in cells:
             if feature not in cell['categories'].keys():
                 continue
-            value1In = value1 in cell['categories'][feature]
-            value2In = value2 in cell['categories'][feature]
-            if value1In != value2In:
+            value1_in = value1 in cell['categories'][feature]
+            value2_in = value2 in cell['categories'][feature]
+            if value1_in != value2_in:
                 return False
         return True
 
@@ -829,10 +844,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     @staticmethod
     def _calc_ncp_categorical(categories, categoryCount, feature_data, total):
-        categorySizes = [len(g) if len(g) > 1 else 0 for g in categories]
-        normalizedCategorySizes = [s * n / total for s, n in zip(categorySizes, categoryCount)]
-        averageGroupSize = sum(normalizedCategorySizes) / len(normalizedCategorySizes)
-        return averageGroupSize / feature_data['range']  # number of values in category
+        category_sizes = [len(g) if len(g) > 1 else 0 for g in categories]
+        normalized_category_sizes = [s * n / total for s, n in zip(category_sizes, categoryCount)]
+        average_group_size = sum(normalized_category_sizes) / len(normalized_category_sizes)
+        return average_group_size / feature_data['range']  # number of values in category
 
     @staticmethod
     def _calc_ncp_numeric(feature_range, range_count, feature_data, total):

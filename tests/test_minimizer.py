@@ -18,6 +18,7 @@ from sklearn.tree import DecisionTreeClassifier
 def data():
     return load_boston(return_X_y=True)
 
+
 def test_minimizer_params(data):
     # Assume two features, age and height, and boolean label
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
@@ -31,10 +32,10 @@ def test_minimizer_params(data):
              ]
     features = ['age', 'height']
     X = np.array([[23, 165],
-                     [45, 158],
-                     [18, 190]])
+                  [45, 158],
+                  [18, 190]])
     print(X.dtype)
-    y = [1,1,0]
+    y = [1, 1, 0]
     base_est = DecisionTreeClassifier()
     base_est.fit(X, y)
 
@@ -72,23 +73,23 @@ def test_minimizer_fit(data):
 
 def test_minimizer_fit_pandas(data):
     features = ['age', 'height', 'sex', 'ola']
-    X = np.array([[23, 165, 'f', 'aa'],
-                  [45, 158, 'f', 'aa'],
-                  [56, 123, 'f', 'bb'],
-                  [67, 154, 'm', 'aa'],
-                  [45, 149, 'f', 'bb'],
-                  [42, 166, 'm', 'bb'],
-                  [73, 172, 'm', 'bb'],
-                  [94, 168, 'f', 'aa'],
-                  [69, 175, 'm', 'aa'],
-                  [24, 181, 'm', 'bb'],
-                  [18, 190, 'm', 'bb']])
+    X = [[23, 165, 'f', 'aa'],
+         [45, 158, 'f', 'aa'],
+         [56, 123, 'f', 'bb'],
+         [67, 154, 'm', 'aa'],
+         [45, 149, 'f', 'bb'],
+         [42, 166, 'm', 'bb'],
+         [73, 172, 'm', 'bb'],
+         [94, 168, 'f', 'aa'],
+         [69, 175, 'm', 'aa'],
+         [24, 181, 'm', 'bb'],
+         [18, 190, 'm', 'bb']]
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     X = pd.DataFrame(X, columns=features)
 
     numeric_features = ["age", "height"]
     numeric_transformer = Pipeline(
-        steps=[('imputer', SimpleImputer(strategy='constant', fill_value='missing'))]
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
     )
 
     categorical_features = ["sex", "ola"]
@@ -112,5 +113,3 @@ def test_minimizer_fit_pandas(data):
     transformed = gen.transform(X)
     print(X)
     print(transformed)
-
-
