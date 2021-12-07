@@ -113,3 +113,78 @@ def test_minimizer_fit_pandas(data):
     transformed = gen.transform(X)
     print(X)
     print(transformed)
+
+
+def test_minimizer_fit_QI(data):
+    features = ['age', 'height', 'weight']
+    X = np.array([[23, 165, 70],
+                  [45, 158, 67],
+                  [56, 123, 65],
+                  [67, 154, 90],
+                  [45, 149, 67],
+                  [42, 166, 58],
+                  [73, 172, 68],
+                  [94, 168, 69],
+                  [69, 175, 80],
+                  [24, 181, 95],
+                  [18, 190, 102]])
+    print(X)
+    y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
+    QI = ['age', 'weight']
+    base_est = DecisionTreeClassifier()
+    base_est.fit(X, y)
+    predictions = base_est.predict(X)
+
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5, quasi_identifiers=QI)
+    gen.fit(X, predictions)
+    transformed = gen.transform(X)
+    print(X)
+    print(transformed)
+
+
+def test_minimizer_fit_pandas_QI(data):
+    features = ['age', 'height', 'weight', 'sex', 'ola']
+    X = [[23, 165, 65, 'f', 'aa'],
+         [45, 158, 76, 'f', 'aa'],
+         [56, 123, 78, 'f', 'bb'],
+         [67, 154, 87, 'm', 'aa'],
+         [45, 149, 45, 'f', 'bb'],
+         [42, 166, 76, 'm', 'bb'],
+         [73, 172, 85, 'm', 'bb'],
+         [94, 168, 92, 'f', 'aa'],
+         [69, 175, 95, 'm', 'aa'],
+         [24, 181, 49, 'm', 'bb'],
+         [18, 190, 69, 'm', 'bb']]
+
+    y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
+    X = pd.DataFrame(X, columns=features)
+
+    numeric_features = ["age", "height", "weight"]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+
+    categorical_features = ["sex", "ola"]
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(X)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y)
+    predictions = base_est.predict(encoded)
+    # Append classifier to preprocessing pipeline.
+    # Now we have a full prediction pipeline.
+    QI = ['age', 'weight', 'ola']
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
+                                     categorical_features=categorical_features, quasi_identifiers=QI)
+    gen.fit(X, predictions)
+    transformed = gen.transform(X)
+    print(X)
+    print(transformed)
+
+

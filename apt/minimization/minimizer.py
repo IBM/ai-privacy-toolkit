@@ -74,7 +74,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     """
 
     def __init__(self, estimator=None, target_accuracy=0.998, features=None,
-                 cells=None, categorical_features=None):
+                 cells=None, categorical_features=None, quasi_identifiers: Union[np.ndarray, list] = None):
         self.estimator = estimator
         self.target_accuracy = target_accuracy
         self.features = features
@@ -82,6 +82,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.categorical_features = []
         if categorical_features:
             self.categorical_features = categorical_features
+        self.quasi_identifiers = []
+        if quasi_identifiers:
+            self.quasi_identifiers = quasi_identifiers
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -189,22 +192,20 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.cells_ = {}
         self.categorical_values = {}
 
-        if type(X) == np.ndarray:
-            self.type = 'np'
-            X = pd.DataFrame(X, columns=self._features)
-        else:
-            self.type = 'pd'
-
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and X is not None and y is not None:
+            if type(X) == np.ndarray:
+                self.type = 'np'
+                X = pd.DataFrame(X, columns=self._features)
+            else:
+                self.type = 'pd'
             # divide dataset into train and test
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                                 test_size=0.4,
                                                                 random_state=18)
 
             # collect feature data (such as min, max)
-
             feature_data = {}
             for feature in self._features:
                 if feature not in feature_data.keys():
@@ -237,7 +238,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             x_prepared = preprocessor.fit_transform(X_train)
             self.preprocessor = preprocessor
-            x_prepared = x_prepared.astype(float)
+
             self.cells_ = {}
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
@@ -269,14 +270,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 level = 1
                 while accuracy > self.target_accuracy:
                     nodes = self._get_nodes_level(level)
-                    self._calculate_level_cells(level)
-                    self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
-                    self._calculate_generalizations()
-                    generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
-                                                   self.cells_by_id_)
-                    accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
-                    print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
-                    level += 1
+                    if nodes:
+                        self._calculate_level_cells(level)
+                        self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
+                        self._calculate_generalizations()
+                        generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
+                                                       self.cells_by_id_)
+                        accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
+                        print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
+                        level += 1
+                    else:
+                        break
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
             if accuracy < self.target_accuracy:
@@ -589,9 +593,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # print('min = %d' % min)
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
-                cell['representative'][feature] = row[feature]
+                if feature in self.quasi_identifiers:
+                    cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
-                cell['representative'][feature] = row[feature]
+                if feature in self.quasi_identifiers:
+                    cell['representative'][feature] = row[feature]
 
     def _find_sample_nodes(self, samples, nodes):
         paths = self.dt_.decision_path(samples).toarray()
@@ -618,24 +624,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 elif feature in representatives.columns.tolist():
                     representatives = representatives.drop(feature, axis=1)
 
-                ###########################
-                # map representative columns
-                # representative_columns = list(self.categorical_data.columns)
-                # for item in representative_columns:
-                #    if item in self.categorical_features:
-                #        tmp = self.oneHotVectorFeaturesToFeatures[item]
-                #    else:
-                #        tmp = item
-                #    if tmp not in representatives.columns.tolist():
-                #        representative_columns.remove(item)
-                #############################
-
             # get the indexes of all records that map to this cell
             indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
             mapped_indexes = list()
             if indexes:
                 it = 0
-
                 for index, row in original_data_generalized.iterrows():
                     if it in indexes:
                         mapped_indexes.append(index)
@@ -649,8 +642,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 else:
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = mapped_indexes
-                # replace = self.preprocessor.transform(replace)
-                replace = pd.DataFrame(replace, mapped_indexes, columns=self.features)
+                replace = pd.DataFrame(replace, mapped_indexes, columns=self.quasi_identifiers)
                 original_data_generalized.loc[mapped_indexes, representatives.columns.tolist()] = replace
 
         return original_data_generalized
