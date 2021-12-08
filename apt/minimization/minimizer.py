@@ -556,15 +556,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # return all nodes with depth == level or leaves higher than level
         return [i for i, x in enumerate(node_depth) if x == depth or (x < depth and is_leaves[i])]
 
-    def _attach_cells_representatives(self, samples, originalTrainFeatures, labelFeature, level_nodes):
-        nodeIds = self._find_sample_nodes(samples, level_nodes)
+    def _attach_cells_representatives(self, prepared_data, originalTrainFeatures, labelFeature, level_nodes):
+        # prepared data include one hot encoded categorical data,
+        # if there is no categorical data prepared data is original data
+        nodeIds = self._find_sample_nodes(prepared_data, level_nodes)
         labels_df = pd.DataFrame(labelFeature, columns=['label'])
         for cell in self.cells_:
             cell['representative'] = {}
             # get all rows in cell
             indexes = [i for i, x in enumerate(nodeIds) if x == cell['id']]
             original_rows = originalTrainFeatures.iloc[indexes]
-            sample_rows = samples.iloc[indexes]
+            sample_rows = prepared_data.iloc[indexes]
             sample_labels = labels_df.iloc[indexes]['label'].values.tolist()
             # get rows with matching label
             indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
@@ -598,9 +600,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         nodeSet = set(nodes)
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
-    def _generalize(self, original_data, data, level_nodes, cells, cells_by_id):
+    def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
+        # prepared data include one hot encoded categorical data,
+        # if there is no categorical data prepared data is original data
         representatives = pd.DataFrame(columns=self.features)  # empty except for columns
-        generalized = pd.DataFrame(data, columns=self.categorical_data.columns, copy=True)
+        generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
         original_data_generalized = pd.DataFrame(original_data, columns=self.features, copy=True)
         mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
         # iterate over cells (leaves in decision tree)
@@ -617,18 +621,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 # representative value or should remain untouched)
                 elif feature in representatives.columns.tolist():
                     representatives = representatives.drop(feature, axis=1)
-
-                ###########################
-                # map representative columns
-                # representative_columns = list(self.categorical_data.columns)
-                # for item in representative_columns:
-                #    if item in self.categorical_features:
-                #        tmp = self.oneHotVectorFeaturesToFeatures[item]
-                #    else:
-                #        tmp = item
-                #    if tmp not in representatives.columns.tolist():
-                #        representative_columns.remove(item)
-                #############################
 
             # get the indexes of all records that map to this cell
             indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
@@ -666,9 +658,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         node_ids = self._find_sample_nodes(samples, nodes)
         return [cells_by_id[nodeId] for nodeId in node_ids]
 
-    def _remove_feature_from_generalization(self, original_data, samples, nodes, labels, feature_data,
+    def _remove_feature_from_generalization(self, original_data, prepared_data, nodes, labels, feature_data,
                                             current_accuracy):
-        feature = self._get_feature_to_remove(original_data, samples, nodes, labels, feature_data, current_accuracy)
+        # prepared data include one hot encoded categorical data,
+        # if there is no categorical data prepared data is original data
+        feature = self._get_feature_to_remove(original_data, prepared_data, nodes, labels, feature_data, current_accuracy)
         if feature is None:
             return None
         GeneralizeToRepresentative._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
@@ -676,12 +670,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # self.generalizations_['untouched'].append(feature)
         return feature
 
-    def _get_feature_to_remove(self, original_data, samples, nodes, labels, feature_data, current_accuracy):
+    def _get_feature_to_remove(self, original_data, prepared_data, nodes, labels, feature_data, current_accuracy):
+        # prepared data include one hot encoded categorical data,
+        # if there is no categorical data prepared data is original data
         # We want to remove features with low iLoss (NCP) and high accuracy gain
         # (after removing them)
         ranges = self.generalizations_['ranges']
         range_counts = self._find_range_count(original_data, ranges)
-        total = samples.size
+        total = prepared_data.size
         range_min = sys.float_info.max
         remove_feature = None
 
@@ -696,7 +692,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     new_cells = copy.deepcopy(self.cells_)
                     cells_by_id = copy.deepcopy(self.cells_by_id_)
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
-                    generalized = self._generalize(original_data, samples, nodes, new_cells, cells_by_id)
+                    generalized = self._generalize(original_data, prepared_data, nodes, new_cells, cells_by_id)
                     accuracy_gain = self.estimator.score(self.preprocessor.transform(generalized),
                                                          labels) - current_accuracy
                     if accuracy_gain < 0:
