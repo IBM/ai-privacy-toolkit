@@ -368,14 +368,19 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return generalized
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
-        return [i for i, x in enumerate(X) if not mapped.item(i) and
-                self._cell_contains(cell, x, i, mapped)]
+        indexes = []
+        for index, row in X.iterrows():
+            if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
+                indexes.append(index)
+        return indexes
 
     def _cell_contains(self, cell, x, i, mapped):
         for f in self._features:
             if f in cell['ranges']:
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
+            if f in cell['categories']:
+                pass
             else:
                 # TODO: exception - feature not defined
                 pass
