@@ -662,7 +662,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                             current_accuracy):
         # prepared data include one hot encoded categorical data,
         # if there is no categorical data prepared data is original data
-        feature = self._get_feature_to_remove(original_data, prepared_data, nodes, labels, feature_data, current_accuracy)
+        feature = self._get_feature_to_remove(original_data, prepared_data, nodes, labels, feature_data,
+                                              current_accuracy)
         if feature is None:
             return None
         GeneralizeToRepresentative._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
@@ -680,6 +681,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         total = prepared_data.size
         range_min = sys.float_info.max
         remove_feature = None
+        categories = self.generalizations['categories']
+        category_counts = self._find_categories_count(original_data, categories)
 
         for feature in ranges.keys():
             if feature not in self.generalizations_['untouched']:
@@ -700,6 +703,30 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     if accuracy_gain != 0:
                         feature_ncp = feature_ncp / accuracy_gain
 
+                if feature_ncp < range_min:
+                    range_min = feature_ncp
+                    remove_feature = feature
+
+        for feature in categories.keys():
+            # print('trying feature: %s' % feature)
+            if feature not in self.generalizations['untouched']:
+                feature_ncp = self._calc_ncp_categorical(categories[feature],
+                                                         category_counts[feature],
+                                                         feature_data[feature],
+                                                         total)
+                if feature_ncp > 0:
+                    # divide by accuracy loss
+                    new_cells = copy.deepcopy(self.cells_)
+                    cells_by_id = copy.deepcopy(self.cells_by_id_)
+                    GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
+                    generalized = self._generalize(original_data, prepared_data, nodes, new_cells, cells_by_id)
+                    accuracy_gain = self.estimator.score(self.preprocessor.transform(generalized),
+                                                         labels) - current_accuracy
+
+                    if accuracy_gain < 0:
+                        accuracy_gain = 0
+                    if accuracy_gain != 0:
+                        feature_ncp = feature_ncp / accuracy_gain
                 if feature_ncp < range_min:
                     range_min = feature_ncp
                     remove_feature = feature
