@@ -115,6 +115,64 @@ def test_minimizer_fit_pandas(data):
     print(transformed)
 
 
+def test_minimizer_params_categorical(data):
+    # Assume three features, age, sex and height, and boolean label
+    cells = [{'id': 1, 'label': 0, 'ranges': {'age': {'start': None, 'end': None}},
+              'categories': {'sex': ['f', 'm']}, 'hist': [2, 0],
+              'representative': {'age': 45, 'height': 149, 'sex': 'f'},
+              'untouched': ['height']},
+             {'id': 3, 'label': 1, 'ranges': {'age': {'start': None, 'end': None}},
+              'categories': {'sex': ['f', 'm']}, 'hist': [0, 3],
+              'representative': {'age': 23, 'height': 165, 'sex': 'f'},
+              'untouched': ['height']},
+             {'id': 4, 'label': 0, 'ranges': {'age': {'start': None, 'end': None}},
+              'categories': {'sex': ['f', 'm']}, 'hist': [1, 0],
+              'representative': {'age': 18, 'height': 190, 'sex': 'm'},
+              'untouched': ['height']}
+             ]
+
+    features = ['age', 'height', 'sex']
+    X = [[23, 165, 'f'],
+         [45, 158, 'f'],
+         [56, 123, 'f'],
+         [67, 154, 'm'],
+         [45, 149, 'f'],
+         [42, 166, 'm'],
+         [73, 172, 'm'],
+         [94, 168, 'f'],
+         [69, 175, 'm'],
+         [24, 181, 'm'],
+         [18, 190, 'm']]
+
+    y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
+    X = pd.DataFrame(X, columns=features)
+    numeric_features = ["age", "height"]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+
+    categorical_features = ["sex"]
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(X)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y)
+    predictions = base_est.predict(encoded)
+    # Append classifier to preprocessing pipeline.
+    # Now we have a full prediction pipeline.
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
+                                     categorical_features=categorical_features)
+    gen.fit(X, predictions)
+    transformed = gen.transform(X)
+    print(transformed)
+
+
 def test_minimizer_fit_QI(data):
     features = ['age', 'height', 'weight']
     X = np.array([[23, 165, 70],

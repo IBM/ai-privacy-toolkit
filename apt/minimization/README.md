@@ -32,8 +32,7 @@ them to new data.
 
 It is also possible to export the generalizations as feature ranges.
 
-The current implementation supports only numeric features, so any categorical features must be transformed to a numeric 
-representation before using this class.
+The current implementation supports numeric features and categorical features.
 
 Start by training your machine learning model. In this example, we will use a ``DecisionTreeClassifier``, but any 
 scikit-learn model can be used. We will use the iris dataset in our example.
