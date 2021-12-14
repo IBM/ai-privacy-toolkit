@@ -22,13 +22,13 @@ def data():
 def test_minimizer_params(data):
     # Assume two features, age and height, and boolean label
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
-              "representative": {"age": 26, "height": 149}},
+              "representative": {"age": 26, "height": 149}, "categories": {}},
              {"id": 2, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": None, "end": 170}}, "label": 1,
-              "representative": {"age": 58, "height": 163}},
+              "representative": {"age": 58, "height": 163}, "categories": {}},
              {"id": 3, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": 171, "end": None}}, "label": 0,
-              "representative": {"age": 31, "height": 184}},
+              "representative": {"age": 31, "height": 184}, "categories": {}},
              {"id": 4, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": 171, "end": None}}, "label": 1,
-              "representative": {"age": 45, "height": 176}}
+              "representative": {"age": 45, "height": 176}, "categories": {}}
              ]
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -188,10 +188,11 @@ def test_minimizer_fit_QI(data):
                   [18, 190, 102]])
     print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
-    QI = ['age', 'weight']
+    QI = [0, 2]
+    x_QI = X[:, QI]
     base_est = DecisionTreeClassifier()
-    base_est.fit(X, y)
-    predictions = base_est.predict(X)
+    base_est.fit(x_QI, y)
+    predictions = base_est.predict(x_QI)
 
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5, quasi_identifiers=QI)
     gen.fit(X, predictions)
@@ -216,13 +217,15 @@ def test_minimizer_fit_pandas_QI(data):
 
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     X = pd.DataFrame(X, columns=features)
+    QI = ['age', 'weight', 'ola']
+    x_QI = X.loc[:, QI]
 
-    numeric_features = ["age", "height", "weight"]
+    numeric_features = ["age", "weight"]
     numeric_transformer = Pipeline(
         steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
     )
 
-    categorical_features = ["sex", "ola"]
+    categorical_features = ["ola"]
     categorical_transformer = OneHotEncoder(handle_unknown="ignore")
 
     preprocessor = ColumnTransformer(
@@ -231,13 +234,12 @@ def test_minimizer_fit_pandas_QI(data):
             ("cat", categorical_transformer, categorical_features),
         ]
     )
-    encoded = preprocessor.fit_transform(X)
+    encoded = preprocessor.fit_transform(x_QI)
     base_est = DecisionTreeClassifier()
     base_est.fit(encoded, y)
     predictions = base_est.predict(encoded)
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    QI = ['age', 'weight', 'ola']
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
                                      categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(X, predictions)

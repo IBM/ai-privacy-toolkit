@@ -82,9 +82,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.categorical_features = []
         if categorical_features:
             self.categorical_features = categorical_features
-        self.quasi_identifiers = []
-        if quasi_identifiers:
-            self.quasi_identifiers = quasi_identifiers
+        self.quasi_identifiers = quasi_identifiers
+
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -195,22 +194,32 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and X is not None and y is not None:
+            self.quasi_identifiers_features = self._features
+
             if type(X) == np.ndarray:
+                if not self.quasi_identifiers:
+                    self.quasi_identifiers = [i for i in range(len(self._features))]
                 self.type = 'np'
-                X = pd.DataFrame(X, columns=self._features)
+                x_QI = X[:, self.quasi_identifiers]
+                self.quasi_identifiers_features = [self._features[i] for i in self.quasi_identifiers]
             else:
+                if not self.quasi_identifiers:
+                    self.quasi_identifiers = self._features
                 self.type = 'pd'
+                x_QI = X.loc[:, self.quasi_identifiers]
+                self.quasi_identifiers_features = [f for f in self.quasi_identifiers]
+            x_QI = pd.DataFrame(x_QI, columns=self.quasi_identifiers_features)
             # divide dataset into train and test
-            X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
+            X_train, X_test, y_train, y_test = train_test_split(x_QI, y, stratify=y,
                                                                 test_size=0.4,
                                                                 random_state=18)
 
             # collect feature data (such as min, max)
             feature_data = {}
-            for feature in self._features:
+            for feature in self.quasi_identifiers_features:
                 if feature not in feature_data.keys():
                     fd = {}
-                    values = list(X.loc[:, feature])
+                    values = list(x_QI.loc[:, feature])
                     if feature not in self.categorical_features:
                         fd['min'] = min(values)
                         fd['max'] = max(values)
@@ -220,13 +229,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     feature_data[feature] = fd
 
             # prepare data for DT
-            categorical_features = list(self.categorical_features)
+            categorical_features = [f for f in self._features if f in self.categorical_features and
+                                    f in self.quasi_identifiers_features]
+
             numeric_transformer = Pipeline(
                 steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
             )
 
             # numeric_features = list(self._features) - list(self.categorical_features)
-            numeric_features = [item for item in self._features if item not in self.categorical_features]
+            numeric_features = [f for f in self._features if f not in self.categorical_features and
+                                f in self.quasi_identifiers_features]
             categorical_transformer = OneHotEncoder(handle_unknown="ignore")
 
             preprocessor = ColumnTransformer(
@@ -243,7 +255,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
-            self._modify_categorical_features(X)
+            self._modify_categorical_features(x_QI)
             x_prepared = pd.DataFrame(x_prepared, columns=self.categorical_data.columns)
 
             self._calculate_cells()
@@ -338,7 +350,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         representatives = pd.DataFrame(columns=self._features)  # only columns
         generalized = pd.DataFrame(X, columns=self._features, copy=True)  # original data
         mapped = np.zeros(X.shape[0])  # to mark records we already mapped
-
         # iterate over cells (leaves in decision tree)
         for i in range(len(self.cells_)):
             # Copy the representatives from the cells into another data structure:
@@ -367,11 +378,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
-        if self.type == 'np':
+        if type(X) == np.ndarray:
             return generalized.to_numpy()
         return generalized
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
+        X = pd.DataFrame(X)
         indexes = []
         for index, row in X.iterrows():
             if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
@@ -600,11 +612,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # print('min = %d' % min)
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
-                if feature in self.quasi_identifiers:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
-                if feature in self.quasi_identifiers:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
 
     def _find_sample_nodes(self, samples, nodes):
         paths = self.dt_.decision_path(samples).toarray()
