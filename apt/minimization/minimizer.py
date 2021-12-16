@@ -396,7 +396,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
             if f in cell['categories']:
-                pass
+                if not self._cell_contains_categorical(f, cell['categories', x]):
+                    return False
             else:
                 # TODO: exception - feature not defined
                 pass
@@ -437,6 +438,15 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if value > range['end']:
                 return False
         return True
+
+    def _cell_contains_categorical(self, f, range, x):
+        i = self._features.index(f)
+        # convert x to ndarray to allow indexing
+        a = np.array(x)
+        value = a.item(i)
+        if value in range:
+            return True
+        return False
 
     def _calculate_cells(self):
         self.cells_by_id_ = {}
