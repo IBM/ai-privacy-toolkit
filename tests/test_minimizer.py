@@ -12,6 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
+from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
 
 
 @pytest.fixture
@@ -22,13 +23,13 @@ def data():
 def test_minimizer_params(data):
     # Assume two features, age and height, and boolean label
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
-              "representative": {"age": 26, "height": 149}, "categories": {}},
+              'categories': {}, "representative": {"age": 26, "height": 149}},
              {"id": 2, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": None, "end": 170}}, "label": 1,
-              "representative": {"age": 58, "height": 163}, "categories": {}},
+              'categories': {}, "representative": {"age": 58, "height": 163}},
              {"id": 3, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": 171, "end": None}}, "label": 0,
-              "representative": {"age": 31, "height": 184}, "categories": {}},
+              'categories': {}, "representative": {"age": 31, "height": 184}},
              {"id": 4, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": 171, "end": None}}, "label": 1,
-              "representative": {"age": 45, "height": 176}, "categories": {}}
+              'categories': {}, "representative": {"age": 45, "height": 176}}
              ]
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -248,3 +249,49 @@ def test_minimizer_fit_pandas_QI(data):
     print(transformed)
 
 
+
+
+def test_minimize_ndarray_iris():
+    features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
+    (x_train, y_train), _ = get_iris_dataset()
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    pred = model.predict(x_train)
+
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features)
+    gen.fit(x_train, pred)
+    transformed = gen.transform(x_train)
+    print(transformed)
+
+
+def test_minimize_pandas_adult():
+    (x_train, y_train), _ = get_adult_dataset()
+    x_train = x_train.head(5000)
+    y_train = y_train.head(5000)
+
+    features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                            'hours-per-week', 'native-country']
+
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen.fit(x_train, predictions)
+    transformed = gen.transform(x_train)
+    print(transformed)
