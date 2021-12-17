@@ -82,9 +82,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.categorical_features = []
         if categorical_features:
             self.categorical_features = categorical_features
-        self.quasi_identifiers = []
-        if quasi_identifiers:
-            self.quasi_identifiers = quasi_identifiers
+        self.quasi_identifiers = quasi_identifiers
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -195,11 +193,18 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and X is not None and y is not None:
+
             if type(X) == np.ndarray:
+                if not self.quasi_identifiers:
+                    self.quasi_identifiers = [i for i in range(len(self._features))]
                 self.type = 'np'
+                self.quasi_identifiers_features = [self._features[i] for i in self.quasi_identifiers]
                 X = pd.DataFrame(X, columns=self._features)
             else:
+                if not self.quasi_identifiers:
+                    self.quasi_identifiers = self._features
                 self.type = 'pd'
+                self.quasi_identifiers_features = [f for f in self.quasi_identifiers]
             # divide dataset into train and test
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                                 test_size=0.4,
@@ -240,12 +245,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             x_prepared = preprocessor.transform(X_train)
             self.preprocessor = preprocessor
-            x_prepared = x_prepared.astype(float)
+
             self.cells_ = {}
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
             self._modify_categorical_features(X)
+
             x_prepared = pd.DataFrame(x_prepared, columns=self.categorical_data.columns)
 
             self._calculate_cells()
@@ -370,11 +376,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
-        if self.type == 'np':
+        if type(X) == np.ndarray:
             return generalized.to_numpy()
         return generalized
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
+        X = pd.DataFrame(X)
         indexes = []
         for index, row in X.iterrows():
             if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
@@ -387,7 +394,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
             if f in cell['categories']:
-                if not self._cell_contains_categorical(f, cell['categories', x]):
+                if not self._cell_contains_categorical(f, cell['categories'][f], x):
                     return False
             else:
                 # TODO: exception - feature not defined
@@ -613,9 +620,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # print('min = %d' % min)
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
-                cell['representative'][feature] = row[feature]
+                if feature in self.quasi_identifiers_features:
+                    cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
-                cell['representative'][feature] = row[feature]
+                if feature in self.quasi_identifiers_features:
+                    cell['representative'][feature] = row[feature]
 
     def _find_sample_nodes(self, samples, nodes):
         paths = self.dt_.decision_path(samples).toarray()

@@ -12,6 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
+from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
 
 
 @pytest.fixture
@@ -64,7 +65,7 @@ def test_minimizer_fit(data):
     base_est.fit(X, y)
     predictions = base_est.predict(X)
 
-    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5)
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.4)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     print(X)
@@ -188,7 +189,8 @@ def test_minimizer_fit_QI(data):
                   [18, 190, 102]])
     print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
-    QI = ['age', 'weight']
+    QI = [0, 2]
+    x_QI = X[:, QI]
     base_est = DecisionTreeClassifier()
     base_est.fit(X, y)
     predictions = base_est.predict(X)
@@ -238,14 +240,12 @@ def test_minimizer_fit_pandas_QI(data):
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
     QI = ['age', 'weight', 'ola']
-    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.4,
                                      categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     print(X)
     print(transformed)
-
-
 
 
 def test_minimize_ndarray_iris():
@@ -254,10 +254,12 @@ def test_minimize_ndarray_iris():
     model = DecisionTreeClassifier()
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
+    QI = [0, 2]
 
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features)
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features, quasi_identifiers=QI)
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
+    print(x_train)
     print(transformed)
 
 
@@ -271,6 +273,8 @@ def test_minimize_pandas_adult():
 
     categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                             'hours-per-week', 'native-country']
+    QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+          'native-country']
 
     numeric_features = [f for f in features if f not in categorical_features]
     numeric_transformer = Pipeline(
@@ -288,7 +292,8 @@ def test_minimize_pandas_adult():
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     print(transformed)
