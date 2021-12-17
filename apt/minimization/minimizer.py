@@ -353,7 +353,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
-            X = pd.DataFrame(X)
             indexes = self._get_record_indexes_for_cell(X, self.cells_[i], mapped)
 
             # replace the values in the representative columns with the representative
