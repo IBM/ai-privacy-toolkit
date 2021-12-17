@@ -382,7 +382,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
             if f in cell['categories']:
-                if not self._cell_contains_categorical(f, cell['categories', x]):
+                if not self._cell_contains_categorical(f, cell['categories'][f], x):
                     return False
             else:
                 # TODO: exception - feature not defined
