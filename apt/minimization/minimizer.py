@@ -206,6 +206,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                                                 random_state=18)
 
             # collect feature data (such as min, max)
+
             feature_data = {}
             for feature in self._features:
                 if feature not in feature_data.keys():
@@ -227,7 +228,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # numeric_features = list(self._features) - list(self.categorical_features)
             numeric_features = [item for item in self._features if item not in self.categorical_features]
-            categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
 
             preprocessor = ColumnTransformer(
                 transformers=[
@@ -235,10 +236,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     ("cat", categorical_transformer, categorical_features),
                 ]
             )
+            preprocessor.fit(X)
 
-            x_prepared = preprocessor.fit_transform(X_train)
+            x_prepared = preprocessor.transform(X_train)
             self.preprocessor = preprocessor
-
+            x_prepared = x_prepared.astype(float)
             self.cells_ = {}
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
@@ -254,7 +256,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._calculate_generalizations()
 
             # apply generalizations to test data
-            x_prepared_test = preprocessor.fit_transform(X_test)
+            x_prepared_test = preprocessor.transform(X_test)
             x_prepared_test = pd.DataFrame(x_prepared_test, columns=self.categorical_data.columns)
 
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
@@ -356,6 +358,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
+            X = pd.DataFrame(X)
             indexes = self._get_record_indexes_for_cell(X, self.cells_[i], mapped)
 
             # replace the values in the representative columns with the representative
@@ -610,11 +613,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # print('min = %d' % min)
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
-                if feature in self.quasi_identifiers:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
-                if feature in self.quasi_identifiers:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
 
     def _find_sample_nodes(self, samples, nodes):
         paths = self.dt_.decision_path(samples).toarray()
@@ -648,7 +649,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             mapped_indexes = list()
             if indexes:
                 it = 0
-                for index, row in original_data_generalized.iterrows():
+
+                for index in original_data_generalized.index:
                     if it in indexes:
                         mapped_indexes.append(index)
                     it = it + 1
@@ -661,7 +663,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 else:
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = mapped_indexes
-                replace = pd.DataFrame(replace, mapped_indexes, columns=self.quasi_identifiers)
+                # replace = self.preprocessor.transform(replace)
+                replace = pd.DataFrame(replace, mapped_indexes, columns=self.features)
                 original_data_generalized.loc[mapped_indexes, representatives.columns.tolist()] = replace
 
         return original_data_generalized
