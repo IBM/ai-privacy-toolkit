@@ -226,7 +226,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # numeric_features = list(self._features) - list(self.categorical_features)
             numeric_features = [item for item in self._features if item not in self.categorical_features]
-            categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
 
             preprocessor = ColumnTransformer(
                 transformers=[
@@ -234,15 +234,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     ("cat", categorical_transformer, categorical_features),
                 ]
             )
+            preprocessor.fit(X)
 
-            x_prepared = preprocessor.fit_transform(X_train)
+            x_prepared = preprocessor.transform(X_train)
             self.preprocessor = preprocessor
-            x_prepared = x_prepared.astype(float)
             self.cells_ = {}
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
             self._modify_categorical_features(X)
+
             x_prepared = pd.DataFrame(x_prepared, columns=self.categorical_data.columns)
 
             self._calculate_cells()
@@ -253,7 +254,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._calculate_generalizations()
 
             # apply generalizations to test data
-            x_prepared_test = preprocessor.fit_transform(X_test)
+            x_prepared_test = preprocessor.transform(X_test)
             x_prepared_test = pd.DataFrame(x_prepared_test, columns=self.categorical_data.columns)
 
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
@@ -352,6 +353,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
+            X = pd.DataFrame(X)
             indexes = self._get_record_indexes_for_cell(X, self.cells_[i], mapped)
 
             # replace the values in the representative columns with the representative
@@ -643,7 +645,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if indexes:
                 it = 0
 
-                for index, row in original_data_generalized.iterrows():
+                for index in original_data_generalized.index:
                     if it in indexes:
                         mapped_indexes.append(index)
                     it = it + 1
