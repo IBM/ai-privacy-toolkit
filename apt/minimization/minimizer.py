@@ -255,7 +255,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # apply generalizations to test data
             x_prepared_test = preprocessor.transform(X_test)
-            x_prepared_test = pd.DataFrame(x_prepared_test, columns=self.categorical_data.columns)
+            x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self.categorical_data.columns)
 
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
 
@@ -617,8 +617,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
-        # prepared data include one hot encoded categorical data,
-        # if there is no categorical data prepared data is original data
+        # prepared data include one hot encoded categorical data + QI
         representatives = pd.DataFrame(columns=self.features)  # empty except for columns
         generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
         original_data_generalized = pd.DataFrame(original_data, columns=self.features, copy=True)
@@ -639,15 +638,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
-            indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
-            mapped_indexes = list()
-            if indexes:
-                it = 0
-
-                for index in original_data_generalized.index:
-                    if it in indexes:
-                        mapped_indexes.append(index)
-                    it = it + 1
+            indexes = [j for j in mapping_to_cells if mapping_to_cells[j]['id'] == cells[i]['id']]
 
             # replaces the values in the representative columns with the representative values
             # (leaves others untouched)
@@ -656,18 +647,18 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = pd.concat([representatives.loc[i].to_frame().T] * len(indexes)).reset_index(drop=True)
                 else:
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
-                replace.index = mapped_indexes
+                replace.index = indexes
                 # replace = self.preprocessor.transform(replace)
-                replace = pd.DataFrame(replace, mapped_indexes, columns=self.features)
-                original_data_generalized.loc[mapped_indexes, representatives.columns.tolist()] = replace
+                replace = pd.DataFrame(replace, indexes, columns=self.features)
+                original_data_generalized.loc[indexes, representatives.columns.tolist()] = replace
 
         return original_data_generalized
 
     def _map_to_cells(self, samples, nodes, cells_by_id):
-        mapping_to_cells = []
+        mapping_to_cells = {}
         for index, row in samples.iterrows():
             cell = self._find_sample_cells([row], nodes, cells_by_id)[0]
-            mapping_to_cells.append(cell)
+            mapping_to_cells[index] = cell
         return mapping_to_cells
 
     def _find_sample_cells(self, samples, nodes, cells_by_id):
