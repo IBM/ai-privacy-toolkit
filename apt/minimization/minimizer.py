@@ -210,12 +210,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 self.quasi_identifiers_features = [f for f in self.quasi_identifiers]
             x_QI = pd.DataFrame(x_QI, columns=self.quasi_identifiers_features)
             # divide dataset into train and test
-            X_train, X_test, y_train, y_test = train_test_split(x_QI, y, stratify=y,
+            X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                                 test_size=0.4,
                                                                 random_state=18)
+            X_train_QI = X_train.loc[:, self.quasi_identifiers]
+            X_test_QI = X_test.loc[:, self.quasi_identifiers]
 
             # collect feature data (such as min, max)
-
             feature_data = {}
             for feature in self.quasi_identifiers_features:
                 if feature not in feature_data.keys():
@@ -242,15 +243,29 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                 f in self.quasi_identifiers_features]
             categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
 
-            preprocessor = ColumnTransformer(
+            preprocessor_QI_features = ColumnTransformer(
                 transformers=[
                     ("num", numeric_transformer, numeric_features),
                     ("cat", categorical_transformer, categorical_features),
                 ]
             )
-            preprocessor.fit(x_QI)
+            preprocessor_QI_features.fit(x_QI)
 
-            x_prepared = preprocessor.transform(X_train)
+            x_prepared = preprocessor_QI_features.transform(X_train_QI)
+
+            # preprocessor to fit data that have features not included in QI (to get accuracy)
+            numeric_features = [f for f in self._features if f not in self.categorical_features]
+            numeric_transformer = Pipeline(
+                steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+            )
+            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+            preprocessor = ColumnTransformer(
+                transformers=[
+                    ("num", numeric_transformer, numeric_features),
+                    ("cat", categorical_transformer, self.categorical_features),
+                ]
+            )
+            preprocessor.fit(X)
             self.preprocessor = preprocessor
 
             self.cells_ = {}
@@ -263,16 +278,15 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._calculate_cells()
             self._modify_cells()
             nodes = self._get_nodes_level(0)
-            self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
+            self._attach_cells_representatives(x_prepared, X_train_QI, y_train, nodes)
             # self.cells_ currently holds the generalization created from the tree leaves
             self._calculate_generalizations()
 
             # apply generalizations to test data
-            x_prepared_test = preprocessor.transform(X_test)
-            x_prepared_test = pd.DataFrame(x_prepared_test, columns=self.categorical_data.columns)
+            x_prepared_test = preprocessor_QI_features.transform(X_test_QI)
+            x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self.categorical_data.columns)
 
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
-
             # check accuracy
             accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
             print('Initial accuracy of model on generalized data, relative to original model predictions '
@@ -286,7 +300,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     nodes = self._get_nodes_level(level)
                     if nodes:
                         self._calculate_level_cells(level)
-                        self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
+                        self._attach_cells_representatives(x_prepared, X_train_QI, y_train, nodes)
                         self._calculate_generalizations()
                         generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                        self.cells_by_id_)
@@ -635,17 +649,16 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
-        # prepared data include one hot encoded categorical data,
-        # if there is no categorical data prepared data is original data
+        # prepared data include one hot encoded categorical data + QI,
         representatives = pd.DataFrame(columns=self.features)  # empty except for columns
         generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
-        original_data_generalized = pd.DataFrame(original_data, columns=self.features, copy=True)
+        original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
         mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
         # iterate over cells (leaves in decision tree)
         for i in range(len(cells)):
             # This code just copies the representatives from the cells into another data structure
             # iterate over features
-            for feature in self.features:
+            for feature in self._features:
                 # if feature has a representative value in the cell and should not be left untouched,
                 # take the representative value
                 if feature in cells[i]['representative'] and ('untouched' not in cells[i] or
@@ -657,15 +670,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
-            indexes = [j for j in range(len(mapping_to_cells)) if mapping_to_cells[j]['id'] == cells[i]['id']]
-            mapped_indexes = list()
-            if indexes:
-                it = 0
-
-                for index in original_data_generalized.index:
-                    if it in indexes:
-                        mapped_indexes.append(index)
-                    it = it + 1
+            indexes = [j for j in mapping_to_cells if mapping_to_cells[j]['id'] == cells[i]['id']]
 
             # replaces the values in the representative columns with the representative values
             # (leaves others untouched)
@@ -674,17 +679,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = pd.concat([representatives.loc[i].to_frame().T] * len(indexes)).reset_index(drop=True)
                 else:
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
-                replace.index = mapped_indexes
-                replace = pd.DataFrame(replace, mapped_indexes, columns=self.quasi_identifiers)
-                original_data_generalized.loc[mapped_indexes, representatives.columns.tolist()] = replace
+                replace.index = indexes
+                replace = pd.DataFrame(replace, indexes, columns=self._features)
+                original_data_generalized.loc[indexes, representatives.columns.tolist()] = replace
 
         return original_data_generalized
 
     def _map_to_cells(self, samples, nodes, cells_by_id):
-        mapping_to_cells = []
+        mapping_to_cells = {}
         for index, row in samples.iterrows():
             cell = self._find_sample_cells([row], nodes, cells_by_id)[0]
-            mapping_to_cells.append(cell)
+            mapping_to_cells[index] = cell
         return mapping_to_cells
 
     def _find_sample_cells(self, samples, nodes, cells_by_id):
