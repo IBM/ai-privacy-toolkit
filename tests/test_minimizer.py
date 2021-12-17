@@ -249,16 +249,17 @@ def test_minimizer_fit_pandas_QI(data):
     print(transformed)
 
 
-
-
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
     (x_train, y_train), _ = get_iris_dataset()
-    model = DecisionTreeClassifier()
-    model.fit(x_train, y_train)
-    pred = model.predict(x_train)
 
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features)
+    QI = [0, 2]
+    xQI = x_train[:, QI]
+    model = DecisionTreeClassifier()
+    model.fit(xQI, y_train)
+    pred = model.predict(xQI)
+
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.3, features=features, quasi_identifiers=QI)
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
     print(transformed)
@@ -275,7 +276,13 @@ def test_minimize_pandas_adult():
     categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                             'hours-per-week', 'native-country']
 
-    numeric_features = [f for f in features if f not in categorical_features]
+    QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+          'native-country']
+
+    xQI = x_train.loc[:, QI]
+
+    numeric_features = [f for f in features if f not in categorical_features and f in QI]
+    categorical_features_transformer = [f for f in features if f in categorical_features and f in QI]
     numeric_transformer = Pipeline(
         steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
     )
@@ -283,15 +290,16 @@ def test_minimize_pandas_adult():
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
+            ("cat", categorical_transformer, categorical_features_transformer),
         ]
     )
-    encoded = preprocessor.fit_transform(x_train)
+    encoded = preprocessor.fit_transform(xQI)
     base_est = DecisionTreeClassifier()
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     print(transformed)

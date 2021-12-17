@@ -194,7 +194,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and X is not None and y is not None:
-            self.quasi_identifiers_features = self._features
 
             if type(X) == np.ndarray:
                 if not self.quasi_identifiers:
@@ -202,6 +201,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 self.type = 'np'
                 x_QI = X[:, self.quasi_identifiers]
                 self.quasi_identifiers_features = [self._features[i] for i in self.quasi_identifiers]
+                X = pd.DataFrame(X, columns=self._features)
             else:
                 if not self.quasi_identifiers:
                     self.quasi_identifiers = self._features
@@ -240,7 +240,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # numeric_features = list(self._features) - list(self.categorical_features)
             numeric_features = [f for f in self._features if f not in self.categorical_features and
                                 f in self.quasi_identifiers_features]
-            categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
 
             preprocessor = ColumnTransformer(
                 transformers=[
@@ -248,7 +248,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     ("cat", categorical_transformer, categorical_features),
                 ]
             )
-            preprocessor.fit(X)
+            preprocessor.fit(x_QI)
 
             x_prepared = preprocessor.transform(X_train)
             self.preprocessor = preprocessor
@@ -257,7 +257,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
-            self._modify_categorical_features(X)
+            self._modify_categorical_features(x_QI)
             x_prepared = pd.DataFrame(x_prepared, columns=self.categorical_data.columns)
 
             self._calculate_cells()
@@ -370,7 +370,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
-            X = pd.DataFrame(X)
             indexes = self._get_record_indexes_for_cell(X, self.cells_[i], mapped)
 
             # replace the values in the representative columns with the representative
@@ -400,7 +399,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
             if f in cell['categories']:
-                if not self._cell_contains_categorical(f, cell['categories', x]):
+                if not self._cell_contains_categorical(f, cell['categories'][f], x):
                     return False
             else:
                 # TODO: exception - feature not defined
