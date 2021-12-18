@@ -650,7 +650,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
         # prepared data include one hot encoded categorical data + QI,
-        representatives = pd.DataFrame(columns=self.features)  # empty except for columns
+        representatives = pd.DataFrame(columns=self._features)  # empty except for columns
         generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
         mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
