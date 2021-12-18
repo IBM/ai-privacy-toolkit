@@ -297,3 +297,65 @@ def test_minimize_pandas_adult():
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     print(transformed)
+
+
+def test_experiment():
+    (x_train, y_train), (x_test, y_test) = get_adult_dataset()
+    x_train = x_train.head(10000)
+    y_train = y_train.head(10000)
+
+    features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                            'hours-per-week', 'native-country']
+
+    QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+          'native-country']
+
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
+    print("training clf on QI experiment:")
+    target_accuracy = 0.7
+    while target_accuracy < 0.9:
+
+        gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
+                                         categorical_features=categorical_features, quasi_identifiers=QI)
+        gen.fit(x_train, predictions)
+        prepared_data_train = gen.transform(x_train)
+
+        # build CT from prepared_data_train and test on x_test
+        numeric_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+        )
+        categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_features),
+                ("cat", categorical_transformer, categorical_features),
+            ]
+        )
+        encoded = preprocessor.fit_transform(prepared_data_train)
+        clf = DecisionTreeClassifier()
+        clf.fit(encoded, y_train)
+
+        # get accuracy
+        accuracy = clf.score(preprocessor.transform(x_test), y_test)
+        print(target_accuracy, ": ", accuracy)
+        target_accuracy = target_accuracy + 0.05
+
+
