@@ -190,10 +190,9 @@ def test_minimizer_fit_QI(data):
     print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     QI = [0, 2]
-    x_QI = X[:, QI]
     base_est = DecisionTreeClassifier()
-    base_est.fit(x_QI, y)
-    predictions = base_est.predict(x_QI)
+    base_est.fit(X, y)
+    predictions = base_est.predict(X)
 
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5, quasi_identifiers=QI)
     gen.fit(X, predictions)
@@ -219,14 +218,13 @@ def test_minimizer_fit_pandas_QI(data):
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     X = pd.DataFrame(X, columns=features)
     QI = ['age', 'weight', 'ola']
-    x_QI = X.loc[:, QI]
 
-    numeric_features = ["age", "weight"]
+    numeric_features = ["age", "height", "weight"]
     numeric_transformer = Pipeline(
         steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
     )
 
-    categorical_features = ["ola"]
+    categorical_features = ["sex", "ola"]
     categorical_transformer = OneHotEncoder(handle_unknown="ignore")
 
     preprocessor = ColumnTransformer(
@@ -235,7 +233,7 @@ def test_minimizer_fit_pandas_QI(data):
             ("cat", categorical_transformer, categorical_features),
         ]
     )
-    encoded = preprocessor.fit_transform(x_QI)
+    encoded = preprocessor.fit_transform(X)
     base_est = DecisionTreeClassifier()
     base_est.fit(encoded, y)
     predictions = base_est.predict(encoded)
