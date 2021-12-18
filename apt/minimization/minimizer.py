@@ -618,15 +618,15 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
         # prepared data include one hot encoded categorical data + QI
-        representatives = pd.DataFrame(columns=self.features)  # empty except for columns
+        representatives = pd.DataFrame(columns=self._features)  # empty except for columns
         generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
-        original_data_generalized = pd.DataFrame(original_data, columns=self.features, copy=True)
+        original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
         mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
         # iterate over cells (leaves in decision tree)
         for i in range(len(cells)):
             # This code just copies the representatives from the cells into another data structure
             # iterate over features
-            for feature in self.features:
+            for feature in self._features:
                 # if feature has a representative value in the cell and should not be left untouched,
                 # take the representative value
                 if feature in cells[i]['representative'] and ('untouched' not in cells[i] or
@@ -649,7 +649,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 # replace = self.preprocessor.transform(replace)
-                replace = pd.DataFrame(replace, indexes, columns=self.features)
+                replace = pd.DataFrame(replace, indexes, columns=self._features)
                 original_data_generalized.loc[indexes, representatives.columns.tolist()] = replace
 
         return original_data_generalized
