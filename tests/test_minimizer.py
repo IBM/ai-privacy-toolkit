@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
-from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
+from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_dataset
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def test_minimizer_fit(data):
     base_est.fit(X, y)
     predictions = base_est.predict(X)
 
-    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.4)
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     print(X)
@@ -190,7 +190,6 @@ def test_minimizer_fit_QI(data):
     print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     QI = [0, 2]
-    x_QI = X[:, QI]
     base_est = DecisionTreeClassifier()
     base_est.fit(X, y)
     predictions = base_est.predict(X)
@@ -218,6 +217,7 @@ def test_minimizer_fit_pandas_QI(data):
 
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     X = pd.DataFrame(X, columns=features)
+    QI = ['age', 'weight', 'ola']
 
     numeric_features = ["age", "height", "weight"]
     numeric_transformer = Pipeline(
@@ -239,8 +239,7 @@ def test_minimizer_fit_pandas_QI(data):
     predictions = base_est.predict(encoded)
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    QI = ['age', 'weight', 'ola']
-    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.4,
+    gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
                                      categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
@@ -251,56 +250,20 @@ def test_minimizer_fit_pandas_QI(data):
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
     (x_train, y_train), _ = get_iris_dataset()
+
+    QI = [0, 2]
     model = DecisionTreeClassifier()
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
-    QI = [0, 2]
 
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features, quasi_identifiers=QI)
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.3, features=features, quasi_identifiers=QI)
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
-    print(x_train)
     print(transformed)
 
 
 def test_minimize_pandas_adult():
     (x_train, y_train), _ = get_adult_dataset()
-    x_train = x_train.head(5000)
-    y_train = y_train.head(5000)
-
-    features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
-
-    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                            'hours-per-week', 'native-country']
-    QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
-          'native-country']
-
-    numeric_features = [f for f in features if f not in categorical_features]
-    numeric_transformer = Pipeline(
-        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
-    )
-    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
-        ]
-    )
-    encoded = preprocessor.fit_transform(x_train)
-    base_est = DecisionTreeClassifier()
-    base_est.fit(encoded, y_train)
-    predictions = base_est.predict(encoded)
-
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
-                                     categorical_features=categorical_features, quasi_identifiers=QI)
-    gen.fit(x_train, predictions)
-    transformed = gen.transform(x_train)
-    print(transformed)
-
-
-def test_experiment():
-    (x_train, y_train), (x_test, y_test) = get_adult_dataset()
     x_train = x_train.head(10000)
     y_train = y_train.head(10000)
 
@@ -329,9 +292,142 @@ def test_experiment():
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features, quasi_identifiers=QI)
+    gen.fit(x_train, predictions)
+    transformed = gen.transform(x_train)
+    print(transformed)
+
+
+def test_experiment_adult():
+    (x_train, y_train), (x_test, y_test) = get_adult_dataset()
+    x_train = x_train.head(12000)
+    y_train = y_train.head(12000)
+
+    features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
+
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                            'hours-per-week', 'native-country']
+
+    QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+          'native-country']
+
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
     print("training clf on QI experiment:")
     target_accuracy = 0.7
-    while target_accuracy < 0.9:
+    while target_accuracy <= 0.9:
+
+        gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
+                                         categorical_features=categorical_features, quasi_identifiers=QI)
+        gen.fit(x_train, predictions)
+        prepared_data_train = gen.transform(x_train)
+
+        # build CT from prepared_data_train and test on x_test
+        numeric_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+        )
+        categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_features),
+                ("cat", categorical_transformer, categorical_features),
+            ]
+        )
+        encoded = preprocessor.fit_transform(prepared_data_train)
+        clf = DecisionTreeClassifier()
+        clf.fit(encoded, y_train)
+
+        # get accuracy
+        accuracy = clf.score(preprocessor.transform(x_test), y_test)
+        print(target_accuracy, ": ", accuracy)
+        target_accuracy = target_accuracy + 0.2
+
+
+def test_german_pandas():
+    (x_train, y_train), (x_test, y_test) = get_german_dataset()
+    features = ["Existing_checking_account", "Duration_in_month", "Credit_history", "Purpose", "Credit_amount",
+                "Savings_account", "Present_employment_since", "Installment_rate", "Personal_status_sex", "debtors",
+                "Present_residence", "Property", "Age", "Other_installment_plans", "Housing",
+                "Number_of_existing_credits", "Job", "N_people_being_liable_provide_maintenance", "Telephone",
+                "Foreign_worker"]
+    categorical_features = ["Existing_checking_account", "Credit_history", "Purpose", "Savings_account",
+                            "Present_employment_since", "Personal_status_sex", "debtors", "Property",
+                            "Other_installment_plans", "Housing", "Job"]
+    QI = ["Duration_in_month", "Credit_history", "Purpose", "debtors", "Property", "Other_installment_plans",
+          "Housing", "Job"]
+
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features, quasi_identifiers=QI)
+    gen.fit(x_train, predictions)
+    transformed = gen.transform(x_train)
+    print(transformed)
+
+
+def test_experiment_german():
+    (x_train, y_train), (x_test, y_test) = get_german_dataset()
+
+    features = ["Existing_checking_account", "Duration_in_month", "Credit_history", "Purpose", "Credit_amount",
+                "Savings_account", "Present_employment_since", "Installment_rate", "Personal_status_sex", "debtors",
+                "Present_residence", "Property", "Age", "Other_installment_plans", "Housing",
+                "Number_of_existing_credits", "Job", "N_people_being_liable_provide_maintenance", "Telephone",
+                "Foreign_worker"]
+    categorical_features = ["Existing_checking_account", "Credit_history", "Purpose", "Savings_account",
+                            "Present_employment_since", "Personal_status_sex", "debtors", "Property",
+                            "Other_installment_plans", "Housing", "Job"]
+    QI = ["Duration_in_month", "Credit_history", "Purpose", "debtors", "Property", "Other_installment_plans",
+          "Housing", "Job"]
+
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
+    print("training clf on QI experiment:")
+    target_accuracy = 0.9
+    while target_accuracy <= 0.9:
 
         gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
                                          categorical_features=categorical_features, quasi_identifiers=QI)
@@ -357,5 +453,6 @@ def test_experiment():
         accuracy = clf.score(preprocessor.transform(x_test), y_test)
         print(target_accuracy, ": ", accuracy)
         target_accuracy = target_accuracy + 0.05
+
 
 
