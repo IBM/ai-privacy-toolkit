@@ -187,6 +187,37 @@ def test_minimize_ndarray_iris():
     print(transformed)
 
 
+def test_minimize_pandas_nursery():
+    (x_train, y_train), _ = get_nursery_dataset()
+    x_train = x_train.astype(str)
+    x_train.reset_index(inplace=True, drop=True)
+    y_train.reset_index(inplace=True, drop=True)
+    QI = ["finance", "social", "health"]
+    features = ["parents", "has_nurs", "form", "children", "housing", "finance", "social", "health"]
+    categorical_features = ["parents", "has_nurs", "form", "housing", "finance", "social", "health", 'children']
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    base_est = DecisionTreeClassifier()
+    base_est.fit(encoded, y_train)
+    predictions = base_est.predict(encoded)
+
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen.fit(x_train, predictions)
+    transformed = gen.transform(x_train)
+    print(transformed)
+
+
+
 def test_minimize_pandas_adult():
     (x_train, y_train), _ = get_adult_dataset()
     x_train = x_train.head(5000)
