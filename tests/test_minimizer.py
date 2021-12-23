@@ -307,8 +307,7 @@ def test_experiment_adult():
     features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 
-    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                            'hours-per-week', 'native-country']
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'native-country']
 
     QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
           'native-country']
@@ -331,8 +330,7 @@ def test_experiment_adult():
 
     print("training clf on QI experiment:")
     target_accuracy = 0.7
-    while target_accuracy <= 0.9:
-
+    while target_accuracy <= 0.9005:
         gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
                                          categorical_features=categorical_features, quasi_identifiers=QI)
         gen.fit(x_train, predictions)
@@ -355,8 +353,11 @@ def test_experiment_adult():
 
         # get accuracy
         accuracy = clf.score(preprocessor.transform(x_test), y_test)
+        print("generalization:")
+        print(gen.generalizations_)
+        print("target accuracy : tested accuracy")
         print(target_accuracy, ": ", accuracy)
-        target_accuracy = target_accuracy + 0.2
+        target_accuracy = target_accuracy + 0.05
 
 
 def test_german_pandas():
