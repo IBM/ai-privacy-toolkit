@@ -292,7 +292,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         level += 1
                     except Exception as e:
                         print(e)
-                        raise
+                        break
 
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
