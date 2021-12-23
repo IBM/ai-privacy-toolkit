@@ -35,7 +35,6 @@ def test_minimizer_params(data):
     X = np.array([[23, 165],
                   [45, 158],
                   [18, 190]])
-    print(X.dtype)
     y = [1, 1, 0]
     base_est = DecisionTreeClassifier()
     base_est.fit(X, y)
@@ -43,7 +42,6 @@ def test_minimizer_params(data):
     gen = GeneralizeToRepresentative(base_est, features=features, cells=cells)
     gen.fit()
     transformed = gen.transform(X)
-    print(transformed)
 
 
 def test_minimizer_fit(data):
@@ -68,8 +66,7 @@ def test_minimizer_fit(data):
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
-    print(X)
-    print(transformed)
+
 
 
 def test_minimizer_fit_pandas(data):
@@ -112,8 +109,7 @@ def test_minimizer_fit_pandas(data):
                                      categorical_features=categorical_features)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
-    print(X)
-    print(transformed)
+
 
 
 def test_minimizer_params_categorical(data):
@@ -171,7 +167,6 @@ def test_minimizer_params_categorical(data):
                                      categorical_features=categorical_features)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
-    print(transformed)
 
 
 def test_minimize_ndarray_iris():
@@ -184,7 +179,6 @@ def test_minimize_ndarray_iris():
     gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features)
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
-    print(transformed)
 
 
 def test_minimize_pandas_nursery():
@@ -214,8 +208,6 @@ def test_minimize_pandas_nursery():
     gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
-    print(transformed)
-
 
 
 def test_minimize_pandas_adult():
@@ -226,8 +218,7 @@ def test_minimize_pandas_adult():
     features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 
-    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
-                            'hours-per-week', 'native-country']
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'native-country']
 
     numeric_features = [f for f in features if f not in categorical_features]
     numeric_transformer = Pipeline(
@@ -248,4 +239,3 @@ def test_minimize_pandas_adult():
     gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
-    print(transformed)

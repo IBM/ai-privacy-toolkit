@@ -146,8 +146,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         Returns
         -------
-        self : object
-            Returns self.
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
+            The array containing the representative values to which each record in
+            ``X`` is mapped.
         """
         self.fit(X, y)
         return self.transform(X)
@@ -165,7 +166,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         Returns
         -------
-        X_transformed : ndarray, shape (n_samples, n_features)
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
             The array containing the representative values to which each record in
             ``X`` is mapped.
         """
@@ -278,15 +279,21 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 print('Improving generalizations')
                 level = 1
                 while accuracy > self.target_accuracy:
-                    nodes = self._get_nodes_level(level)
-                    self._calculate_level_cells(level)
-                    self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
-                    self._calculate_generalizations()
-                    generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
-                                                   self.cells_by_id_)
-                    accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
-                    print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
-                    level += 1
+                    try:
+                        nodes = self._get_nodes_level(level)
+                        self._calculate_level_cells(level)
+
+                        self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
+                        self._calculate_generalizations()
+                        generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
+                                                       self.cells_by_id_)
+                        accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
+                        print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
+                        level += 1
+                    except Exception as e:
+                        print(e)
+                        raise
+
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
             if accuracy < self.target_accuracy:
@@ -316,12 +323,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         Parameters
         ----------
-        X : {array-like, sparse-matrix}, shape (n_samples, n_features)
+        X : {array-like, sparse-matrix}, shape (n_samples, n_features), If provided as a pandas dataframe,
+         may contain both numeric and categorical data.
             The input samples.
 
         Returns
         -------
-        X_transformed : ndarray, shape (n_samples, n_features)
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
             The array containing the representative values to which each record in
             ``X`` is mapped.
         """
