@@ -280,6 +280,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 level = 1
                 while accuracy > self.target_accuracy:
                     try:
+                        cells_previous_iter = self.cells_
+                        generalization_prev_iter = self.generalizations_
+                        cells_by_id_prev = self.cells_by_id_
                         nodes = self._get_nodes_level(level)
                         self._calculate_level_cells(level)
 
@@ -288,15 +291,21 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                        self.cells_by_id_)
                         accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
-                        print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
-                        level += 1
+                        # if accuracy passed threshold roll back to previous iteration generalizations
+                        if accuracy < self.target_accuracy:
+                            self.cells_ = cells_previous_iter
+                            self.generalizations_ = generalization_prev_iter
+                            self.cells_by_id_ = cells_by_id_prev
+                            break
+                        else:
+                            print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
+                            level += 1
                     except Exception as e:
                         print(e)
                         break
 
-
             # if accuracy below threshold, improve accuracy by removing features from generalization
-            if accuracy < self.target_accuracy:
+            elif accuracy < self.target_accuracy:
                 print('Improving accuracy')
                 while accuracy < self.target_accuracy:
                     removed_feature = self._remove_feature_from_generalization(X_test, x_prepared_test,
