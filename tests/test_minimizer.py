@@ -388,11 +388,11 @@ def test_german_pandas():
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.9, features=features,
                                      categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
-    print(transformed)
+    print(gen.generalizations_)
 
 
 def test_experiment_german():
