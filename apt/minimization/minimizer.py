@@ -47,7 +47,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     features : list of str, optional
         The feature names, in the order that they appear in the data.
-
+    categorical_features: list of str, optional
+        The list of categorical features should only be supplied when
+         passing data as a pandas dataframe.
+    quasi_identifiers: The indexes of the features that need to be
+        minimized (these should be the features that may directly,
+         indirectly or in combination with additional data, identify
+          an individual).
     cells : list of object, optional
         The cells used to generalize records. Each cell must define a
         range or subset of categories for each feature, as well as a
@@ -129,7 +135,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     def generalizations(self):
         return self.generalizations_
 
-    def fit_transform(self, X=None, y=None):
+    def fit_transform(self, X: Union[np.ndarray, pd.DataFrame] = None, y: Union[np.ndarray, pd.DataFrame] = None):
         """Learns the generalizations based on training data, and applies them to the data.
 
         Parameters
@@ -141,14 +147,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             This should contain the predictions of the original model on ``X``.
 
         Returns
-        -------
-        self : object
-            Returns self.
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
+            The array containing the representative values to which each record in
+            ``X`` is mapped.
         """
         self.fit(X, y)
         return self.transform(X)
 
-    def fit(self, X: Union[np.ndarray, pd.DataFrame] = None, y=None):
+    def fit(self, X: Union[np.ndarray, pd.DataFrame] = None, y: Union[np.ndarray, pd.DataFrame] = None):
         """Learns the generalizations based on training data.
 
         Parameters
@@ -161,15 +167,21 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         Returns
         -------
-        X_transformed : ndarray, shape (n_samples, n_features)
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
             The array containing the representative values to which each record in
             ``X`` is mapped.
         """
 
         # take into account that estimator, X, y, cells, features may be None
+        if X is not None:
+            if type(X) == np.ndarray:
+                self.is_numpy = True
+            else:
+                self.is_numpy = False
 
         if X is not None and y is not None:
-            # X, y = check_X_y(X, y, accept_sparse=True)
+            if self.is_numpy:
+                X, y = check_X_y(X, y, accept_sparse=True)
             self.n_features_ = X.shape[1]
         elif self.features:
             self.n_features_ = len(self.features)
@@ -194,16 +206,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and X is not None and y is not None:
 
-            if type(X) == np.ndarray:
+            if self.is_numpy:
                 if not self.quasi_identifiers:
                     self.quasi_identifiers = [i for i in range(len(self._features))]
-                self.type = 'np'
                 self.quasi_identifiers_features = [self._features[i] for i in self.quasi_identifiers]
                 X = pd.DataFrame(X, columns=self._features)
             else:
                 if not self.quasi_identifiers:
                     self.quasi_identifiers = self._features
-                self.type = 'pd'
                 self.quasi_identifiers_features = [f for f in self.quasi_identifiers]
             # divide dataset into train and test
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
@@ -256,6 +266,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             self._calculate_cells()
             self._modify_cells()
+            # features that are not from QI should not be part of generalizations
+            for feature in self._features:
+                if feature not in self.quasi_identifiers_features:
+                    self._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
+
             nodes = self._get_nodes_level(0)
             self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
             # self.cells_ currently holds the generalization created from the tree leaves
@@ -277,21 +292,33 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 print('Improving generalizations')
                 level = 1
                 while accuracy > self.target_accuracy:
-                    nodes = self._get_nodes_level(level)
-                    if nodes:
+                    try:
+                        cells_previous_iter = self.cells_
+                        generalization_prev_iter = self.generalizations_
+                        cells_by_id_prev = self.cells_by_id_
+                        nodes = self._get_nodes_level(level)
                         self._calculate_level_cells(level)
+
                         self._attach_cells_representatives(x_prepared, X_train, y_train, nodes)
                         self._calculate_generalizations()
                         generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                        self.cells_by_id_)
                         accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
-                        print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
-                        level += 1
-                    else:
+                        # if accuracy passed threshold roll back to previous iteration generalizations
+                        if accuracy < self.target_accuracy:
+                            self.cells_ = cells_previous_iter
+                            self.generalizations_ = generalization_prev_iter
+                            self.cells_by_id_ = cells_by_id_prev
+                            break
+                        else:
+                            print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
+                            level += 1
+                    except Exception as e:
+                        print(e)
                         break
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
-            if accuracy < self.target_accuracy:
+            elif accuracy < self.target_accuracy:
                 print('Improving accuracy')
                 while accuracy < self.target_accuracy:
                     removed_feature = self._remove_feature_from_generalization(X_test, x_prepared_test,
@@ -313,17 +340,18 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Return the transformer
         return self
 
-    def transform(self, X):
+    def transform(self, X: Union[np.ndarray, pd.DataFrame]):
         """ Transforms data records to representative points.
 
         Parameters
         ----------
-        X : {array-like, sparse-matrix}, shape (n_samples, n_features)
+        X : {array-like, sparse-matrix}, shape (n_samples, n_features), If provided as a pandas dataframe,
+         may contain both numeric and categorical data.
             The input samples.
 
         Returns
         -------
-        X_transformed : ndarray, shape (n_samples, n_features)
+        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
             The array containing the representative values to which each record in
             ``X`` is mapped.
         """
@@ -334,8 +362,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
               'appropriate arguments before using this method.'
         check_is_fitted(self, ['cells', 'features'], msg=msg)
 
-        # Input validation
-        # X = check_array(X, accept_sparse=True)
+        if type(X) == np.ndarray:
+            # Input validation
+            X = check_array(X, accept_sparse=True)
+            self.is_numpy = True
+            X = pd.DataFrame(X, columns=self._features)
+        else:
+            self.is_numpy = False
+
         if X.shape[1] != self.n_features_ and self.n_features_ != 0:
             raise ValueError('Shape of input is different from what was seen'
                              'in `fit`')
@@ -375,12 +409,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
-        if type(X) == np.ndarray:
+        if self.is_numpy:
             return generalized.to_numpy()
         return generalized
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
-        X = pd.DataFrame(X)
         indexes = []
         for index, row in X.iterrows():
             if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
@@ -392,12 +425,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if f in cell['ranges']:
                 if not self._cell_contains_numeric(f, cell['ranges'][f], x):
                     return False
-            if f in cell['categories']:
+            elif f in cell['categories']:
                 if not self._cell_contains_categorical(f, cell['categories'][f], x):
                     return False
+            elif f in cell['untouched']:
+                continue
             else:
-                # TODO: exception - feature not defined
-                pass
+                raise TypeError("feature not defined")
         # Mark as mapped
         mapped.itemset(i, 1)
         return True
@@ -406,7 +440,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.categorical_values = {}
         self.oneHotVectorFeaturesToFeatures = {}
         features_to_remove = []
-        # print(self.data.columns)
         for feature in self.categorical_features:
             try:
                 all_values = X.loc[:, feature]
@@ -421,7 +454,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             except KeyError:
                 print('feature not found: ' + feature)
         self.categorical_data = X.drop(features_to_remove, axis=1)
-        # print(self.data.columns)
 
     def _cell_contains_numeric(self, f, range, x):
         i = self._features.index(f)
@@ -521,8 +553,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _calculate_level_cells(self, level):
         if level < 0 or level > self.dt_.get_depth():
-            # TODO: exception 'Illegal level %d' % level
-            pass
+            raise TypeError("Illegal level %d' % level", level)
 
         if level > 0:
             new_cells = []
@@ -537,7 +568,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         right_child = self.dt_.tree_.children_right[node]
                         left_cell = self.cells_by_id_[left_child]
                         right_cell = self.cells_by_id_[right_child]
-                        new_cell = {'id': int(node), 'ranges': {}, 'categories': {},
+                        new_cell = {'id': int(node), 'ranges': {}, 'categories': {}, 'untouched': [],
                                     'label': None, 'representative': None}
                         for feature in left_cell['ranges'].keys():
                             new_cell['ranges'][feature] = {}
@@ -547,6 +578,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                             new_cell['categories'][feature] = \
                                 list(set(left_cell['categories'][feature]) |
                                      set(right_cell['categories'][feature]))
+                        for feature in left_cell['untouched']:
+                            if feature in right_cell['untouched']:
+                                new_cell['untouched'].append(feature)
                         self._calculate_level_cell_label(left_cell, right_cell, new_cell)
                     new_cells.append(new_cell)
                     new_cells_by_id[new_cell['id']] = new_cell
@@ -598,17 +632,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             sample_labels = labels_df.iloc[indexes]['label'].values.tolist()
             # get rows with matching label
             indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
-            # match_samples = sample_rows.loc[sample_rows[labelFeature] == cell['label']].drop([labelFeature], axis=1)
             match_samples = sample_rows.iloc[indexes]
             match_rows = original_rows.iloc[indexes]
             # find the "middle" of the cluster
             array = match_samples.values
             # Only works with numpy 1.9.0 and higher!!!
-            # median = np.percentile(array, 50, interpolation='nearest', axis=0)
             median = np.median(array, axis=0)
             i = 0
             min = len(array)
-            # print('array length %d' % min)
             min_dist = float("inf")
             for row in array:
                 dist = distance.euclidean(row, median)
@@ -616,14 +647,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     min_dist = dist
                     min = i
                 i = i + 1
-            # print('min = %d' % min)
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
-                if feature in self.quasi_identifiers_features:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
             for feature in cell['categories'].keys():
-                if feature in self.quasi_identifiers_features:
-                    cell['representative'][feature] = row[feature]
+                cell['representative'][feature] = row[feature]
 
     def _find_sample_nodes(self, samples, nodes):
         paths = self.dt_.decision_path(samples).toarray()
@@ -631,8 +659,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
-        # prepared data include one hot encoded categorical data,
-        # if there is no categorical data prepared data is original data
+        # prepared data include one hot encoded categorical data + QI
         representatives = pd.DataFrame(columns=self._features)  # empty except for columns
         generalized = pd.DataFrame(prepared_data, columns=self.categorical_data.columns, copy=True)
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
@@ -730,7 +757,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     remove_feature = feature
 
         for feature in categories.keys():
-            # print('trying feature: %s' % feature)
             if feature not in self.generalizations['untouched']:
                 feature_ncp = self._calc_ncp_categorical(categories[feature],
                                                          category_counts[feature],
@@ -774,9 +800,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 for value in ranges[r]:
                     counter = [item for item in samples_df[r] if int(item) <= value]
                     range_counts[r].append(len(counter))
-                    # range_counts[r].append(len(samples_df.loc[float(samples_df[r]) <= last_value]))
                     last_value = value
-                # range_counts[r].append(len(samples_df.loc[float(samples_df[r]) > last_value]))
                 counter = [item for item in samples_df[r] if int(item) <= last_value]
                 range_counts[r].append(len(counter))
         return range_counts

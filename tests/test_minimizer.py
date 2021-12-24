@@ -330,7 +330,7 @@ def test_experiment_adult():
 
     print("training clf on QI experiment:")
     target_accuracy = 0.7
-    while target_accuracy <= 0.9005:
+    while target_accuracy <= 0.900005:
         gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
                                          categorical_features=categorical_features, quasi_identifiers=QI)
         gen.fit(x_train, predictions)
@@ -350,14 +350,15 @@ def test_experiment_adult():
         encoded = preprocessor.fit_transform(prepared_data_train)
         clf = DecisionTreeClassifier()
         clf.fit(encoded, y_train)
-
+        print("NCP: ", gen.ncp_)
+        print("generalizations:")
+        print(gen.generalizations_)
         # get accuracy
         accuracy = clf.score(preprocessor.transform(x_test), y_test)
-        print("generalization:")
-        print(gen.generalizations_)
         print("target accuracy : tested accuracy")
         print(target_accuracy, ": ", accuracy)
         target_accuracy = target_accuracy + 0.05
+
 
 
 def test_german_pandas():
@@ -389,11 +390,11 @@ def test_german_pandas():
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.7, features=features,
                                      categorical_features=categorical_features, quasi_identifiers=QI)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
-    print(transformed)
+    print(gen.generalizations_)
 
 
 def test_experiment_german():
@@ -427,8 +428,8 @@ def test_experiment_german():
     predictions = base_est.predict(encoded)
 
     print("training clf on QI experiment:")
-    target_accuracy = 0.9
-    while target_accuracy <= 0.9:
+    target_accuracy = 0.7
+    while target_accuracy <= 0.900005:
 
         gen = GeneralizeToRepresentative(base_est, target_accuracy=target_accuracy, features=features,
                                          categorical_features=categorical_features, quasi_identifiers=QI)
@@ -449,9 +450,12 @@ def test_experiment_german():
         encoded = preprocessor.fit_transform(prepared_data_train)
         clf = DecisionTreeClassifier()
         clf.fit(encoded, y_train)
-
+        print("NCP: ", gen.ncp_)
+        print("generalizations:")
+        print(gen.generalizations_)
         # get accuracy
         accuracy = clf.score(preprocessor.transform(x_test), y_test)
+        print("target accuracy : tested accuracy")
         print(target_accuracy, ": ", accuracy)
         target_accuracy = target_accuracy + 0.05
 
