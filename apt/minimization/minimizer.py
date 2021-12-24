@@ -223,8 +223,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                                 test_size=0.4,
                                                                 random_state=18)
-            X_train_QI = X_train.loc[:, self.quasi_identifiers]
-            X_test_QI = X_test.loc[:, self.quasi_identifiers]
+            X_train_QI = X_train.loc[:, self.quasi_identifiers_features]
+            X_test_QI = X_test.loc[:, self.quasi_identifiers_features]
 
             # collect feature data (such as min, max)
             feature_data = {}
