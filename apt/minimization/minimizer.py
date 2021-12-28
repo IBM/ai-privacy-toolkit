@@ -419,7 +419,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             elif f in cell['untouched']:
                 continue
             else:
-                raise TypeError("feature not defined")
+                raise TypeError("feature " + f + "not found in cell" + cell['id'])
         # Mark as mapped
         mapped.itemset(i, 1)
         return True
@@ -440,7 +440,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 X = pd.concat([X, ohe], axis=1)
                 features_to_remove.append(feature)
             except KeyError:
-                print('feature not found: ' + feature)
+                print("feature " + feature + "not found in training data")
         self.categorical_data = X.drop(features_to_remove, axis=1)
 
     def _cell_contains_numeric(self, f, range, x):
