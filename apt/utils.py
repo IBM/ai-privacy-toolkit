@@ -29,7 +29,7 @@ def get_iris_dataset():
     return _load_iris()
 
 
-def get_german_dataset(test_set: float = 0.3):
+def get_german_credit_dataset(test_set: float = 0.3):
     """
     Loads the UCI Adult dataset from `tests/datasets/german` or downloads it if necessary.
 
