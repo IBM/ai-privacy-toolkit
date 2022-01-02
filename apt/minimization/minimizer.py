@@ -59,7 +59,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         representative value for each feature.
         This parameter should be used when instantiating a transformer
         object without first fitting it.
-    training_only_on_features_to_minimize : Bool, optional
+    train_only_QI : Bool, optional
         The required method to train data set for minimizing. Default is
         to train the tree just on the features that are given as
         features_to_minimize.
@@ -84,7 +84,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def __init__(self, estimator=None, target_accuracy=0.998, features=None,
                  cells=None, categorical_features=None, features_to_minimize: Union[np.ndarray, list] = None
-                 , training_only_on_features_to_minimize=True):
+                 , train_only_QI=True):
         self.estimator = estimator
         self.target_accuracy = target_accuracy
         self.features = features
@@ -93,7 +93,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         if categorical_features:
             self.categorical_features = categorical_features
         self.features_to_minimize = features_to_minimize
-        self.training_only_on_features_to_minimize = training_only_on_features_to_minimize
+        self.train_only_QI = train_only_QI
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -225,7 +225,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             x_QI = pd.DataFrame(x_QI, columns=self.features_to_minimize)
             # divide dataset into train and test
             used_data = X
-            if self.training_only_on_features_to_minimize:
+            if self.train_only_QI:
                 used_data = x_QI
             X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
                                                                 test_size=0.4,
@@ -234,7 +234,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             X_test_QI = X_test.loc[:, self.features_to_minimize]
             used_X_train = X_train
             used_X_test = X_test
-            if self.training_only_on_features_to_minimize:
+            if self.train_only_QI:
                 used_X_train = X_train_QI
                 used_X_test = X_test_QI
 
@@ -287,7 +287,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             )
             preprocessor.fit(X)
             x_prepared = preprocessor.transform(X_train)
-            if self.training_only_on_features_to_minimize:
+            if self.train_only_QI:
                 x_prepared = preprocessor_QI_features.transform(X_train_QI)
 
             self._preprocessor = preprocessor
@@ -313,7 +313,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # apply generalizations to test data
             x_prepared_test = preprocessor.transform(X_test)
-            if self.training_only_on_features_to_minimize:
+            if self.train_only_QI:
                 x_prepared_test = preprocessor_QI_features.transform(X_test_QI)
             x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self.categorical_data.columns)
 
@@ -476,7 +476,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.oneHotVectorFeaturesToFeatures = {}
         features_to_remove = []
         used_features = self._features
-        if self.training_only_on_features_to_minimize:
+        if self.train_only_QI:
             used_features = self.features_to_minimize
         for feature in self.categorical_features:
             if feature in used_features:
