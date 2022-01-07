@@ -37,7 +37,7 @@ def test_minimizer_params(data):
                   [18, 190]])
     y = [1, 1, 0]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(X, y)
 
     gen = GeneralizeToRepresentative(base_est, features=features, cells=cells)
@@ -61,7 +61,7 @@ def test_minimizer_fit(data):
     print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(X, y)
     predictions = base_est.predict(X)
 
@@ -76,7 +76,14 @@ def test_minimizer_fit(data):
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
-
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
 
 
 def test_minimizer_fit_pandas(data):
@@ -111,7 +118,7 @@ def test_minimizer_fit_pandas(data):
     )
     encoded = preprocessor.fit_transform(X)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(encoded, y)
     predictions = base_est.predict(encoded)
     # Append classifier to preprocessing pipeline.
@@ -128,7 +135,10 @@ def test_minimizer_fit_pandas(data):
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
-
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
 
 
 def test_minimizer_params_categorical(data):
@@ -178,7 +188,7 @@ def test_minimizer_params_categorical(data):
     )
     encoded = preprocessor.fit_transform(X)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(encoded, y)
     predictions = base_est.predict(encoded)
     # Append classifier to preprocessing pipeline.
@@ -195,13 +205,17 @@ def test_minimizer_params_categorical(data):
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
 
 
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
     (x_train, y_train), _ = get_iris_dataset()
     model = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                   min_samples_leaf=1)
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
 
@@ -209,13 +223,23 @@ def test_minimize_ndarray_iris():
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'sepal length (cm)': [5.0], 'sepal width (cm)': [], 'petal length (cm)': [4.950000047683716], 'petal width (cm)': [0.800000011920929, 1.699999988079071]}, 'categories': {}, 'untouched': []}
+    expexted_generalizations = {
+        'ranges': {'sepal length (cm)': [5.0], 'sepal width (cm)': [], 'petal length (cm)': [4.950000047683716],
+                   'petal width (cm)': [0.800000011920929, 1.699999988079071]}, 'categories': {}, 'untouched': []}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
 
 
 def test_minimize_pandas_nursery():
@@ -239,21 +263,33 @@ def test_minimize_pandas_nursery():
     )
     encoded = preprocessor.fit_transform(x_train)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {}, 'categories': {'parents': [['great_pret', 'pretentious', 'usual']], 'has_nurs': [['critical', 'less_proper', 'proper'], ['very_crit'], ['improper']], 'form': [['foster', 'completed', 'complete', 'incomplete']], 'housing': [['convenient', 'less_conv', 'critical']], 'finance': [['convenient', 'inconv']], 'social': [['problematic', 'nonprob', 'slightly_prob']], 'health': [['recommended'], ['priority'], ['not_recom']], 'children': [['2', '3', '4', '1']]}, 'untouched': []}
+    expexted_generalizations = {'ranges': {}, 'categories': {'parents': [['great_pret', 'pretentious', 'usual']],
+                                                             'has_nurs': [['critical', 'less_proper', 'proper'],
+                                                                          ['very_crit'], ['improper']], 'form': [
+            ['foster', 'completed', 'complete', 'incomplete']], 'housing': [['convenient', 'less_conv', 'critical']],
+                                                             'finance': [['convenient', 'inconv']],
+                                                             'social': [['problematic', 'nonprob', 'slightly_prob']],
+                                                             'health': [['priority'], ['recommended'], ['not_recom']],
+                                                             'children': [['2', '3', '4', '1']]}, 'untouched': []}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
 
 
 def test_minimize_pandas_adult():
@@ -264,7 +300,8 @@ def test_minimize_pandas_adult():
     features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
 
-    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex', 'native-country']
+    categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
+                            'native-country']
 
     numeric_features = [f for f in features if f not in categorical_features]
     numeric_transformer = Pipeline(
@@ -279,18 +316,38 @@ def test_minimize_pandas_adult():
     )
     encoded = preprocessor.fit_transform(x_train)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                      min_samples_leaf=1)
     base_est.fit(encoded, y_train)
     predictions = base_est.predict(encoded)
 
-    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features, categorical_features=categorical_features)
+    gen = GeneralizeToRepresentative(base_est, target_accuracy=0.8, features=features,
+                                     categorical_features=categorical_features)
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'age': [20.0], 'education-num': [11.5, 12.5], 'capital-gain': [5095.5, 7139.5], 'capital-loss': [], 'hours-per-week': []}, 'categories': {'workclass': [['Private', 'Without-pay', 'Self-emp-not-inc', '?', 'Federal-gov', 'Self-emp-inc', 'State-gov', 'Local-gov']], 'marital-status': [['Married-civ-spouse', 'Never-married', 'Widowed', 'Married-AF-spouse', 'Separated', 'Married-spouse-absent'], ['Divorced']], 'occupation': [['Transport-moving', 'Priv-house-serv', '?', 'Armed-Forces', 'Prof-specialty', 'Farming-fishing', 'Exec-managerial', 'Machine-op-inspct', 'Other-service', 'Sales', 'Protective-serv', 'Handlers-cleaners', 'Tech-support', 'Craft-repair', 'Adm-clerical']], 'relationship': [['Not-in-family', 'Own-child', 'Wife', 'Other-relative', 'Husband', 'Unmarried']], 'race': [['Other', 'Asian-Pac-Islander', 'Black', 'White', 'Amer-Indian-Eskimo']], 'sex': [['Male', 'Female']], 'native-country': [['LatinAmerica', 'Other', 'UnitedStates', 'SouthAmerica', 'BritishCommonwealth', 'Euro_2', 'Unknown', 'China', 'Euro_1', 'SE_Asia']]}, 'untouched': []}
+    expexted_generalizations = {
+        'ranges': {'age': [20.0], 'education-num': [11.5, 12.5], 'capital-gain': [5095.5, 7139.5], 'capital-loss': [],
+                   'hours-per-week': []}, 'categories': {'workclass': [
+            ['Private', 'Without-pay', 'Self-emp-not-inc', '?', 'Federal-gov', 'Self-emp-inc', 'State-gov',
+             'Local-gov']], 'marital-status': [
+            ['Married-civ-spouse', 'Never-married', 'Widowed', 'Married-AF-spouse', 'Separated',
+             'Married-spouse-absent'], ['Divorced']], 'occupation': [
+            ['Transport-moving', 'Priv-house-serv', '?', 'Armed-Forces', 'Prof-specialty', 'Farming-fishing',
+             'Exec-managerial', 'Machine-op-inspct', 'Other-service', 'Sales', 'Protective-serv', 'Handlers-cleaners',
+             'Tech-support', 'Craft-repair', 'Adm-clerical']], 'relationship': [
+            ['Not-in-family', 'Own-child', 'Wife', 'Other-relative', 'Husband', 'Unmarried']], 'race': [
+            ['Other', 'Asian-Pac-Islander', 'Black', 'White', 'Amer-Indian-Eskimo']], 'sex': [['Male', 'Female']],
+                                                         'native-country': [
+                                                             ['LatinAmerica', 'Other', 'UnitedStates', 'SouthAmerica',
+                                                              'BritishCommonwealth', 'Euro_2', 'Unknown', 'China',
+                                                              'Euro_1', 'SE_Asia']]}, 'untouched': []}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
