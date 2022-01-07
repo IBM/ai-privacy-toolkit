@@ -233,10 +233,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             X_train_QI = X_train.loc[:, self.features_to_minimize]
             X_test_QI = X_test.loc[:, self.features_to_minimize]
             used_X_train = X_train
-            used_X_test = X_test
             if self.train_only_QI:
                 used_X_train = X_train_QI
-                used_X_test = X_test_QI
 
             # collect feature data (such as min, max)
             feature_data = {}
@@ -271,7 +269,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 ]
             )
             preprocessor_QI_features.fit(x_QI)
-
 
             # preprocessor to fit data that have features not included in QI (to get accuracy)
             numeric_features = [f for f in self._features if f not in self.categorical_features]
@@ -754,8 +751,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         if feature is None:
             return None
         GeneralizeToRepresentative._remove_feature_from_cells(self.cells_, self.cells_by_id_, feature)
-        # del self.generalizations_['ranges'][feature]
-        # self.generalizations_['untouched'].append(feature)
         return feature
 
     def _get_feature_to_remove(self, original_data, prepared_data, nodes, labels, feature_data, current_accuracy):
