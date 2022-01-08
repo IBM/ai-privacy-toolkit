@@ -215,7 +215,7 @@ def test_minimizer_fit_QI(data):
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     gener = gen.generalizations_
-    expexted_generalizations = {'categories': {}, 'ranges': {'age': [], 'weight': []}, 'untouched': ['height']}
+    expexted_generalizations = {'ranges': {'age': [], 'weight': [67.5]}, 'categories': {}, 'untouched': ['height']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -269,7 +269,7 @@ def test_minimizer_fit_pandas_QI(data):
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     gener = gen.generalizations_
-    expexted_generalizations = {'categories': {'ola': [['aa', 'bb']]}, 'ranges': {'age': [], 'weight': []}, 'untouched': ['height', 'sex']}
+    expexted_generalizations = {'ranges': {'age': [], 'weight': [47.0]}, 'categories': {'ola': [['bb', 'aa']]}, 'untouched': ['height', 'sex']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -293,7 +293,7 @@ def test_minimize_ndarray_iris():
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'sepal length (cm)': [], 'petal length (cm)': []}, 'categories': {}, 'untouched': ['petal width (cm)', 'sepal width (cm)']}
+    expexted_generalizations = {'ranges': {'sepal length (cm)': [], 'petal length (cm)': [2.449999988079071]}, 'categories': {}, 'untouched': ['petal width (cm)', 'sepal width (cm)']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
