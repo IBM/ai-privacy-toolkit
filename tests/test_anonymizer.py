@@ -5,6 +5,10 @@ from sklearn.preprocessing import OneHotEncoder
 
 from apt.anonymization import Anonymize
 from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
+from sklearn.datasets import load_diabetes
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from art.estimators.regression.scikitlearn import ScikitlearnRegressor
 
 
 def test_anonymize_ndarray_iris():
@@ -62,6 +66,20 @@ def test_anonymize_pandas_nursery():
     assert (anon.loc[:, QI].value_counts().min() >= k)
     assert (anon.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
 
+
+def teat_regression():
+
+    dataset = load_diabetes()
+    X_train, X_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    art_classifier = ScikitlearnRegressor(model)
+
+    print('Base model accuracy (R2 score): ', model.score(X_test, y_test))
+
+    x_train_predictions = np.array([np.argmax(arr) for arr in art_classifier.predict(X_train)]).reshape(-1, 1)
 
 def test_errors():
     with pytest.raises(ValueError):
