@@ -31,7 +31,7 @@ def get_iris_dataset():
 
 def get_german_credit_dataset(test_set: float = 0.3):
     """
-    Loads the UCI Adult dataset from `tests/datasets/german` or downloads it if necessary.
+    Loads the UCI German_credit dataset from `tests/datasets/german` or downloads it if necessary.
 
     :return: Dataset and labels as pandas dataframes.
     """
@@ -96,63 +96,6 @@ def _modify_german_dataset(data):
             return 1
         else:
             raise Exception('Bad value')
-
-    def modify_Existing_checking_account(value):
-        if value == 'A11':
-            return 'under_zero'
-        elif value == 'A12':
-            return 'zero_to_200'
-        elif value == 'A13':
-            return 'above_200'
-        elif value == 'A14':
-            return 'no_checking_account'
-        else:
-            raise Exception('Bad value')
-
-    def modify_Credit_history(value):
-        if value == 'A30':
-            return 'no credits taken'
-        elif value == 'A31':
-            return 'all credits paid back duly'
-        elif value == 'A32':
-            return 'existing credits paid back duly till now'
-        elif value == 'A33':
-            return 'delay in paying off in the past'
-        elif value == 'A34':
-            return 'critical account'
-        else:
-            raise Exception('Bad value')
-
-
-    def modify_Purpose(value):
-        if value == 'A40':
-            return 'new car'
-        elif value == 'A41':
-            return 'used car'
-        elif value == 'A42':
-            return 'furniture/equipment'
-        elif value == 'A43':
-            return 'radio/television'
-        elif value == 'A44':
-            return 'domestic appliances'
-        if value == 'A45':
-            return 'repairs'
-        elif value == 'A46':
-            return 'education'
-        elif value == 'A47':
-            return 'vacation'
-        elif value == 'A48':
-            return 'retraining'
-        elif value == 'A49':
-            return 'business'
-        elif value == 'A410':
-            return 'other'
-        else:
-            raise Exception('Bad value')
-
-    # data['Existing_checking_account'] = data['Existing_checking_account'].apply(modify_Existing_checking_account)
-    # data['Credit_history'] = data['Credit_history'].apply(modify_Credit_history)
-    # data['Purpose'] = data['Purpose'].apply(modify_Purpose)
     data['Foreign_worker'] = data['Foreign_worker'].apply(modify_Foreign_worker)
     data['Telephone'] = data['Telephone'].apply(modify_Telephone)
 
