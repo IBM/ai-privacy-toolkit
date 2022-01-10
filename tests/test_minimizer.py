@@ -78,6 +78,18 @@ def test_minimizer_fit(data):
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (X[indexes])).any())
 
 
 def test_minimizer_fit_pandas(data):
@@ -129,6 +141,14 @@ def test_minimizer_fit_pandas(data):
         for i in range(len(expexted_generalizations['categories'][key])):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
 
 
@@ -223,6 +243,18 @@ def test_minimizer_fit_QI(data):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(X, QI, axis=1)).all())
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (X[indexes])).any())
 
 
 def test_minimizer_fit_pandas_QI(data):
@@ -277,6 +309,14 @@ def test_minimizer_fit_pandas_QI(data):
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
 
 def test_minimize_ndarray_iris():
@@ -301,6 +341,18 @@ def test_minimize_ndarray_iris():
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (x_train[indexes])).any())
 
 
 def test_minimize_pandas_adult():
@@ -347,6 +399,14 @@ def test_minimize_pandas_adult():
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
 
 
 def test_german_credit_pandas():
@@ -384,7 +444,7 @@ def test_german_credit_pandas():
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'Duration_in_month': [15.5]}, 'categories': {'Credit_history': [['A34', 'A32', 'A31', 'A30', 'A33']], 'Purpose': [['A49', 'A40', 'A42', 'A410', 'A44', 'A41', 'A48', 'A45', 'A43'], ['A46']], 'debtors': [['A101', 'A102', 'A103']], 'Property': [['A123', 'A121', 'A122', 'A124']], 'Other_installment_plans': [['A141', 'A143', 'A142']], 'Housing': [['A151', 'A152', 'A153']], 'Job': [['A173', 'A174', 'A172', 'A171']]}, 'untouched': ['Existing_checking_account', 'Present_employment_since', 'Telephone', 'Credit_amount', 'Present_residence', 'Savings_account', 'Personal_status_sex', 'Foreign_worker', 'N_people_being_liable_provide_maintenance', 'Age', 'Installment_rate', 'Number_of_existing_credits']}
+    expexted_generalizations = {'ranges': {'Duration_in_month': [31.5]}, 'categories': {'Credit_history': [['A30', 'A32', 'A31', 'A34', 'A33']], 'Purpose': [['A41', 'A46', 'A43', 'A40', 'A44', 'A410', 'A49', 'A45', 'A48', 'A42']], 'debtors': [['A101', 'A102', 'A103']], 'Property': [['A124', 'A121', 'A122', 'A123']], 'Other_installment_plans': [['A142', 'A141', 'A143']], 'Housing': [['A151', 'A152', 'A153']], 'Job': [['A172', 'A171', 'A174', 'A173']]}, 'untouched': ['Installment_rate', 'Present_residence', 'Personal_status_sex', 'Foreign_worker', 'Telephone', 'Savings_account', 'Number_of_existing_credits', 'N_people_being_liable_provide_maintenance', 'Age', 'Existing_checking_account', 'Credit_amount', 'Present_employment_since']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -392,4 +452,12 @@ def test_german_credit_pandas():
             assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
 
