@@ -84,6 +84,10 @@ def test_minimizer_fit(data):
         if features[i] in modified_features:
             indexes.append(i)
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (X[indexes])).any())
 
 
 def test_minimizer_fit_pandas(data):
@@ -139,6 +143,10 @@ def test_minimizer_fit_pandas(data):
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
     assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
 
 def test_minimizer_params_categorical(data):
@@ -209,6 +217,10 @@ def test_minimizer_params_categorical(data):
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
     assert (transformed.drop(modified_features, axis=1).equals(X.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
 
 def test_minimize_ndarray_iris():
@@ -240,6 +252,10 @@ def test_minimize_ndarray_iris():
         if features[i] in modified_features:
             indexes.append(i)
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (x_train[indexes])).any())
 
 
 def test_minimize_pandas_nursery():
@@ -290,6 +306,10 @@ def test_minimize_pandas_nursery():
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
     assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
 
 
 def test_minimize_pandas_adult():
@@ -337,10 +357,10 @@ def test_minimize_pandas_adult():
              'Tech-support', 'Craft-repair', 'Adm-clerical']], 'relationship': [
             ['Not-in-family', 'Own-child', 'Wife', 'Other-relative', 'Husband', 'Unmarried']], 'race': [
             ['Other', 'Asian-Pac-Islander', 'Black', 'White', 'Amer-Indian-Eskimo']], 'sex': [['Male', 'Female']],
-                                                         'native-country': [
-                                                             ['LatinAmerica', 'Other', 'UnitedStates', 'SouthAmerica',
-                                                              'BritishCommonwealth', 'Euro_2', 'Unknown', 'China',
-                                                              'Euro_1', 'SE_Asia']]}, 'untouched': []}
+            'native-country': [
+                ['LatinAmerica', 'Other', 'UnitedStates', 'SouthAmerica',
+                 'BritishCommonwealth', 'Euro_2', 'Unknown', 'China',
+                 'Euro_1', 'SE_Asia']]}, 'untouched': []}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -351,3 +371,7 @@ def test_minimize_pandas_adult():
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
     assert (transformed.drop(modified_features, axis=1).equals(x_train.drop(modified_features, axis=1)))
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
