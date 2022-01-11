@@ -75,8 +75,8 @@ def test_minimizer_fit(data):
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
@@ -138,8 +138,8 @@ def test_minimizer_fit_pandas(data):
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
@@ -239,8 +239,8 @@ def test_minimizer_fit_QI(data):
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(X, QI, axis=1)).all())
     modified_features = [f for f in features if
@@ -305,8 +305,8 @@ def test_minimizer_fit_pandas_QI(data):
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
     modified_features = [f for f in features if
@@ -337,8 +337,8 @@ def test_minimize_ndarray_iris():
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
     modified_features = [f for f in features if
@@ -395,8 +395,8 @@ def test_minimize_pandas_adult():
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
     modified_features = [f for f in features if
@@ -448,8 +448,8 @@ def test_german_credit_pandas():
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
-        for i in range(len(expexted_generalizations['categories'][key])):
-            assert (set(expexted_generalizations['categories'][key][i]) == set(gener['categories'][key][i]))
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
     modified_features = [f for f in features if
