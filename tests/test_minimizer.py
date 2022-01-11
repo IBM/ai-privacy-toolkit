@@ -46,7 +46,6 @@ def test_minimizer_params(data):
     transformed = gen.transform(X)
 
 
-
 def test_minimizer_fit(data):
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -151,7 +150,6 @@ def test_minimizer_fit_pandas(data):
         assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
 
-
 def test_minimizer_params_categorical(data):
     # Assume three features, age, sex and height, and boolean label
     cells = [{'id': 1, 'label': 0, 'ranges': {'age': {'start': None, 'end': None}},
@@ -205,7 +203,7 @@ def test_minimizer_params_categorical(data):
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
     gen = GeneralizeToRepresentative(base_est, features=features, target_accuracy=0.5,
-                                     categorical_features=categorical_features)
+                                     categorical_features=categorical_features, cells=cells)
     gen.fit(X, predictions)
     transformed = gen.transform(X)
 
@@ -301,7 +299,8 @@ def test_minimizer_fit_pandas_QI(data):
     gen.fit(X, predictions)
     transformed = gen.transform(X)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'age': [], 'weight': [47.0]}, 'categories': {'ola': [['bb', 'aa']]}, 'untouched': ['height', 'sex']}
+    expexted_generalizations = {'ranges': {'age': [], 'weight': [47.0]}, 'categories': {'ola': [['bb', 'aa']]},
+                                'untouched': ['height', 'sex']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -325,7 +324,7 @@ def test_minimize_ndarray_iris():
 
     QI = [0, 2]
     model = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                      min_samples_leaf=1)
+                                   min_samples_leaf=1)
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
 
@@ -333,7 +332,8 @@ def test_minimize_ndarray_iris():
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'sepal length (cm)': [], 'petal length (cm)': [2.449999988079071]}, 'categories': {}, 'untouched': ['petal width (cm)', 'sepal width (cm)']}
+    expexted_generalizations = {'ranges': {'sepal length (cm)': [], 'petal length (cm)': [2.449999988079071]},
+                                'categories': {}, 'untouched': ['petal width (cm)', 'sepal width (cm)']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -391,7 +391,19 @@ def test_minimize_pandas_adult():
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'age': [], 'education-num': []}, 'categories': {'workclass': [['Self-emp-not-inc', 'Private', 'Federal-gov', 'Self-emp-inc', '?', 'Local-gov', 'State-gov']], 'marital-status': [['Divorced', 'Married-AF-spouse', 'Married-spouse-absent', 'Widowed', 'Separated', 'Married-civ-spouse', 'Never-married']], 'occupation': [['Tech-support', 'Priv-house-serv', 'Machine-op-inspct', 'Other-service', 'Prof-specialty', 'Adm-clerical', 'Protective-serv', 'Handlers-cleaners', 'Transport-moving', 'Armed-Forces', '?', 'Sales', 'Farming-fishing', 'Exec-managerial', 'Craft-repair']], 'relationship': [['Not-in-family', 'Wife', 'Other-relative', 'Husband', 'Unmarried', 'Own-child']], 'race': [['Asian-Pac-Islander', 'White', 'Other', 'Black', 'Amer-Indian-Eskimo']], 'sex': [['Female', 'Male']], 'native-country': [['Euro_1', 'LatinAmerica', 'BritishCommonwealth', 'SouthAmerica', 'UnitedStates', 'China', 'Euro_2', 'SE_Asia', 'Other', 'Unknown']]}, 'untouched': ['capital-loss', 'hours-per-week', 'capital-gain']}
+    expexted_generalizations = {'ranges': {'age': [], 'education-num': []}, 'categories': {
+        'workclass': [['Self-emp-not-inc', 'Private', 'Federal-gov', 'Self-emp-inc', '?', 'Local-gov', 'State-gov']],
+        'marital-status': [
+            ['Divorced', 'Married-AF-spouse', 'Married-spouse-absent', 'Widowed', 'Separated', 'Married-civ-spouse',
+             'Never-married']], 'occupation': [
+            ['Tech-support', 'Priv-house-serv', 'Machine-op-inspct', 'Other-service', 'Prof-specialty', 'Adm-clerical',
+             'Protective-serv', 'Handlers-cleaners', 'Transport-moving', 'Armed-Forces', '?', 'Sales',
+             'Farming-fishing', 'Exec-managerial', 'Craft-repair']],
+        'relationship': [['Not-in-family', 'Wife', 'Other-relative', 'Husband', 'Unmarried', 'Own-child']],
+        'race': [['Asian-Pac-Islander', 'White', 'Other', 'Black', 'Amer-Indian-Eskimo']], 'sex': [['Female', 'Male']],
+        'native-country': [
+            ['Euro_1', 'LatinAmerica', 'BritishCommonwealth', 'SouthAmerica', 'UnitedStates', 'China', 'Euro_2',
+             'SE_Asia', 'Other', 'Unknown']]}, 'untouched': ['capital-loss', 'hours-per-week', 'capital-gain']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -444,7 +456,19 @@ def test_german_credit_pandas():
     gen.fit(x_train, predictions)
     transformed = gen.transform(x_train)
     gener = gen.generalizations_
-    expexted_generalizations = {'ranges': {'Duration_in_month': [31.5]}, 'categories': {'Credit_history': [['A30', 'A32', 'A31', 'A34', 'A33']], 'Purpose': [['A41', 'A46', 'A43', 'A40', 'A44', 'A410', 'A49', 'A45', 'A48', 'A42']], 'debtors': [['A101', 'A102', 'A103']], 'Property': [['A124', 'A121', 'A122', 'A123']], 'Other_installment_plans': [['A142', 'A141', 'A143']], 'Housing': [['A151', 'A152', 'A153']], 'Job': [['A172', 'A171', 'A174', 'A173']]}, 'untouched': ['Installment_rate', 'Present_residence', 'Personal_status_sex', 'Foreign_worker', 'Telephone', 'Savings_account', 'Number_of_existing_credits', 'N_people_being_liable_provide_maintenance', 'Age', 'Existing_checking_account', 'Credit_amount', 'Present_employment_since']}
+    expexted_generalizations = {'ranges': {'Duration_in_month': [31.5]},
+                                'categories': {'Credit_history': [['A30', 'A32', 'A31', 'A34', 'A33']], 'Purpose': [
+                                    ['A41', 'A46', 'A43', 'A40', 'A44', 'A410', 'A49', 'A45', 'A48', 'A42']],
+                                               'debtors': [['A101', 'A102', 'A103']],
+                                               'Property': [['A124', 'A121', 'A122', 'A123']],
+                                               'Other_installment_plans': [['A142', 'A141', 'A143']],
+                                               'Housing': [['A151', 'A152', 'A153']],
+                                               'Job': [['A172', 'A171', 'A174', 'A173']]},
+                                'untouched': ['Installment_rate', 'Present_residence', 'Personal_status_sex',
+                                              'Foreign_worker', 'Telephone', 'Savings_account',
+                                              'Number_of_existing_credits', 'N_people_being_liable_provide_maintenance',
+                                              'Age', 'Existing_checking_account', 'Credit_amount',
+                                              'Present_employment_since']}
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -460,4 +484,3 @@ def test_german_credit_pandas():
     if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
-
