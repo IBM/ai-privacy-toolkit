@@ -19,9 +19,8 @@ class Anonymize:
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The indexes of the features that need to be anonymized (these should be the features
-                                  that may directly, indirectly or in combination with additional data, identify an
-                                  individual).
+        :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
+                                  in case of numpy data.
         :param categorical_features: The list of categorical features (should only be supplied when passing data as a
                                      pandas dataframe.
         """
