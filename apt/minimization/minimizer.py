@@ -94,7 +94,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.categorical_features = categorical_features
         self.features_to_minimize = features_to_minimize
         self.train_only_QI = train_only_QI
-
+        
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 
@@ -237,6 +237,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 used_X_train = X_train_QI
 
             # collect feature data (such as min, max)
+
             feature_data = {}
             for feature in self._features:
                 if feature not in feature_data.keys():
@@ -253,6 +254,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # prepare data for DT
             categorical_features = [f for f in self._features if f in self.categorical_features and
                                     f in self.features_to_minimize]
+
 
             numeric_transformer = Pipeline(
                 steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
@@ -294,6 +296,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
             self._modify_categorical_features(used_data)
+
             x_prepared = pd.DataFrame(x_prepared, columns=self.categorical_data.columns)
 
             self._calculate_cells()
@@ -305,6 +308,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             nodes = self._get_nodes_level(0)
             self._attach_cells_representatives(x_prepared, used_X_train, y_train, nodes)
+
             # self.cells_ currently holds the generalization created from the tree leaves
             self._calculate_generalizations()
 
@@ -312,6 +316,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             x_prepared_test = preprocessor.transform(X_test)
             if self.train_only_QI:
                 x_prepared_test = preprocessor_QI_features.transform(X_test_QI)
+
             x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self.categorical_data.columns)
 
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
@@ -333,6 +338,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         nodes = self._get_nodes_level(level)
                         self._calculate_level_cells(level)
                         self._attach_cells_representatives(x_prepared, used_X_train, y_train, nodes)
+
                         self._calculate_generalizations()
                         generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                        self.cells_by_id_)
@@ -489,6 +495,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     features_to_remove.append(feature)
                 except KeyError:
                     print("feature " + feature + "not found in training data")
+
         self.categorical_data = X.drop(features_to_remove, axis=1)
 
     def _cell_contains_numeric(self, f, range, x):

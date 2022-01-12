@@ -14,7 +14,6 @@ from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier
 from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
 
-
 @pytest.fixture
 def data():
     return load_boston(return_X_y=True)
@@ -35,7 +34,6 @@ def test_minimizer_params(data):
     X = np.array([[23, 165],
                   [45, 158],
                   [18, 190]])
-    print(X.dtype)
     y = [1, 1, 0]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -44,7 +42,7 @@ def test_minimizer_params(data):
     gen = GeneralizeToRepresentative(base_est, features=features, cells=cells)
     gen.fit()
     transformed = gen.transform(X)
-
+    
 
 def test_minimizer_fit(data):
     features = ['age', 'height']
@@ -71,6 +69,7 @@ def test_minimizer_fit(data):
     transformed = gen.transform(X)
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {}, 'categories': {}, 'untouched': ['height', 'age']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -134,6 +133,7 @@ def test_minimizer_fit_pandas(data):
     transformed = gen.transform(X)
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {'age': []}, 'categories': {}, 'untouched': ['ola', 'height', 'sex']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -301,6 +301,7 @@ def test_minimizer_fit_pandas_QI(data):
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {'age': [], 'weight': [47.0]}, 'categories': {'ola': [['bb', 'aa']]},
                                 'untouched': ['height', 'sex']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -308,6 +309,7 @@ def test_minimizer_fit_pandas_QI(data):
                 set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
+
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
@@ -321,7 +323,6 @@ def test_minimizer_fit_pandas_QI(data):
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
     (x_train, y_train), _ = get_iris_dataset()
-
     QI = [0, 2]
     model = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                    min_samples_leaf=1)
@@ -334,6 +335,7 @@ def test_minimize_ndarray_iris():
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {'sepal length (cm)': [], 'petal length (cm)': [2.449999988079071]},
                                 'categories': {}, 'untouched': ['petal width (cm)', 'sepal width (cm)']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -341,6 +343,7 @@ def test_minimize_ndarray_iris():
                 set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
+
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
@@ -404,6 +407,7 @@ def test_minimize_pandas_adult():
         'native-country': [
             ['Euro_1', 'LatinAmerica', 'BritishCommonwealth', 'SouthAmerica', 'UnitedStates', 'China', 'Euro_2',
              'SE_Asia', 'Other', 'Unknown']]}, 'untouched': ['capital-loss', 'hours-per-week', 'capital-gain']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -411,6 +415,7 @@ def test_minimize_pandas_adult():
                 set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
+
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]
@@ -433,6 +438,7 @@ def test_german_credit_pandas():
                             "Other_installment_plans", "Housing", "Job"]
     QI = ["Duration_in_month", "Credit_history", "Purpose", "debtors", "Property", "Other_installment_plans",
           "Housing", "Job"]
+
 
     numeric_features = [f for f in features if f not in categorical_features]
     numeric_transformer = Pipeline(
@@ -469,6 +475,7 @@ def test_german_credit_pandas():
                                               'Number_of_existing_credits', 'N_people_being_liable_provide_maintenance',
                                               'Age', 'Existing_checking_account', 'Credit_amount',
                                               'Present_employment_since']}
+
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expexted_generalizations['categories']:
@@ -476,6 +483,7 @@ def test_german_credit_pandas():
                 set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
+
     modified_features = [f for f in features if
                          f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
                              'ranges'].keys()]

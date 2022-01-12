@@ -20,7 +20,8 @@ Official ai-privacy-toolkit documentation: https://ai-privacy-toolkit.readthedoc
 
 Installation: pip install ai-privacy-toolkit
 
-For more information or help using or improving the toolkit, please contact Abigail Goldsteen at abigailt@il.ibm.com.
+For more information or help using or improving the toolkit, please contact Abigail Goldsteen at abigailt@il.ibm.com, 
+or join our Slack channel: https://aip360.mybluemix.net/community.
 
 **Related toolkits:**
 
