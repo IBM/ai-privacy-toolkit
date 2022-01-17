@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.spatial import distance
 from collections import Counter
 
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
 from typing import Union, Optional
@@ -15,7 +15,9 @@ class Anonymize:
 
     Based on the implementation described in: https://arxiv.org/abs/2007.13086
     """
-    def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list]=None):
+
+    def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
+                 model: Union['DecisionTreeClassifier', 'DecisionTreeRegressor']='DecisionTreeClassifier'):
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
@@ -32,6 +34,7 @@ class Anonymize:
         self.k = k
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
+        self.model = model
 
     def anonymize(self, x: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.DataFrame]) \
             -> Union[np.ndarray, pd.DataFrame]:
@@ -58,7 +61,10 @@ class Anonymize:
             x_prepared = self._modify_categorical_features(x_anonymizer_train)
         else:
             x_prepared = x_anonymizer_train
-        self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+        if self.model == 'DecisionTreeClassifier':
+            self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+        elif self.model == 'DecisionTreeRegressor':
+            self.anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
         self.anonymizer.fit(x_prepared, y)
         cells_by_id = self._calculate_cells(x, x_prepared)
         return self._anonymize_data_numpy(x, x_prepared, cells_by_id)
@@ -69,7 +75,10 @@ class Anonymize:
         x_anonymizer_train = x.loc[:, self.quasi_identifiers]
         # need to one-hot encode before training the decision tree
         x_prepared = self._modify_categorical_features(x_anonymizer_train)
-        self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+        if self.model == 'DecisionTreeClassifier':
+            self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+        elif self.model == 'DecisionTreeRegressor':
+            self.anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
         self.anonymizer.fit(x_prepared, y)
         cells_by_id = self._calculate_cells(x, x_prepared)
         return self._anonymize_data_pandas(x, x_prepared, cells_by_id)
@@ -83,8 +92,8 @@ class Anonymize:
                 leaves.append(node)
                 hist = [int(i) for i in self.anonymizer.tree_.value[node][0]]
                 label_hist = self.anonymizer.tree_.value[node][0]
-                label = int(self.anonymizer.classes_[np.argmax(label_hist)])
-                cell = {'label': label, 'hist': hist, 'id': int(node)}
+                # label = int(self.anonymizer.classes_[np.argmax(label_hist)])
+                cell = {'label': 1, 'hist': hist, 'id': int(node)}
                 cells_by_id[cell['id']] = cell
         self.nodes = leaves
         self._find_representatives(x, x_anonymizer_train, cells_by_id.values())

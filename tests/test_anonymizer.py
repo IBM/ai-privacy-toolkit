@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
 from apt.anonymization import Anonymize
@@ -8,7 +8,6 @@ from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-# from art.estimators.regression.scikitlearn import ScikitlearnRegressor
 
 
 def test_anonymize_ndarray_iris():
@@ -72,10 +71,16 @@ def test_regression():
     dataset = load_diabetes()
     X_train, X_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
 
-    model = LinearRegression()
+    model = DecisionTreeRegressor(random_state=10, min_samples_split=2)
     model.fit(X_train, y_train)
-
+    pred = model.predict(X_train)
+    k = 4
+    QI = [0, 2]
+    anonymizer = Anonymize(k, QI)
+    anon = anonymizer.anonymize(X_train, pred)
     print('Base model accuracy (R2 score): ', model.score(X_test, y_test))
+    model.fit(anon, y_train)
+    print('Base model accuracy (R2 score) after anonymization: ', model.score(X_test, y_test))
 
 
 def test_errors():
