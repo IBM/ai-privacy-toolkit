@@ -69,10 +69,10 @@ def test_regression():
     dataset = load_diabetes()
     x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
 
-    model = DecisionTreeRegressor(random_state=0, min_samples_split=2)
+    model = DecisionTreeRegressor(random_state=10, min_samples_split=2)
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
-    k = 4
+    k = 10
     QI = [0, 2, 5, 8]
     anonymizer = Anonymize(k, QI, is_regression=True)
     anon = anonymizer.anonymize(x_train, pred)
