@@ -13,7 +13,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 
@@ -84,7 +84,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def __init__(self, estimator=None, target_accuracy=0.998, features=None,
                  cells=None, categorical_features=None, features_to_minimize: Union[np.ndarray, list] = None
-                 , train_only_QI=True):
+                 , train_only_QI=True, is_regression=False):
         self.estimator = estimator
         self.target_accuracy = target_accuracy
         self.features = features
@@ -94,6 +94,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.categorical_features = categorical_features
         self.features_to_minimize = features_to_minimize
         self.train_only_QI = train_only_QI
+        self.is_regression = is_regression
         
     def get_params(self, deep=True):
         """Get parameters for this estimator.
@@ -227,9 +228,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             used_data = X
             if self.train_only_QI:
                 used_data = x_QI
-            X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y,
-                                                                test_size=0.4,
-                                                                random_state=18)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4,
+                                                                random_state=14)
+
             X_train_QI = X_train.loc[:, self.features_to_minimize]
             X_test_QI = X_test.loc[:, self.features_to_minimize]
             used_X_train = X_train
@@ -292,7 +293,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._preprocessor = preprocessor
 
             self.cells_ = {}
-            self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+            if self.is_regression:
+                self.dt_ = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=1)
+            else:
+                self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                               min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
             self._modify_categorical_features(used_data)

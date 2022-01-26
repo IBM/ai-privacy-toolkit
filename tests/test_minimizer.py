@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 
-from sklearn.datasets import load_boston
+from sklearn.datasets import load_boston, load_diabetes
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
 
 @pytest.fixture
@@ -492,3 +492,27 @@ def test_german_credit_pandas():
     if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
+
+
+def test_regression():
+    dataset = load_diabetes()
+    x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
+
+    model = DecisionTreeRegressor(random_state=10, min_samples_split=2)
+    model.fit(x_train, y_train)
+    pred = model.predict(x_train)
+    k = 10
+    QI = [0, 2, 5, 8]
+    feature_names = ['age', 'sex', 'bmi', 'bp',
+                     's1', 's2', 's3', 's4', 's5', 's6']
+
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=feature_names, is_regression=True, features_to_minimize=QI)
+    gen.fit(x_train, pred)
+    transformed = gen.transform(x_train)
+    print('Base model accuracy (R2 score): ', model.score(x_test, y_test))
+    model.fit(transformed, y_train)
+    print('Base model accuracy (R2 score) after anonymization: ', model.score(x_test, y_test))
+    assert(len(np.unique(transformed[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
+    _, counts_elements = np.unique(transformed[:, QI], return_counts=True)
+    assert (np.min(counts_elements) >= k)
+    assert ((np.delete(transformed, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
