@@ -58,7 +58,6 @@ def test_minimizer_fit(data):
                   [69, 175],
                   [24, 181],
                   [18, 190]])
-    print(X)
     y = [1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -501,7 +500,6 @@ def test_regression():
     model = DecisionTreeRegressor(random_state=10, min_samples_split=2)
     model.fit(x_train, y_train)
     pred = model.predict(x_train)
-    k = 10
     QI = [0, 2, 5, 8]
     features = ['age', 'sex', 'bmi', 'bp',
                 's1', 's2', 's3', 's4', 's5', 's6']
@@ -540,7 +538,7 @@ def test_regression():
                0.032036433927714825, 0.036420512944459915, 0.04080459102988243, 0.04127431474626064,
                0.04268348217010498, 0.04424922354519367, 0.04424922540783882, 0.056462014093995094, 0.05928034894168377,
                0.061315815430134535, 0.06272498145699501, 0.06460387445986271]}, 'categories': {},
-                                'untouched': ['s5', 's3', 'bp', 's1', 'sex', 's6', 's4']}
+        'untouched': ['s5', 's3', 'bp', 's1', 'sex', 's6', 's4']}
 
     for key in expexted_generalizations['ranges']:
         assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))

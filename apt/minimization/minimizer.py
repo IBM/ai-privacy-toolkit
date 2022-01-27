@@ -95,7 +95,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.features_to_minimize = features_to_minimize
         self.train_only_QI = train_only_QI
         self.is_regression = is_regression
-        
+
     def get_params(self, deep=True):
         """Get parameters for this estimator.
 
@@ -228,8 +228,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             used_data = X
             if self.train_only_QI:
                 used_data = x_QI
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4,
-                                                                random_state=14)
+            if self.is_regression:
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=14)
+            else:
+                X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.4, random_state=18)
 
             X_train_QI = X_train.loc[:, self.features_to_minimize]
             X_test_QI = X_test.loc[:, self.features_to_minimize]
@@ -680,11 +682,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             sample_labels = labels_df.iloc[indexes]['label'].values.tolist()
             # get rows with matching label
             if self.is_regression:
-                indexes = [i for i, label in enumerate(sample_labels)]
+                match_samples = sample_rows
+                match_rows = original_rows
             else:
                 indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
-            match_samples = sample_rows.iloc[indexes]
-            match_rows = original_rows.iloc[indexes]
+                match_samples = sample_rows.iloc[indexes]
+                match_rows = original_rows.iloc[indexes]
             # find the "middle" of the cluster
             array = match_samples.values
             # Only works with numpy 1.9.0 and higher!!!
