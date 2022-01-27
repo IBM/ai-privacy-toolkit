@@ -532,8 +532,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         feature_index = self.dt_.tree_.feature[node]
         if feature_index == -2:
             # this is a leaf
-            label = self._calculate_cell_label(node)
-            hist = [int(i) for i in self.dt_.tree_.value[node][0]]
+            # if it is a regression problem we do not use label
+            label = self._calculate_cell_label(node) if not self.is_regression else 1
+            hist = [int(i) for i in self.dt_.tree_.value[node][0]] if not self.is_regression else []
             cell = {'label': label, 'hist': hist, 'ranges': {}, 'id': int(node)}
             return [cell]
 
@@ -636,8 +637,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # else: nothing to do, stay with previous cells
 
     def _calculate_level_cell_label(self, left_cell, right_cell, new_cell):
-        new_cell['hist'] = [x + y for x, y in zip(left_cell['hist'], right_cell['hist'])]
-        new_cell['label'] = int(self.dt_.classes_[np.argmax(new_cell['hist'])])
+        new_cell['hist'] = [x + y for x, y in zip(left_cell['hist'], right_cell['hist'])] if not self.is_regression else []
+        new_cell['label'] = int(self.dt_.classes_[np.argmax(new_cell['hist'])]) if not self.is_regression else 1
 
     def _get_nodes_level(self, level):
         # level = distance from lowest leaf
@@ -678,7 +679,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             sample_rows = prepared_data.iloc[indexes]
             sample_labels = labels_df.iloc[indexes]['label'].values.tolist()
             # get rows with matching label
-            indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
+            if self.is_regression:
+                indexes = [i for i, label in enumerate(sample_labels)]
+            else:
+                indexes = [i for i, label in enumerate(sample_labels) if label == cell['label']]
             match_samples = sample_rows.iloc[indexes]
             match_rows = original_rows.iloc[indexes]
             # find the "middle" of the cluster

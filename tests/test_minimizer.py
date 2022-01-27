@@ -14,6 +14,7 @@ from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
 
+
 @pytest.fixture
 def data():
     return load_boston(return_X_y=True)
@@ -42,7 +43,7 @@ def test_minimizer_params(data):
     gen = GeneralizeToRepresentative(base_est, features=features, cells=cells)
     gen.fit()
     transformed = gen.transform(X)
-    
+
 
 def test_minimizer_fit(data):
     features = ['age', 'height']
@@ -439,7 +440,6 @@ def test_german_credit_pandas():
     QI = ["Duration_in_month", "Credit_history", "Purpose", "debtors", "Property", "Other_installment_plans",
           "Housing", "Job"]
 
-
     numeric_features = [f for f in features if f not in categorical_features]
     numeric_transformer = Pipeline(
         steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
@@ -503,16 +503,62 @@ def test_regression():
     pred = model.predict(x_train)
     k = 10
     QI = [0, 2, 5, 8]
-    feature_names = ['age', 'sex', 'bmi', 'bp',
-                     's1', 's2', 's3', 's4', 's5', 's6']
+    features = ['age', 'sex', 'bmi', 'bp',
+                's1', 's2', 's3', 's4', 's5', 's6']
 
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=feature_names, is_regression=True, features_to_minimize=QI)
+    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, features=features, is_regression=True,
+                                     features_to_minimize=QI)
     gen.fit(x_train, pred)
     transformed = gen.transform(x_train)
     print('Base model accuracy (R2 score): ', model.score(x_test, y_test))
     model.fit(transformed, y_train)
     print('Base model accuracy (R2 score) after anonymization: ', model.score(x_test, y_test))
-    assert(len(np.unique(transformed[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
-    _, counts_elements = np.unique(transformed[:, QI], return_counts=True)
-    assert (np.min(counts_elements) >= k)
+    gener = gen.generalizations_
+    expexted_generalizations = {'ranges': {
+        'age': [-0.07816532626748085, -0.07090024650096893, -0.05637009255588055, -0.05092128552496433,
+                -0.04728874587453902, -0.04547247663140297, -0.04183994047343731, -0.027309784665703773,
+                -0.023677248042076826, -0.020044708624482155, -0.01641217083670199, -0.001882016600575298,
+                0.0017505218856967986, 0.0035667913616634905, 0.007199329789727926, 0.010831868276000023,
+                0.02354575227946043, 0.030810829252004623, 0.03262709779664874, 0.03444336913526058,
+                0.03625963814556599, 0.03807590529322624, 0.03807590715587139, 0.047157252207398415,
+                0.06168740428984165, 0.0635036751627922, 0.06895248219370842, 0.07258502021431923, 0.07621755823493004,
+                0.1034616008400917],
+        'bmi': [-0.07626373693346977, -0.060635464265942574, -0.056863121688365936, -0.05578530766069889,
+                -0.054168591275811195, -0.042312657460570335, -0.0374625027179718, -0.03422906715422869,
+                -0.033690162003040314, -0.03261234890669584, -0.02614547684788704, -0.025067666545510292,
+                -0.022373135201632977, -0.016984074376523495, -0.01375063881278038, -0.007822672137990594,
+                -0.004589236050378531, 0.008344509289599955, 0.015889193629845977, 0.016967005096375942,
+                0.024511689320206642, 0.0272062208969146, 0.030978563241660595, 0.032595280557870865,
+                0.033673093654215336, 0.04391230642795563, 0.04552902653813362, 0.05469042807817459,
+                0.06977979838848114, 0.07301323488354683, 0.09349166229367256],
+        's2': [-0.1044962927699089, -0.08649025857448578, -0.07740895450115204, -0.07114598527550697,
+               -0.06378699466586113, -0.05971606448292732, -0.04437179118394852, -0.0398311372846365,
+               -0.03137612994760275, -0.022138250060379505, -0.018067320343106985, -0.017910746857523918,
+               -0.017910745926201344, -0.01618842873722315, -0.007576846517622471, -0.007263698382303119,
+               -0.0010007291566580534, 0.0010347360512241721, 0.006514834007248282, 0.00933317095041275,
+               0.012464655097573996, 0.019197346206055954, 0.020919663831591606, 0.02217225730419159,
+               0.032036433927714825, 0.036420512944459915, 0.04080459102988243, 0.04127431474626064,
+               0.04268348217010498, 0.04424922354519367, 0.04424922540783882, 0.056462014093995094, 0.05928034894168377,
+               0.061315815430134535, 0.06272498145699501, 0.06460387445986271]}, 'categories': {},
+                                'untouched': ['s5', 's3', 'bp', 's1', 'sex', 's6', 's4']}
+
+    for key in expexted_generalizations['ranges']:
+        assert (set(expexted_generalizations['ranges'][key]) == set(gener['ranges'][key]))
+    for key in expexted_generalizations['categories']:
+        assert (set([frozenset(sl) for sl in expexted_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
+    assert (set(expexted_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
+
+    modified_features = [f for f in features if
+                         f in expexted_generalizations['categories'].keys() or f in expexted_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+    assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
+    ncp = gen.ncp_
+    if len(expexted_generalizations['ranges'].keys()) > 0 or len(expexted_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0)
+        assert (((transformed[indexes]) != (x_train[indexes])).any())
