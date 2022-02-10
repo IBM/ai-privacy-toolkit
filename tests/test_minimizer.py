@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
+from apt.utils.dataset_utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
 
 
 @pytest.fixture

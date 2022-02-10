@@ -13,8 +13,7 @@ def _load_iris(test_set_size: float = 0.3):
 
     # Split training and test sets
     x_train, x_test, y_train, y_test = model_selection.train_test_split(data, labels, test_size=test_set_size,
-                                                                        random_state=18, stratify=labels,
-                                                                        shuffle=True)
+                                                                                random_state=18, stratify=labels)
 
     return (x_train, y_train), (x_test, y_test)
 
@@ -27,6 +26,28 @@ def get_iris_dataset():
     :return: Entire dataset and labels as numpy array.
     """
     return _load_iris()
+
+
+def _load_diabetes(test_set_size: float = 0.3):
+    diabetes = datasets.load_diabetes()
+    data = diabetes.data
+    labels = diabetes.target
+
+    # Split training and test sets
+    x_train, x_test, y_train, y_test = model_selection.train_test_split(data, labels, test_size=test_set_size,
+                                                                        random_state=18)
+
+    return (x_train, y_train), (x_test, y_test)
+
+
+def get_diabetes_dataset():
+    """
+    Loads the Iris dataset from scikit-learn.
+
+    :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
+    :return: Entire dataset and labels as numpy array.
+    """
+    return _load_diabetes()
 
 
 def get_german_credit_dataset(test_set: float = 0.3):

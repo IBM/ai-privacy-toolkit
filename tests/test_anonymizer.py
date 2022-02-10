@@ -4,7 +4,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
 from apt.anonymization import Anonymize
-from apt.utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
+from apt.utils.dataset_utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
 
