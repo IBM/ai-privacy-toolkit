@@ -14,19 +14,25 @@ class Anonymize:
     Class for performing tailored, model-guided anonymization of training datasets for ML models.
 
     Based on the implementation described in: https://arxiv.org/abs/2007.13086
+
+    Parameters
+    ----------
+    k : int
+        The privacy parameter that determines the number of records that will be indistinguishable from each
+        other (when looking at the quasi identifiers). Should be at least 2.
+    quasi_identifiers : np.ndarray or list
+        The features that need to be minimized in case of pandas data, and indexes of features
+        in case of numpy data.
+    categorical_features : list, optional
+        The list of categorical features (should only be supplied when passing data as a
+        pandas dataframe.
+    is_regression : Bool, optional
+        Whether the model is a regression model or not (if False, assumes
+        a classification model). Default is False.
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
                  is_regression=False):
-        """
-        :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
-                  other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
-                                  in case of numpy data.
-        :param categorical_features: The list of categorical features (should only be supplied when passing data as a
-                                     pandas dataframe.
-        :param is_regression: Boolean param indicates that is is a regression problem.
-        """
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:

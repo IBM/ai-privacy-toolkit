@@ -19,20 +19,21 @@ def _load_iris(test_set_size: float = 0.3):
     return (x_train, y_train), (x_test, y_test)
 
 
-def get_iris_dataset():
+def get_iris_dataset(test_set: float = 0.3):
     """
     Loads the Iris dataset from scikit-learn.
 
     :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
     :return: Entire dataset and labels as numpy array.
     """
-    return _load_iris()
+    return _load_iris(test_set)
 
 
 def get_german_credit_dataset(test_set: float = 0.3):
     """
     Loads the UCI German_credit dataset from `tests/datasets/german` or downloads it if necessary.
 
+    :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
     :return: Dataset and labels as pandas dataframes.
     """
 

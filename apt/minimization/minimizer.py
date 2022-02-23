@@ -39,12 +39,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     estimator : estimator, optional
         The original model for which generalization is being performed.
         Should be pre-fitted.
-
     target_accuracy : float, optional
         The required accuracy when applying the base model to the
         generalized data. Accuracy is measured relative to the original
         accuracy of the model.
-
     features : list of str, optional
         The feature names, in the order that they appear in the data.
     categorical_features: list of str, optional
@@ -63,6 +61,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         The required method to train data set for minimizing. Default is
         to train the tree just on the features that are given as
         features_to_minimize.
+    is_regression : Bool, optional
+        Whether the model is a regression model or not (if False, assumes
+        a classification model). Default is False.
 
     Attributes
     ----------
