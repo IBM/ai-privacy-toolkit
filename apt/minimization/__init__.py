@@ -12,8 +12,5 @@ them to new data.
 
 It is also possible to export the generalizations as feature ranges.
 
-The current implementation supports only numeric features, so any categorical features must be transformed to a numeric
-representation before using this class.
-
 """
 from apt.minimization.minimizer import GeneralizeToRepresentative
