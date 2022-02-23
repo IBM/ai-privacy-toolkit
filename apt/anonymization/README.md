@@ -19,4 +19,11 @@ The following figure depicts the overall process:
 </p>
 <br />
 
+Citation
+--------
+Goldsteen A., Ezov G., Shmelkin R., Moffie M., Farkash A. (2022) Anonymizing Machine Learning Models. In: Garcia-Alfaro 
+J., Muñoz-Tapia J.L., Navarro-Arribas G., Soriano M. (eds) Data Privacy Management, Cryptocurrencies and Blockchain 
+Technology. DPM 2021, CBT 2021. Lecture Notes in Computer Science, vol 13140. Springer, Cham. 
+https://doi.org/10.1007/978-3-030-93944-1_8
+
 
