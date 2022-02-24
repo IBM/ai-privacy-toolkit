@@ -32,7 +32,7 @@ class Anonymize:
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
-                 is_regression=False):
+                 is_regression=False, train_only_QI=True):
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
@@ -42,6 +42,7 @@ class Anonymize:
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
+        self.train_only_QI = train_only_QI
 
     def anonymize(self, x: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.DataFrame]) \
             -> Union[np.ndarray, pd.DataFrame]:
@@ -63,7 +64,10 @@ class Anonymize:
     def _anonymize_ndarray(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
-        x_anonymizer_train = x[:, self.quasi_identifiers]
+        x_anonymizer_train = x
+        if self.train_only_QI:
+            # build DT just on QI features
+            x_anonymizer_train = x[:, self.quasi_identifiers]
         if x.dtype.kind not in 'iufc':
             x_prepared = self._modify_categorical_features(x_anonymizer_train)
         else:
@@ -79,7 +83,10 @@ class Anonymize:
     def _anonymize_pandas(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
-        x_anonymizer_train = x.loc[:, self.quasi_identifiers]
+        x_anonymizer_train = x
+        if self.train_only_QI:
+            # build DT just on QI features
+            x_anonymizer_train = x.loc[:, self.quasi_identifiers]
         # need to one-hot encode before training the decision tree
         x_prepared = self._modify_categorical_features(x_anonymizer_train)
         if self.is_regression:
