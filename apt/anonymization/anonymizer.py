@@ -3,6 +3,9 @@ import pandas as pd
 from scipy.spatial import distance
 from collections import Counter
 
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
@@ -55,8 +58,10 @@ class Anonymize:
         :return: An array containing the anonymized training dataset.
         """
         if type(x) == np.ndarray:
+            self.features = [i for i in range(x.shape[1])]
             return self._anonymize_ndarray(x.copy(), y)
         else:  # pandas
+            self.features = x.columns
             if not self.categorical_features:
                 raise ValueError('When supplying a pandas dataframe, categorical_features must be defined')
             return self._anonymize_pandas(x.copy(), y)
@@ -176,6 +181,21 @@ class Anonymize:
         return x
 
     def _modify_categorical_features(self, x):
-        encoder = OneHotEncoder()
-        one_hot_encoded = encoder.fit_transform(x)
-        return one_hot_encoded
+        # prepare data for DT
+        used_features = self.features
+        if self.train_only_QI:
+            used_features = self.quasi_identifiers
+        numeric_features = [f for f in x.columns if f in used_features and f not in self.categorical_features]
+        categorical_features = [f for f in self.categorical_features if f in used_features]
+        numeric_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+        )
+        categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_features),
+                ("cat", categorical_transformer, categorical_features),
+            ]
+        )
+        encoded = preprocessor.fit_transform(x)
+        return encoded

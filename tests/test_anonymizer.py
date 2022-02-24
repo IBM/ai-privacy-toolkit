@@ -1,5 +1,8 @@
 import pytest
 import numpy as np
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
@@ -27,16 +30,31 @@ def test_anonymize_ndarray_iris():
 
 def test_anonymize_pandas_adult():
     (x_train, y_train), _ = get_adult_dataset()
-    encoded = OneHotEncoder().fit_transform(x_train)
-    model = DecisionTreeClassifier()
-    model.fit(encoded, y_train)
-    pred = model.predict(encoded)
 
     k = 100
+    features = ['age', 'workclass', 'education-num', 'marital-status', 'occupation',
+                'relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country']
     QI = ['age', 'workclass', 'education-num', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
           'native-country']
     categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                             'native-country']
+    # prepare data for DT
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
+    model = DecisionTreeClassifier()
+    model.fit(encoded, y_train)
+    pred = model.predict(encoded)
+
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
     anon = anonymizer.anonymize(x_train, pred)
 
@@ -48,14 +66,28 @@ def test_anonymize_pandas_adult():
 def test_anonymize_pandas_nursery():
     (x_train, y_train), _ = get_nursery_dataset()
     x_train = x_train.astype(str)
-    encoded = OneHotEncoder().fit_transform(x_train)
+
+    k = 100
+    features = ["parents", "has_nurs", "form", "children", "housing", "finance", "social", "health"]
+    QI = ["finance", "social", "health"]
+    categorical_features = ["parents", "has_nurs", "form", "housing", "finance", "social", "health", 'children']
+    # prepare data for DT
+    numeric_features = [f for f in features if f not in categorical_features]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(x_train)
     model = DecisionTreeClassifier()
     model.fit(encoded, y_train)
     pred = model.predict(encoded)
 
-    k = 100
-    QI = ["finance", "social", "health"]
-    categorical_features = ["parents", "has_nurs", "form", "housing", "finance", "social", "health", 'children']
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features, train_only_QI=False)
     anon = anonymizer.anonymize(x_train, pred)
 
