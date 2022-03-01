@@ -5,6 +5,8 @@ import ssl
 from os import path, mkdir
 from six.moves.urllib.request import urlretrieve
 
+from apt.utils.datasets import BaseDataset, Data
+
 
 def _load_iris(test_set_size: float = 0.3):
     iris = datasets.load_iris()
@@ -14,8 +16,10 @@ def _load_iris(test_set_size: float = 0.3):
     # Split training and test sets
     x_train, x_test, y_train, y_test = model_selection.train_test_split(data, labels, test_size=test_set_size,
                                                                                 random_state=18, stratify=labels)
-
-    return (x_train, y_train), (x_test, y_test)
+    train_dataset = BaseDataset(x_train, y_train)
+    test_dataset = BaseDataset(x_test, y_test)
+    dataset = Data(train_dataset, test_dataset)
+    return dataset
 
 
 def get_iris_dataset():
@@ -37,7 +41,10 @@ def _load_diabetes(test_set_size: float = 0.3):
     x_train, x_test, y_train, y_test = model_selection.train_test_split(data, labels, test_size=test_set_size,
                                                                         random_state=18)
 
-    return (x_train, y_train), (x_test, y_test)
+    train_dataset = BaseDataset(x_train, y_train)
+    test_dataset = BaseDataset(x_test, y_test)
+    dataset = Data(train_dataset, test_dataset)
+    return dataset
 
 
 def get_diabetes_dataset():
@@ -97,7 +104,10 @@ def get_german_credit_dataset(test_set: float = 0.3):
     x_test.reset_index(drop=True, inplace=True)
     y_test.reset_index(drop=True, inplace=True)
 
-    return (x_train, y_train), (x_test, y_test)
+    train_dataset = BaseDataset(x_train, y_train)
+    test_dataset = BaseDataset(x_test, y_test)
+    dataset = Data(train_dataset, test_dataset)
+    return dataset
 
 
 def _modify_german_dataset(data):
@@ -156,8 +166,10 @@ def get_adult_dataset():
     y_train = train.loc[:, 'label']
     x_test = test.drop(['label'], axis=1)
     y_test = test.loc[:, 'label']
-
-    return (x_train, y_train), (x_test, y_test)
+    train_dataset = BaseDataset(x_train, y_train)
+    test_dataset = BaseDataset(x_test, y_test)
+    dataset = Data(train_dataset, test_dataset)
+    return dataset
 
 
 def _modify_adult_dataset(data):
@@ -315,5 +327,10 @@ def get_nursery_dataset(raw: bool = True, test_set: float = 0.2, transform_socia
     y_train = train.loc[:, "label"]
     x_test = test.drop(["label"], axis=1)
     y_test = test.loc[:, "label"]
+    x_train = x_train.astype(str)
+    x_test = x_test.astype(str)
 
-    return (x_train, y_train), (x_test, y_test)
+    train_dataset = BaseDataset(x_train, y_train)
+    test_dataset = BaseDataset(x_test, y_test)
+    dataset = Data(train_dataset, test_dataset)
+    return dataset

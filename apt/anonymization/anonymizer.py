@@ -5,6 +5,7 @@ from collections import Counter
 
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
+from apt.utils.datasets import BaseDataset, Data
 
 from typing import Union, Optional
 
@@ -37,8 +38,7 @@ class Anonymize:
         self.categorical_features = categorical_features
         self.is_regression = is_regression
 
-    def anonymize(self, x: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.DataFrame]) \
-            -> Union[np.ndarray, pd.DataFrame]:
+    def anonymize(self, dataset: BaseDataset) -> Union[np.ndarray, pd.DataFrame]:
         """
         Method for performing model-guided anonymization.
 
@@ -47,12 +47,12 @@ class Anonymize:
         :param y: The predictions of the original model on the training data.
         :return: An array containing the anonymized training dataset.
         """
-        if type(x) == np.ndarray:
-            return self._anonymize_ndarray(x.copy(), y)
+        if type(dataset.x) == np.ndarray:
+            return self._anonymize_ndarray(dataset.x.copy(), dataset.y)
         else:  # pandas
             if not self.categorical_features:
                 raise ValueError('When supplying a pandas dataframe, categorical_features must be defined')
-            return self._anonymize_pandas(x.copy(), y)
+            return self._anonymize_pandas(dataset.x.copy(), dataset.y)
 
     def _anonymize_ndarray(self, x, y):
         if x.shape[0] != y.shape[0]:
