@@ -35,7 +35,7 @@ class Anonymize:
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
-                 is_regression=False, train_only_QI=True):
+                 is_regression=False, train_only_QI=False):
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
