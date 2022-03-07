@@ -4,7 +4,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.base import BaseEstimator
 
 from apt.utils.models import Model
-from apt.utils.datasets import BaseDataset, DATA_ARRAY_TYPE
+from apt.utils.datasets import Dataset, DATA_ARRAY_TYPE
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
 from art.estimators.regression.scikitlearn import ScikitlearnRegressor
@@ -14,12 +14,12 @@ class SklearnModel(Model):
     """
     Wrapper class for scikitlearn models.
     """
-    def score(self, test_data: BaseDataset, **kwargs):
+    def score(self, test_data: Dataset, **kwargs):
         """
         Score the model using test data.
 
         :param test_data: Test data.
-        :type train_data: `BaseDataset`
+        :type train_data: `Dataset`
         """
         return self.model.score(test_data.get_samples(), test_data.get_labels(), **kwargs)
 
@@ -37,12 +37,12 @@ class SklearnClassifier(SklearnModel):
         super().__init__(model, **kwargs)
         self._art_model = ArtSklearnClassifier(model)
 
-    def fit(self, train_data: BaseDataset, **kwargs) -> None:
+    def fit(self, train_data: Dataset, **kwargs) -> None:
         """
         Fit the model using the training data.
 
         :param train_data: Training data.
-        :type train_data: `BaseDataset`
+        :type train_data: `Dataset`
         """
         encoder = OneHotEncoder(sparse=False)
         y_encoded = encoder.fit_transform(train_data.get_labels().reshape(-1, 1))
@@ -72,12 +72,12 @@ class SklearnRegressor(SklearnModel):
         super().__init__(model, **kwargs)
         self._art_model = ScikitlearnRegressor(model)
 
-    def fit(self, train_data: BaseDataset, **kwargs) -> None:
+    def fit(self, train_data: Dataset, **kwargs) -> None:
         """
         Fit the model using the training data.
 
         :param train_data: Training data.
-        :type train_data: `BaseDataset`
+        :type train_data: `Dataset`
         """
         self._art_model.fit(train_data.get_samples(), train_data.get_labels(), **kwargs)
 
