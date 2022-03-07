@@ -3,6 +3,9 @@ import pandas as pd
 from scipy.spatial import distance
 from collections import Counter
 
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
 
@@ -29,10 +32,13 @@ class Anonymize:
     is_regression : Bool, optional
         Whether the model is a regression model or not (if False, assumes
         a classification model). Default is False.
+    train_only_QI : Bool, optional
+        The required method to train data set for anonymization. Default is
+        to train the tree on all features.
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
-                 is_regression=False):
+                 is_regression=False, train_only_QI=False):
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
@@ -42,6 +48,7 @@ class Anonymize:
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
+        self.train_only_QI = train_only_QI
 
     def anonymize(self, x: Union[np.ndarray, pd.DataFrame], y: Union[np.ndarray, pd.DataFrame]) \
             -> Union[np.ndarray, pd.DataFrame]:
@@ -54,8 +61,10 @@ class Anonymize:
         :return: An array containing the anonymized training dataset.
         """
         if type(x) == np.ndarray:
+            self.features = [i for i in range(x.shape[1])]
             return self._anonymize_ndarray(x.copy(), y)
         else:  # pandas
+            self.features = x.columns
             if not self.categorical_features:
                 raise ValueError('When supplying a pandas dataframe, categorical_features must be defined')
             return self._anonymize_pandas(x.copy(), y)
@@ -63,7 +72,10 @@ class Anonymize:
     def _anonymize_ndarray(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
-        x_anonymizer_train = x[:, self.quasi_identifiers]
+        x_anonymizer_train = x
+        if self.train_only_QI:
+            # build DT just on QI features
+            x_anonymizer_train = x[:, self.quasi_identifiers]
         if x.dtype.kind not in 'iufc':
             x_prepared = self._modify_categorical_features(x_anonymizer_train)
         else:
@@ -79,7 +91,10 @@ class Anonymize:
     def _anonymize_pandas(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
-        x_anonymizer_train = x.loc[:, self.quasi_identifiers]
+        x_anonymizer_train = x
+        if self.train_only_QI:
+            # build DT just on QI features
+            x_anonymizer_train = x.loc[:, self.quasi_identifiers]
         # need to one-hot encode before training the decision tree
         x_prepared = self._modify_categorical_features(x_anonymizer_train)
         if self.is_regression:
@@ -169,6 +184,21 @@ class Anonymize:
         return x
 
     def _modify_categorical_features(self, x):
-        encoder = OneHotEncoder()
-        one_hot_encoded = encoder.fit_transform(x)
-        return one_hot_encoded
+        # prepare data for DT
+        used_features = self.features
+        if self.train_only_QI:
+            used_features = self.quasi_identifiers
+        numeric_features = [f for f in x.columns if f in used_features and f not in self.categorical_features]
+        categorical_features = [f for f in self.categorical_features if f in used_features]
+        numeric_transformer = Pipeline(
+            steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+        )
+        categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ("num", numeric_transformer, numeric_features),
+                ("cat", categorical_transformer, categorical_features),
+            ]
+        )
+        encoded = preprocessor.fit_transform(x)
+        return encoded
