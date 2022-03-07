@@ -32,6 +32,9 @@ class Anonymize:
     is_regression : Bool, optional
         Whether the model is a regression model or not (if False, assumes
         a classification model). Default is False.
+    train_only_QI : Bool, optional
+        The required method to train data set for anonymization. Default is
+        to train the tree on all features.
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
