@@ -46,7 +46,10 @@ class SklearnClassifier(SklearnModel):
         :type y: `np.ndarray` or `pandas.DataFrame`
         """
         encoder = OneHotEncoder(sparse=False)
-        y_encoded = encoder.fit_transform(y.reshape(-1, 1))
+        if type(y) == np.ndarray:
+            y_encoded = encoder.fit_transform(y.reshape(-1, 1))
+        else:
+            y_encoded = encoder.fit_transform(y.values.reshape(-1, 1))
         self._art_model.fit(x, y_encoded, **kwargs)
 
     def predict(self, x: np.ndarray, **kwargs) -> np.ndarray:
