@@ -7,7 +7,7 @@ from apt.anonymization import Anonymize
 from apt.utils.dataset_utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset
 from sklearn.datasets import load_diabetes
 from sklearn.model_selection import train_test_split
-from apt.utils.datasets import BaseDataset, Data
+from apt.utils.datasets import ArrayDataset, Data
 
 def test_anonymize_ndarray_iris():
     dataset = get_iris_dataset()
@@ -18,7 +18,7 @@ def test_anonymize_ndarray_iris():
     k = 10
     QI = [0, 2]
     anonymizer = Anonymize(k, QI)
-    anon = anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), pred))
+    anon = anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), pred))
     assert(len(np.unique(anon[:, QI], axis=0)) < len(np.unique(dataset.get_train_samples()[:, QI], axis=0)))
     _, counts_elements = np.unique(anon[:, QI], return_counts=True)
     assert (np.min(counts_elements) >= k)
@@ -38,7 +38,7 @@ def test_anonymize_pandas_adult():
     categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                             'native-country']
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
-    anon = anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), pred))
+    anon = anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), pred))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < dataset.get_train_samples().loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
@@ -56,7 +56,7 @@ def test_anonymize_pandas_nursery():
     QI = ["finance", "social", "health"]
     categorical_features = ["parents", "has_nurs", "form", "housing", "finance", "social", "health", 'children']
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
-    anon = anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), pred))
+    anon = anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), pred))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < dataset.get_train_samples().loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
@@ -66,8 +66,8 @@ def test_anonymize_pandas_nursery():
 def test_regression():
 
     x_train, x_test, y_train, y_test = train_test_split(load_diabetes().data, load_diabetes().target, test_size=0.5, random_state=14)
-    train_dataset = BaseDataset(x_train, y_train)
-    test_dataset = BaseDataset(x_test, y_test)
+    train_dataset = ArrayDataset(x_train, y_train)
+    test_dataset = ArrayDataset(x_test, y_test)
     dataset = Data(train_dataset, test_dataset)
     model = DecisionTreeRegressor(random_state=10, min_samples_split=2)
     model.fit(dataset.get_train_samples(), dataset.get_train_labels())
@@ -75,7 +75,7 @@ def test_regression():
     k = 10
     QI = [0, 2, 5, 8]
     anonymizer = Anonymize(k, QI, is_regression=True)
-    anon = anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), pred))
+    anon = anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), pred))
     print('Base model accuracy (R2 score): ', model.score(dataset.get_test_samples(), dataset.get_test_labels()))
     model.fit(anon, dataset.get_train_labels())
     print('Base model accuracy (R2 score) after anonymization: ', model.score(dataset.get_test_samples(), dataset.get_test_labels()))
@@ -95,7 +95,7 @@ def test_errors():
     anonymizer = Anonymize(10, [0, 2])
     dataset = get_iris_dataset()
     with pytest.raises(ValueError):
-        anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), dataset.get_test_labels()))
+        anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), dataset.get_test_labels()))
     dataset = get_adult_dataset()
     with pytest.raises(ValueError):
-        anonymizer.anonymize(BaseDataset(dataset.get_train_samples(), dataset.get_train_labels()))
+        anonymizer.anonymize(ArrayDataset(dataset.get_train_samples(), dataset.get_train_labels()))

@@ -5,7 +5,7 @@ from collections import Counter
 
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.preprocessing import OneHotEncoder
-from apt.utils.datasets import BaseDataset, Data
+from apt.utils.datasets import ArrayDataset
 
 from typing import Union, Optional
 
@@ -38,7 +38,7 @@ class Anonymize:
         self.categorical_features = categorical_features
         self.is_regression = is_regression
 
-    def anonymize(self, dataset: BaseDataset) -> Union[np.ndarray, pd.DataFrame]:
+    def anonymize(self, dataset: ArrayDataset) -> Union[np.ndarray, pd.DataFrame]:
         """
         Method for performing model-guided anonymization.
 
