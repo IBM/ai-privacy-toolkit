@@ -42,9 +42,9 @@ class Anonymize:
         """
         Method for performing model-guided anonymization.
 
-        :param x: The training data for the model. If provided as a pandas dataframe, may contain both numeric and
-                  categorical data.
-        :param y: The predictions of the original model on the training data.
+        :param dataset: Data wrapper Containing The training data for the model and ehe predictions of the
+                        original model on the training data. If provided as a pandas
+                        dataframe, may contain both numeric and categorical data.
         :return: An array containing the anonymized training dataset.
         """
         if type(dataset.x) == np.ndarray:
