@@ -9,24 +9,28 @@ from sklearn.ensemble import RandomForestClassifier
 
 
 def test_sklearn_classifier():
-    dataset = dataset_utils.get_iris_dataset()
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset()
     underlying_model = RandomForestClassifier()
     model = SklearnClassifier(underlying_model)
-    model.fit(dataset.train)
-    pred = model.predict(dataset.get_test_samples())
-    assert(pred.shape[0] == dataset.get_test_samples().shape[0])
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    model.fit(train)
+    pred = model.predict(x_test)
+    assert(pred.shape[0] == x_test.shape[0])
 
-    score = model.score(dataset.test)
+    score = model.score(test)
     assert(0.0 <= score <= 1.0)
 
 
 def test_sklearn_regressor():
-    dataset = dataset_utils.get_diabetes_dataset()
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_diabetes_dataset()
     underlying_model = DecisionTreeRegressor()
     model = SklearnRegressor(underlying_model)
-    model.fit(dataset.train)
-    pred = model.predict(dataset.get_test_samples())
-    assert (pred.shape[0] == dataset.get_test_samples().shape[0])
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    model.fit(train)
+    pred = model.predict(x_test)
+    assert (pred.shape[0] == x_test.shape[0])
 
-    score = model.score(dataset.test)
+    score = model.score(test)
     assert (0 <= score <= 1)
