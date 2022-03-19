@@ -24,13 +24,15 @@ OUTPUT_DATA_ARRAY_TYPE = np.ndarray
 DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 
 
-def array2numpy(arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
     """
     converts from INPUT_DATA_ARRAY_TYPE to numpy array
     """
     if type(arr) == np.ndarray:
+        self.is_numpy = True
         return arr
-    if type(arr) == pd.DataFrame:
+    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+        self.is_numpy = False
         return arr.to_numpy()
     if isinstance(arr, list):
         return np.array(arr)
@@ -169,8 +171,9 @@ class ArrayDataset(Dataset):
         :param y: collection of labels (optional)
         :param kwargs: dataset parameters
         """
-        self._x = array2numpy(x)
-        self._y = array2numpy(y) if y is not None else None
+        self.is_numpy = True
+        self._y = array2numpy(self, y) if y is not None else None
+        self._x = array2numpy(self, x)
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
