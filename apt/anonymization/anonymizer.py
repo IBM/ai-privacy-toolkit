@@ -108,10 +108,7 @@ class Anonymize:
             # TODO: should we filter only those with majority label? (using hist)
             rows = x[indexes]
             for feature in self.quasi_identifiers:
-                if type(x) == np.ndarray:
-                    values = rows[:, feature]
-                else:  # pandas
-                    values = rows.loc[:, feature]
+                values = rows[:, feature]
                 if self.categorical_features and feature in self.categorical_features:
                     # find most common value
                     cell['representative'][feature] = Counter(values).most_common(1)[0][0]
