@@ -17,15 +17,13 @@ class Anonymize:
     Based on the implementation described in: https://arxiv.org/abs/2007.13086
     """
 
-    def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], features = None, categorical_features: Optional[list] = None,
+    def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
                  is_regression=False):
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
-                                  in case of numpy data.
-        :param categorical_features: The list of categorical features (should only be supplied when passing data as a
-                                     pandas dataframe.
+        :param quasi_identifiers: The indexes of features that need to be minimized in case of pandas data.
+        :param categorical_features: The list of categorical features indexes
         :param is_regression: Boolean param indicates that is is a regression problem.
         """
         if k < 2:
@@ -37,7 +35,7 @@ class Anonymize:
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
-        self.features = features
+        self.features = None
 
     def anonymize(self, dataset: ArrayDataset) -> DATA_PANDAS_NUMPY_TYPE:
         """
@@ -48,24 +46,21 @@ class Anonymize:
                         contain both numeric and categorical data.
         :return: An array containing the anonymized training dataset.
         """
-
-        if self.features:
+        self.features = dataset.features_names
+        if self.features is not None:
             self._features = self.features
             # if features is None, use numbers instead of names
         elif dataset.get_samples().shape[0] != 0:
             self._features = [i for i in range(dataset.get_samples().shape[0])]
         else:
             self._features = None
-        if self.quasi_identifiers and self.features:
-            self.quasi_identifiers = [i for i,v in enumerate(self.features) if v in self.quasi_identifiers]
-        if self.categorical_features and self.features:
-            self.categorical_features = [i for i,v in enumerate(self.features) if v in self.categorical_features]
+            assert False
 
         transformed = self._anonymize_ndarray(dataset.get_samples().copy(), dataset.get_labels())
-        if dataset.is_numpy:
-            return transformed
-        else:
+        if dataset.is_pandas:
             return pd.DataFrame(transformed, columns=self._features)
+        else:
+            return transformed
 
     def _anonymize_ndarray(self, x, y):
         if x.shape[0] != y.shape[0]:
@@ -111,10 +106,7 @@ class Anonymize:
             # get all rows in cell
             indexes = [index for index, node_id in enumerate(node_ids) if node_id == cell['id']]
             # TODO: should we filter only those with majority label? (using hist)
-            if type(x) == np.ndarray:
-                rows = x[indexes]
-            else:  # pandas
-                rows = x.iloc[indexes]
+            rows = x[indexes]
             for feature in self.quasi_identifiers:
                 if type(x) == np.ndarray:
                     values = rows[:, feature]

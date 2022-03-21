@@ -29,10 +29,9 @@ def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
     converts from INPUT_DATA_ARRAY_TYPE to numpy array
     """
     if type(arr) == np.ndarray:
-        self.is_numpy = True
         return arr
     if type(arr) == pd.DataFrame or type(arr) == pd.Series:
-        self.is_numpy = False
+        self.is_pandas = True
         return arr.to_numpy()
     if isinstance(arr, list):
         return np.array(arr)
@@ -171,9 +170,12 @@ class ArrayDataset(Dataset):
         :param y: collection of labels (optional)
         :param kwargs: dataset parameters
         """
-        self.is_numpy = True
+        self.is_pandas = False
+        self.features_names = None
         self._y = array2numpy(self, y) if y is not None else None
         self._x = array2numpy(self, x)
+        if self.is_pandas:
+            self.features_names = x.columns
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
