@@ -22,7 +22,7 @@ class Anonymize:
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The indexes of features that need to be minimized in case of pandas data.
+        :param quasi_identifiers: The indexes of features that need to be minimized.
         :param categorical_features: The list of categorical features indexes
         :param is_regression: Boolean param indicates that is is a regression problem.
         """
@@ -35,26 +35,22 @@ class Anonymize:
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
-        self.features = None
 
     def anonymize(self, dataset: ArrayDataset) -> DATA_PANDAS_NUMPY_TYPE:
         """
         Method for performing model-guided anonymization.
 
         :param dataset: Data wrapper containing the training data for the model and the predictions of the
-                        original model on the training data. If implemented with a pandas dataframe, may
-                        contain both numeric and categorical data.
+                        original model on the training data.
         :return: An array containing the anonymized training dataset.
         """
-        self.features = dataset.features_names
-        if self.features is not None:
-            self._features = self.features
+        if dataset.features_names is not None:
+            self._features = dataset.features_names
             # if features is None, use numbers instead of names
         elif dataset.get_samples().shape[0] != 0:
             self._features = [i for i in range(dataset.get_samples().shape[0])]
         else:
-            self._features = None
-            assert False
+            raise ValueError('No data provided')
 
         transformed = self._anonymize_ndarray(dataset.get_samples().copy(), dataset.get_labels())
         if dataset.is_pandas:
@@ -68,7 +64,7 @@ class Anonymize:
         x_anonymizer_train = x[:, self.quasi_identifiers]
         if x.dtype.kind not in 'iufc':
             if not self.categorical_features:
-                raise ValueError('When supplying a pandas dataframe, categorical_features must be defined')
+                raise ValueError('when supplying an array with non-numeric data, categorical_features must be defined')
             x_prepared = self._modify_categorical_features(x_anonymizer_train)
         else:
             x_prepared = x_anonymizer_train

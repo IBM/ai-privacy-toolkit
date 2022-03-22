@@ -29,7 +29,6 @@ def test_anonymize_ndarray_iris():
 
 def test_anonymize_pandas_adult():
     (x_train, y_train), _ = get_adult_dataset()
-    print(type(x_train['hours-per-week'][0]))
     encoded = OneHotEncoder().fit_transform(x_train)
     model = DecisionTreeClassifier()
     model.fit(encoded, y_train)
@@ -49,10 +48,7 @@ def test_anonymize_pandas_adult():
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
-    #assert (anon.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
-    print(type(x_train['hours-per-week'][0]))
-
-
+    np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
 
 def test_anonymize_pandas_nursery():
     (x_train, y_train), _ = get_nursery_dataset()
@@ -73,7 +69,7 @@ def test_anonymize_pandas_nursery():
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
-    # assert (anon.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
+    np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
 
 
 def test_regression():
@@ -107,7 +103,7 @@ def test_errors():
     anonymizer = Anonymize(10, [0, 2])
     (x_train, y_train), (x_test, y_test) = get_iris_dataset()
     with pytest.raises(ValueError):
-        anonymizer.anonymize(x_train, y_test)
+        anonymizer.anonymize(dataset=ArrayDataset(x_train, y_test))
     (x_train, y_train), _ = get_adult_dataset()
     with pytest.raises(ValueError):
-        anonymizer.anonymize(x_train, y_train)
+        anonymizer.anonymize(dataset=ArrayDataset(x_train, y_test))
