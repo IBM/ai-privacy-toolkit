@@ -52,13 +52,13 @@ class Anonymize:
         else:
             raise ValueError('No data provided')
 
-        transformed = self._anonymize_ndarray(dataset.get_samples().copy(), dataset.get_labels())
+        transformed = self._anonymize(dataset.get_samples().copy(), dataset.get_labels())
         if dataset.is_pandas:
             return pd.DataFrame(transformed, columns=self._features)
         else:
             return transformed
 
-    def _anonymize_ndarray(self, x, y):
+    def _anonymize(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
         x_anonymizer_train = x[:, self.quasi_identifiers]
@@ -75,7 +75,7 @@ class Anonymize:
 
         self.anonymizer.fit(x_prepared, y)
         cells_by_id = self._calculate_cells(x, x_prepared)
-        return self._anonymize_data_numpy(x, x_prepared, cells_by_id)
+        return self._anonymize_data(x, x_prepared, cells_by_id)
 
     def _calculate_cells(self, x, x_anonymizer_train):
         # x is original data, x_anonymizer_train is only QIs + 1-hot encoded
@@ -129,7 +129,7 @@ class Anonymize:
         node_ids = self._find_sample_nodes(samples)
         return [cells_by_id[node_id] for node_id in node_ids]
 
-    def _anonymize_data_numpy(self, x, x_anonymizer_train, cells_by_id):
+    def _anonymize_data(self, x, x_anonymizer_train, cells_by_id):
         cells = self._find_sample_cells(x_anonymizer_train, cells_by_id)
         index = 0
         for row in x:
