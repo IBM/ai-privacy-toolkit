@@ -273,7 +273,7 @@ def get_nursery_dataset(raw: bool = True, test_set: float = 0.2, transform_socia
             raise Exception("Bad label value: %s" % value)
 
     data["label"] = data["label"].apply(modify_label)
-    data["children"] = data["children"].apply(lambda x: 4 if x == "more" else x)
+    data["children"] = data["children"].apply(lambda x: "4" if x == "more" else x)
 
     if transform_social:
 

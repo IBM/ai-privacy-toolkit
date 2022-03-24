@@ -44,7 +44,7 @@ def test_anonymize_pandas_adult():
     QI_indexes = [i for i, v in enumerate(features) if v in QI]
     categorical_features_indexes = [i for i, v in enumerate(features) if v in categorical_features]
     anonymizer = Anonymize(k, QI_indexes, categorical_features=categorical_features_indexes)
-    anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
+    anon = anonymizer.anonymize(ArrayDataset(x_train, pred, features))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)

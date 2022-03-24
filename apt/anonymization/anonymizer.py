@@ -22,19 +22,19 @@ class Anonymize:
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The indexes of features that need to be minimized.
-        :param categorical_features: The list of categorical features indexes
+        :param quasi_identifiers: The features that need to be minimized.
+        :param categorical_features: The list of categorical features.
         :param is_regression: Boolean param indicates that is is a regression problem.
         """
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
             raise ValueError("The list of quasi-identifiers cannot be empty")
-
         self.k = k
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
+        self.features_names = None
 
     def anonymize(self, dataset: ArrayDataset) -> DATA_PANDAS_NUMPY_TYPE:
         """
@@ -51,6 +51,15 @@ class Anonymize:
             self._features = [i for i in range(dataset.get_samples().shape[0])]
         else:
             raise ValueError('No data provided')
+        if not set(self.quasi_identifiers).issubset(set(self.features_names)):
+            raise ValueError('Quasi identifiers should bs a subset of the supplied features or indexes in range of '
+                             'the data columns')
+        if self.categorical_features and not set(self.categorical_features).issubset(set(self.features_names)):
+            raise ValueError('Categorical features should bs a subset of the supplied features or indexes in range of '
+                             'the data columns')
+        self.quasi_identifiers = [i for i, v in enumerate(self.features_names) if v in self.quasi_identifiers]
+        if self.categorical_features:
+            self.categorical_features = [i for i, v in enumerate(self.features_names) if v in self.categorical_features]
 
         transformed = self._anonymize(dataset.get_samples().copy(), dataset.get_labels())
         if dataset.is_pandas:
