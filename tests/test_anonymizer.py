@@ -41,9 +41,7 @@ def test_anonymize_pandas_adult():
           'native-country']
     categorical_features = ['workclass', 'marital-status', 'occupation', 'relationship', 'race', 'sex',
                             'native-country']
-    QI_indexes = [i for i, v in enumerate(features) if v in QI]
-    categorical_features_indexes = [i for i, v in enumerate(features) if v in categorical_features]
-    anonymizer = Anonymize(k, QI_indexes, categorical_features=categorical_features_indexes)
+    anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
     anon = anonymizer.anonymize(ArrayDataset(x_train, pred, features))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
@@ -62,9 +60,7 @@ def test_anonymize_pandas_nursery():
     k = 100
     QI = ["finance", "social", "health"]
     categorical_features = ["parents", "has_nurs", "form", "housing", "finance", "social", "health", 'children']
-    QI_indexes = [i for i, v in enumerate(features) if v in QI]
-    categorical_features_indexes = [i for i, v in enumerate(features) if v in categorical_features]
-    anonymizer = Anonymize(k, QI_indexes, categorical_features=categorical_features_indexes)
+    anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
     anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])

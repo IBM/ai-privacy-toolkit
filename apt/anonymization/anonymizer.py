@@ -45,10 +45,10 @@ class Anonymize:
         :return: An array containing the anonymized training dataset.
         """
         if dataset.features_names is not None:
-            self._features = dataset.features_names
+            self.features_names = dataset.features_names
             # if features is None, use numbers instead of names
         elif dataset.get_samples().shape[0] != 0:
-            self._features = [i for i in range(dataset.get_samples().shape[0])]
+            self.features_names = [i for i in range(dataset.get_samples().shape[0])]
         else:
             raise ValueError('No data provided')
         if not set(self.quasi_identifiers).issubset(set(self.features_names)):
@@ -63,7 +63,7 @@ class Anonymize:
 
         transformed = self._anonymize(dataset.get_samples().copy(), dataset.get_labels())
         if dataset.is_pandas:
-            return pd.DataFrame(transformed, columns=self._features)
+            return pd.DataFrame(transformed, columns=self.features_names)
         else:
             return transformed
 
