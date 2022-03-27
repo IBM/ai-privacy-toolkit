@@ -49,7 +49,7 @@ class Anonymize:
         if dataset.features_names is not None:
             self.features_names = dataset.features_names
             # if features is None, use numbers instead of names
-        elif dataset.get_samples().shape[0] != 0:
+        elif dataset.get_samples().shape[1] != 0:
             self.features_names = [i for i in range(dataset.get_samples().shape[1])]
         else:
             raise ValueError('No data provided')
