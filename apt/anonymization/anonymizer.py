@@ -22,8 +22,10 @@ class Anonymize:
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The features that need to be minimized.
-        :param categorical_features: The list of categorical features.
+        :param quasi_identifiers: The features that need to be minimized. It can be a list of feature name (strings) if
+                  dataset.feature_names is set, otherwise a list of indexes (integers).
+        :param categorical_features: The list of categorical features. It can be a list of feature name (strings) if
+                  dataset.feature_names is set, otherwise a list of indexes (integers).
         :param is_regression: Boolean param indicates that is is a regression problem.
         """
         if k < 2:
@@ -48,7 +50,7 @@ class Anonymize:
             self.features_names = dataset.features_names
             # if features is None, use numbers instead of names
         elif dataset.get_samples().shape[0] != 0:
-            self.features_names = [i for i in range(dataset.get_samples().shape[0])]
+            self.features_names = [i for i in range(dataset.get_samples().shape[1])]
         else:
             raise ValueError('No data provided')
         if not set(self.quasi_identifiers).issubset(set(self.features_names)):

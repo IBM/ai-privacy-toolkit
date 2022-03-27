@@ -162,12 +162,13 @@ class StoredDataset(Dataset):
 class ArrayDataset(Dataset):
     """Dataset that is based on x and y arrays (e.g., numpy/pandas/list...)"""
 
-    def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, features_names=None,
-                 **kwargs):
+    def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None,
+                 features_names: Optional = None, **kwargs):
         """
         ArrayDataset constructor.
         :param x: collection of data samples
         :param y: collection of labels (optional)
+        :param feature_names: list of str, The feature names, in the order that they appear in the data (optional)
         :param kwargs: dataset parameters
         """
         self.is_pandas = False
