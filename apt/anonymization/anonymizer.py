@@ -22,9 +22,9 @@ class Anonymize:
         """
         :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
                   other (when looking at the quasi identifiers). Should be at least 2.
-        :param quasi_identifiers: The features that need to be minimized. It can be a list of feature name (strings) if
+        :param quasi_identifiers: The features that need to be minimized. It can be a list of feature names (strings) if
                   dataset.feature_names is set, otherwise a list of indexes (integers).
-        :param categorical_features: The list of categorical features. It can be a list of feature name (strings) if
+        :param categorical_features: The list of categorical features. It can be a list of feature names (strings) if
                   dataset.feature_names is set, otherwise a list of indexes (integers).
         :param is_regression: Boolean param indicates that is is a regression problem.
         """
