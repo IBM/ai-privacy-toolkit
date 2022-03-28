@@ -18,12 +18,14 @@ from torch import Tensor
 
 logger = logging.getLogger(__name__)
 
+
 INPUT_DATA_ARRAY_TYPE = Union[np.ndarray, pd.DataFrame, List, Tensor]
 OUTPUT_DATA_ARRAY_TYPE = np.ndarray
 DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 
 
 def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+
     """
     converts from INPUT_DATA_ARRAY_TYPE to numpy array
     """
@@ -210,10 +212,12 @@ class PytorchData(Dataset):
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
 
+
         if self._y is not None:
             self.__getitem__ = self.get_item
         else:
             self.__getitem__ = self.get_sample_item
+
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """Return data samples as numpy array"""
