@@ -24,13 +24,15 @@ OUTPUT_DATA_ARRAY_TYPE = np.ndarray
 DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 
 
-def array2numpy(arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+
     """
     converts from INPUT_DATA_ARRAY_TYPE to numpy array
     """
     if type(arr) == np.ndarray:
         return arr
-    if type(arr) == pd.DataFrame:
+    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+        self.is_pandas = True
         return arr.to_numpy()
     if isinstance(arr, list):
         return np.array(arr)
@@ -40,13 +42,14 @@ def array2numpy(arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
     raise ValueError('Non supported type: ', type(arr).__name__)
 
 
-def array2torch_tensor(arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
+def array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
     """
     converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
     """
     if type(arr) == np.ndarray:
         return torch.from_numpy(arr)
-    if type(arr) == pd.DataFrame:
+    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+        self.is_pandas = True
         return torch.from_numpy(arr.to_numpy())
     if isinstance(arr, list):
         return torch.tensor(arr)
@@ -111,7 +114,6 @@ class StoredDataset(Dataset):
         if unzip:
             StoredDataset.extract_archive(zip_path=file_path, dest_path=dest_path, remove_archive=False)
 
-
     @staticmethod
     def extract_archive(zip_path: str, dest_path=None, remove_archive=False):
         """
@@ -162,15 +164,23 @@ class StoredDataset(Dataset):
 class ArrayDataset(Dataset):
     """Dataset that is based on x and y arrays (e.g., numpy/pandas/list...)"""
 
-    def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, **kwargs):
+    def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None,
+                 features_names: Optional = None, **kwargs):
         """
         ArrayDataset constructor.
         :param x: collection of data samples
         :param y: collection of labels (optional)
+        :param feature_names: list of str, The feature names, in the order that they appear in the data (optional)
         :param kwargs: dataset parameters
         """
-        self._x = array2numpy(x)
-        self._y = array2numpy(y) if y is not None else None
+        self.is_pandas = False
+        self.features_names = features_names
+        self._y = array2numpy(self, y) if y is not None else None
+        self._x = array2numpy(self, x)
+        if self.is_pandas:
+            if features_names and not np.array_equal(features_names, x.columns):
+                raise ValueError("The supplied features are not the same as in the data features")
+            self.features_names = x.columns
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
@@ -193,11 +203,15 @@ class PytorchData(Dataset):
         :param y: collection of labels (optional)
         :param kwargs: dataset parameters
         """
-        self._x = array2torch_tensor(x)
-        self._y = array2torch_tensor(y) if y is not None else None
+        self.is_pandas = False
+        self._y = array2torch_tensor(self, y) if y is not None else None
+        self._x = array2torch_tensor(self, x)
+        if self.is_pandas:
+            self.features_names = x.columns
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
+
 
         if self._y is not None:
             self.__getitem__ = self.get_item
@@ -235,6 +249,7 @@ class DatasetFactory:
         :param name: dataset name
         :return:
         """
+
         def inner_wrapper(wrapped_class: Dataset) -> Any:
             if name in cls.registry:
                 logger.warning('Dataset %s already exists. Will replace it', name)
