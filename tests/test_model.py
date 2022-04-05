@@ -33,4 +33,3 @@ def test_sklearn_regressor():
     assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert (0 <= score <= 1)
