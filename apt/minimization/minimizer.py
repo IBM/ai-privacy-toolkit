@@ -1,7 +1,7 @@
 """
 This module implements all classes needed to perform data minimization
 """
-from typing import Union
+from typing import Union, Optional
 import pandas as pd
 import numpy as np
 import copy
@@ -16,37 +16,32 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
+from apt.utils.datasets import ArrayDataset, Data, DATA_PANDAS_NUMPY_TYPE
+from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnClassifier
+
 
 class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
     """ A transformer that generalizes data to representative points.
-
     Learns data generalizations based on an original model's predictions
     and a target accuracy. Once the generalizations are learned, can
     receive one or more data records and transform them to representative
     points based on the learned generalization.
-
-    An alternative way to use the transformer is to supply ``cells`` and
-    ``features`` in init or set_params and those will be used to transform
+    An alternative way to use the transformer is to supply ``cells`` in
+    init or set_params and those will be used to transform
     data to representatives. In this case, fit must still be called but
     there is no need to supply it with ``X`` and ``y``, and there is no
     need to supply an existing ``estimator`` to init.
-
     In summary, either ``estimator`` and ``target_accuracy`` should be
-    supplied or ``cells`` and ``features`` should be supplied.
-
+    supplied or ``cells`` should be supplied.
     Parameters
     ----------
     estimator : estimator, optional
         The original model for which generalization is being performed.
         Should be pre-fitted.
-
     target_accuracy : float, optional
         The required accuracy when applying the base model to the
         generalized data. Accuracy is measured relative to the original
         accuracy of the model.
-
-    features : list of str, optional
-        The feature names, in the order that they appear in the data.
     categorical_features: list of str, optional
         The list of categorical features should only be supplied when
          passing data as a pandas dataframe.
@@ -63,31 +58,33 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         The required method to train data set for minimizing. Default is
         to train the tree just on the features that are given as
         features_to_minimize.
-
     Attributes
     ----------
+    features_ : list of str
+        The feature names, in the order that they appear in the data.
     cells_ : list of object
         The cells used to generalize records, as learned when calling fit.
-
     ncp_ : float
         The NCP (information loss) score of the resulting generalization,
         as measured on the training data.
-
     generalizations_ : object
         The generalizations that were learned (actual feature ranges).
-
     Notes
     -----
-
-
     """
 
-    def __init__(self, estimator=None, target_accuracy=0.998, features=None,
-                 cells=None, categorical_features=None, features_to_minimize: Union[np.ndarray, list] = None
-                 , train_only_QI=True, is_regression=False):
-        self.estimator = estimator
+    def __init__(self, estimator: Union[BaseEstimator, Model] = None, target_accuracy: float = 0.998,
+                 cells: list = None, categorical_features: Union[np.ndarray, list] = None,
+                 features_to_minimize: Union[np.ndarray, list] = None, train_only_QI: bool = True,
+                 is_regression: bool = False):
+        if issubclass(estimator.__class__, Model):
+            self.estimator = estimator
+        else:
+            if is_regression:
+                self.estimator = SklearnRegressor(estimator)
+            else:
+                self.estimator = SklearnClassifier(estimator, ModelOutputType.CLASSIFIER_VECTOR)
         self.target_accuracy = target_accuracy
-        self.features = features
         self.cells = cells
         self.categorical_features = []
         if categorical_features:
@@ -98,13 +95,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
-
         Parameters
         ----------
         deep : boolean, optional
             If True, will return the parameters for this estimator and contained
             subobjects that are estimators.
-
         Returns
         -------
         params : mapping of string to any
@@ -113,17 +108,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         ret = {}
         ret['target_accuracy'] = self.target_accuracy
         if deep:
-            ret['features'] = copy.deepcopy(self.features)
             ret['cells'] = copy.deepcopy(self.cells)
             ret['estimator'] = self.estimator
         else:
-            ret['features'] = copy.copy(self.features)
             ret['cells'] = copy.copy(self.cells)
         return ret
 
     def set_params(self, **params):
         """Set the parameters of this estimator.
-
         Returns
         -------
         self : object
@@ -131,8 +123,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         """
         if 'target_accuracy' in params:
             self.target_accuracy = params['target_accuracy']
-        if 'features' in params:
-            self.features = params['features']
         if 'cells' in params:
             self.cells = params['cells']
         return self
@@ -141,9 +131,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     def generalizations(self):
         return self.generalizations_
 
-    def fit_transform(self, X: Union[np.ndarray, pd.DataFrame] = None, y: Union[np.ndarray, pd.DataFrame] = None):
+    def fit_transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
+                      features_names: Optional = None, dataset: Optional[ArrayDataset] = None):
         """Learns the generalizations based on training data, and applies them to the data.
-
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -151,19 +141,23 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         y : array-like, shape (n_samples,), optional
             The target values. An array of int.
             This should contain the predictions of the original model on ``X``.
-
+        features_names : list of str, The feature names, in the order that they appear in the data,
+                        provided just if X and y were provided (optional).
+        dataset : Data wrapper containing the training input samples and the predictions of the
+                  original model on the training data.
+        Either X,y OR dataset need to be provided, not both.
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
             The array containing the representative values to which each record in
             ``X`` is mapped.
         """
-        self.fit(X, y)
-        return self.transform(X)
+        self.fit(X, y, features_names, dataset=dataset)
+        return self.transform(X, features_names, dataset=dataset)
 
-    def fit(self, X: Union[np.ndarray, pd.DataFrame] = None, y: Union[np.ndarray, pd.DataFrame] = None):
+    def fit(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
+            features_names: Optional = None, dataset: ArrayDataset = None):
         """Learns the generalizations based on training data.
-
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -171,7 +165,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         y : array-like, shape (n_samples,), optional
             The target values. An array of int.
             This should contain the predictions of the original model on ``X``.
-
+        features_names : list of str, The feature names, in the order that they appear in the data,
+                        provided just if X and y were provided (optional).
+        dataset : Data wrapper containing the training input samples and the predictions of the
+                  original model on the training data.
+        Either X,y OR dataset need to be provided, not both.
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
@@ -180,26 +178,25 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         """
 
         # take into account that estimator, X, y, cells, features may be None
-        if X is not None:
-            if type(X) == np.ndarray:
-                self.is_numpy = True
-            else:
-                self.is_numpy = False
-
         if X is not None and y is not None:
-            if self.is_numpy:
-                X, y = check_X_y(X, y, accept_sparse=True)
-            self.n_features_ = X.shape[1]
-        elif self.features:
-            self.n_features_ = len(self.features)
+            if dataset is not None:
+                raise ValueError('Either X,y OR dataset need to be provided, not both')
+            else:
+                dataset = ArrayDataset(X, y, features_names)
+
+        if dataset and dataset.get_samples() is not None and dataset.get_labels() is not None:
+            self.n_features_ = dataset.get_samples().shape[1]
+
+        elif dataset and dataset.features_names:
+            self.n_features_ = len(dataset.features_names)
         else:
             self.n_features_ = 0
 
-        if self.features:
-            self._features = self.features
+        if dataset and dataset.features_names:
+            self._features = dataset.features_names
         # if features is None, use numbers instead of names
         elif self.n_features_ != 0:
-            self._features = [i for i in range(self.n_features_)]
+            self._features = [str(i) for i in range(self.n_features_)]
         else:
             self._features = None
 
@@ -211,27 +208,24 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
-        if self.estimator and X is not None and y is not None:
+        if self.estimator and dataset and dataset.get_samples() is not None and dataset.get_labels() is not None:
+            x = pd.DataFrame(dataset.get_samples(), columns=self._features)
+            if not self.features_to_minimize:
+                self.features_to_minimize = self._features
+            self.features_to_minimize = [str(i) for i in self.features_to_minimize]
+            if not all(elem in self._features for elem in self.features_to_minimize):
+                raise ValueError('features to minimize should be a subset of features names')
+            x_QI = x.loc[:, self.features_to_minimize]
 
-            if self.is_numpy:
-                if not self.features_to_minimize:
-                    self.features_to_minimize = [i for i in range(len(self._features))]
-                x_QI = X[:, self.features_to_minimize]
-                self.features_to_minimize = [self._features[i] for i in self.features_to_minimize]
-                X = pd.DataFrame(X, columns=self._features)
-            else:
-                if not self.features_to_minimize:
-                    self.features_to_minimize = self._features
-                x_QI = X.loc[:, self.features_to_minimize]
-            x_QI = pd.DataFrame(x_QI, columns=self.features_to_minimize)
             # divide dataset into train and test
-            used_data = X
+            used_data = x
             if self.train_only_QI:
                 used_data = x_QI
             if self.is_regression:
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=14)
+                X_train, X_test, y_train, y_test = train_test_split(x, dataset.get_labels(), test_size=0.4, random_state=14)
             else:
-                X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.4, random_state=18)
+                X_train, X_test, y_train, y_test = train_test_split(x, dataset.get_labels(), stratify=dataset.get_labels(), test_size=0.4,
+                                                                    random_state=18)
 
             X_train_QI = X_train.loc[:, self.features_to_minimize]
             X_test_QI = X_test.loc[:, self.features_to_minimize]
@@ -245,7 +239,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             for feature in self._features:
                 if feature not in feature_data.keys():
                     fd = {}
-                    values = list(X.loc[:, feature])
+                    values = list(x.loc[:, feature])
                     if feature not in self.categorical_features:
                         fd['min'] = min(values)
                         fd['max'] = max(values)
@@ -257,7 +251,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # prepare data for DT
             categorical_features = [f for f in self._features if f in self.categorical_features and
                                     f in self.features_to_minimize]
-
 
             numeric_transformer = Pipeline(
                 steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
@@ -287,7 +280,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     ("cat", categorical_transformer, self.categorical_features),
                 ]
             )
-            preprocessor.fit(X)
+            preprocessor.fit(x)
             x_prepared = preprocessor.transform(X_train)
             if self.train_only_QI:
                 x_prepared = preprocessor_QI_features.transform(X_train_QI)
@@ -299,7 +292,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 self.dt_ = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=1)
             else:
                 self.dt_ = DecisionTreeClassifier(random_state=0, min_samples_split=2,
-                                              min_samples_leaf=1)
+                                                  min_samples_leaf=1)
             self.dt_.fit(x_prepared, y_train)
             self._modify_categorical_features(used_data)
 
@@ -328,7 +321,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
 
             # check accuracy
-            accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
+            accuracy = self.estimator.score(ArrayDataset(preprocessor.transform(generalized), y_test))
             print('Initial accuracy of model on generalized data, relative to original model predictions '
                   '(base generalization derived from tree, before improvements): %f' % accuracy)
 
@@ -348,7 +341,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         self._calculate_generalizations()
                         generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_,
                                                        self.cells_by_id_)
-                        accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
+                        accuracy = self.estimator.score(ArrayDataset(preprocessor.transform(generalized), y_test))
                         # if accuracy passed threshold roll back to previous iteration generalizations
                         if accuracy < self.target_accuracy:
                             self.cells_ = cells_previous_iter
@@ -374,7 +367,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
                     self._calculate_generalizations()
                     generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells_, self.cells_by_id_)
-                    accuracy = self.estimator.score(preprocessor.transform(generalized), y_test)
+                    accuracy = self.estimator.score(ArrayDataset(preprocessor.transform(generalized), y_test))
                     print('Removed feature: %s, new relative accuracy: %f' % (removed_feature, accuracy))
 
             # self.cells_ currently holds the chosen generalization based on target accuracy
@@ -385,14 +378,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Return the transformer
         return self
 
-    def transform(self, X: Union[np.ndarray, pd.DataFrame]):
+    def transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional = None, dataset: ArrayDataset = None):
         """ Transforms data records to representative points.
-
         Parameters
         ----------
         X : {array-like, sparse-matrix}, shape (n_samples, n_features), If provided as a pandas dataframe,
          may contain both numeric and categorical data.
             The input samples.
+        features_names : list of str, The feature names, in the order that they appear in the data,
+                        provided just if X was provided (optional).
+        dataset : Data wrapper containing the training input samples.
+        Either X OR dataset need to be provided, not both.
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
@@ -404,26 +400,30 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         msg = 'This %(name)s instance is not initialized yet. ' \
               'Call ‘fit’ or ‘set_params’ with ' \
               'appropriate arguments before using this method.'
-        check_is_fitted(self, ['cells', 'features'], msg=msg)
+        check_is_fitted(self, ['cells'], msg=msg)
 
-        if type(X) == np.ndarray:
-            # Input validation
-            X = check_array(X, accept_sparse=True)
-            self.is_numpy = True
-            X = pd.DataFrame(X, columns=self._features)
-        else:
-            self.is_numpy = False
+        if X is not None:
+            if dataset is not None:
+                raise ValueError('Either X OR dataset need to be provided, not both')
+            else:
+                dataset = ArrayDataset(X, features_names=features_names)
+        elif dataset is None:
+            raise ValueError('Either X OR dataset need to be provided, not both')
+        if dataset and dataset.features_names:
+            self._features = dataset.features_names
+        if dataset and dataset.get_samples() is not None:
+            x = pd.DataFrame(dataset.get_samples(), columns=self._features)
 
-        if X.shape[1] != self.n_features_ and self.n_features_ != 0:
+        if x.shape[1] != self.n_features_ and self.n_features_ != 0:
             raise ValueError('Shape of input is different from what was seen'
                              'in `fit`')
 
         if not self._features:
-            self._features = [i for i in range(X.shape[1])]
+            self._features = [i for i in range(x.shape[1])]
 
         representatives = pd.DataFrame(columns=self._features)  # only columns
-        generalized = pd.DataFrame(X, columns=self._features, copy=True)  # original data
-        mapped = np.zeros(X.shape[0])  # to mark records we already mapped
+        generalized = pd.DataFrame(x, columns=self._features, copy=True)  # original data
+        mapped = np.zeros(x.shape[0])  # to mark records we already mapped
 
         # iterate over cells (leaves in decision tree)
         for i in range(len(self.cells_)):
@@ -442,7 +442,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     representatives = representatives.drop(feature, axis=1)
 
             # get the indexes of all records that map to this cell
-            indexes = self._get_record_indexes_for_cell(X, self.cells_[i], mapped)
+            indexes = self._get_record_indexes_for_cell(x, self.cells_[i], mapped)
 
             # replace the values in the representative columns with the representative
             # values (leaves others untouched)
@@ -453,9 +453,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
                 replace.index = indexes
                 generalized.loc[indexes, representatives.columns] = replace
-        if self.is_numpy:
-            return generalized.to_numpy()
-        return generalized
+        if dataset and dataset.is_pandas:
+            return generalized
+        elif isinstance(X, pd.DataFrame):
+            return generalized
+        return generalized.to_numpy()
 
     def _get_record_indexes_for_cell(self, X, cell, mapped):
         indexes = []
@@ -639,7 +641,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # else: nothing to do, stay with previous cells
 
     def _calculate_level_cell_label(self, left_cell, right_cell, new_cell):
-        new_cell['hist'] = [x + y for x, y in zip(left_cell['hist'], right_cell['hist'])] if not self.is_regression else []
+        new_cell['hist'] = [x + y for x, y in
+                            zip(left_cell['hist'], right_cell['hist'])] if not self.is_regression else []
         new_cell['label'] = int(self.dt_.classes_[np.argmax(new_cell['hist'])]) if not self.is_regression else 1
 
     def _get_nodes_level(self, level):
@@ -796,8 +799,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     cells_by_id = copy.deepcopy(self.cells_by_id_)
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
                     generalized = self._generalize(original_data, prepared_data, nodes, new_cells, cells_by_id)
-                    accuracy_gain = self.estimator.score(self._preprocessor.transform(generalized),
-                                                         labels) - current_accuracy
+                    accuracy_gain = self.estimator.score(ArrayDataset(self._preprocessor.transform(generalized),
+                                                                      labels)) - current_accuracy
                     if accuracy_gain < 0:
                         accuracy_gain = 0
                     if accuracy_gain != 0:
@@ -819,8 +822,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     cells_by_id = copy.deepcopy(self.cells_by_id_)
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
                     generalized = self._generalize(original_data, prepared_data, nodes, new_cells, cells_by_id)
-                    accuracy_gain = self.estimator.score(self._preprocessor.transform(generalized),
-                                                         labels) - current_accuracy
+                    accuracy_gain = self.estimator.score(ArrayDataset(self._preprocessor.transform(generalized),
+                                                                      labels)) - current_accuracy
 
                     if accuracy_gain < 0:
                         accuracy_gain = 0

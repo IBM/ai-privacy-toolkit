@@ -180,7 +180,7 @@ class ArrayDataset(Dataset):
         if self.is_pandas:
             if features_names and not np.array_equal(features_names, x.columns):
                 raise ValueError("The supplied features are not the same as in the data features")
-            self.features_names = x.columns
+            self.features_names = x.columns.to_list()
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
