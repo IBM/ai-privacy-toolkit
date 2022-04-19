@@ -87,7 +87,7 @@ class Model(metaclass=ABCMeta):
         return self._output_type
 
     @property
-    def black_box_access(self) -> Any:
+    def black_box_access(self) -> bool:
         """
         Return True if the model is only available via query (API) access, i.e.,
         only the outputs of the model are exposed, and False if the model internals are also available.
@@ -98,7 +98,7 @@ class Model(metaclass=ABCMeta):
         return self._black_box_access
 
     @property
-    def unlimited_queries(self) -> Any:
+    def unlimited_queries(self) -> bool:
         """
         If black_box_access is True, Return whether a user can perform unlimited queries to the model API
         or whether there is a limit to the number of queries that can be submitted.
