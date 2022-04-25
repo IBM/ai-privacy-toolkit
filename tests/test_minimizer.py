@@ -796,7 +796,7 @@ def test_BaseEstimator_regression():
     transformed = gen.transform(dataset=ArrayDataset(x_train, features_names=features))
     print('Base model accuracy (R2 score): ', model.score(x_test, y_test))
     model.fit(transformed, y_train)
-    print('Base model accuracy (R2 score) after anonymization: ', model.score(x_test, y_test))
+    print('Base model accuracy (R2 score) after minimization: ', model.score(x_test, y_test))
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {
         'age': [-0.07816532626748085, -0.07090024650096893, -0.05637009255588055, -0.05092128552496433,

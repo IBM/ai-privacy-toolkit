@@ -22,6 +22,7 @@ from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnCl
 
 class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
     """ A transformer that generalizes data to representative points.
+
     Learns data generalizations based on an original model's predictions
     and a target accuracy. Once the generalizations are learned, can
     receive one or more data records and transform them to representative
@@ -58,6 +59,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         The required method to train data set for minimizing. Default is
         to train the tree just on the features that are given as
         features_to_minimize.
+    is_regression : Bool, optional
+        Whether the model is a regression model or not (if False, assumes
+        a classification model). Default is False.
+
     Attributes
     ----------
     features_ : list of str
@@ -69,8 +74,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         as measured on the training data.
     generalizations_ : object
         The generalizations that were learned (actual feature ranges).
-    Notes
-    -----
     """
 
     def __init__(self, estimator: Union[BaseEstimator, Model] = None, target_accuracy: float = 0.998,
@@ -95,11 +98,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def get_params(self, deep=True):
         """Get parameters for this estimator.
+
         Parameters
         ----------
         deep : boolean, optional
             If True, will return the parameters for this estimator and contained
             subobjects that are estimators.
+
         Returns
         -------
         params : mapping of string to any
@@ -116,6 +121,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def set_params(self, **params):
         """Set the parameters of this estimator.
+
         Returns
         -------
         self : object
@@ -134,6 +140,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     def fit_transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
                       features_names: Optional = None, dataset: Optional[ArrayDataset] = None):
         """Learns the generalizations based on training data, and applies them to the data.
+
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -158,6 +165,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     def fit(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
             features_names: Optional = None, dataset: ArrayDataset = None):
         """Learns the generalizations based on training data.
+
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -380,6 +388,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional = None, dataset: ArrayDataset = None):
         """ Transforms data records to representative points.
+
         Parameters
         ----------
         X : {array-like, sparse-matrix}, shape (n_samples, n_features), If provided as a pandas dataframe,
