@@ -94,7 +94,7 @@ def test_anonymize_pandas_nursery():
     pred = model.predict(encoded)
 
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features, train_only_QI=True)
-    anon = anonymizer.anonymize(x_train, pred)
+    anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
 
     assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
