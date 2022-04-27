@@ -44,12 +44,14 @@ class Anonymize:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
             raise ValueError("The list of quasi-identifiers cannot be empty")
+
         self.k = k
         self.quasi_identifiers = quasi_identifiers
         self.categorical_features = categorical_features
         self.is_regression = is_regression
         self.train_only_QI = train_only_QI
         self.features_names = None
+        self.features = None
 
     def anonymize(self, dataset: ArrayDataset) -> DATA_PANDAS_NUMPY_TYPE:
         """
@@ -59,13 +61,16 @@ class Anonymize:
                         original model on the training data.
         :return: An array containing the anonymized training dataset.
         """
-        if dataset.features_names is not None:
-            self.features_names = dataset.features_names
-            # if features is None, use numbers instead of names
-        elif dataset.get_samples().shape[1] != 0:
-            self.features_names = [i for i in range(dataset.get_samples().shape[1])]
+        if dataset.get_samples().shape[1] != 0:
+            self.features = [i for i in range(dataset.get_samples().shape[1])]
         else:
             raise ValueError('No data provided')
+
+        if dataset.features_names is not None:
+            self.features_names = dataset.features_names
+        else: # if no names provided, use numbers instead
+            self.features_names = self.features
+
         if not set(self.quasi_identifiers).issubset(set(self.features_names)):
             raise ValueError('Quasi identifiers should bs a subset of the supplied features or indexes in range of '
                              'the data columns')
@@ -85,24 +90,24 @@ class Anonymize:
     def _anonymize(self, x, y):
         if x.shape[0] != y.shape[0]:
             raise ValueError("x and y should have same number of rows")
-        x_anonymizer_train = x
-        if self.train_only_QI:
-            # build DT just on QI features
-            x_anonymizer_train = x[:, self.quasi_identifiers]
         if x.dtype.kind not in 'iufc':
             if not self.categorical_features:
                 raise ValueError('when supplying an array with non-numeric data, categorical_features must be defined')
-            x_prepared = self._modify_categorical_features(x_anonymizer_train)
+            x_prepared = self._modify_categorical_features(x)
         else:
-            x_prepared = x_anonymizer_train
+            x_prepared = x
+        x_anonymizer_train = x_prepared
+        if self.train_only_QI:
+            # build DT just on QI features
+            x_anonymizer_train = x_prepared[:, self.quasi_identifiers]
         if self.is_regression:
             self.anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
         else:
             self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
 
-        self.anonymizer.fit(x_prepared, y)
-        cells_by_id = self._calculate_cells(x, x_prepared)
-        return self._anonymize_data(x, x_prepared, cells_by_id)
+        self.anonymizer.fit(x_anonymizer_train, y)
+        cells_by_id = self._calculate_cells(x, x_anonymizer_train)
+        return self._anonymize_data(x, x_anonymizer_train, cells_by_id)
 
     def _calculate_cells(self, x, x_anonymizer_train):
         # x is original data, x_anonymizer_train is only QIs + 1-hot encoded
@@ -171,7 +176,7 @@ class Anonymize:
         used_features = self.features
         if self.train_only_QI:
             used_features = self.quasi_identifiers
-        numeric_features = [f for f in x.columns if f in used_features and f not in self.categorical_features]
+        numeric_features = [f for f in self.features if f in used_features and f not in self.categorical_features]
         categorical_features = [f for f in self.categorical_features if f in used_features]
         numeric_transformer = Pipeline(
             steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
