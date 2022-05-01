@@ -34,6 +34,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     need to supply an existing ``estimator`` to init.
     In summary, either ``estimator`` and ``target_accuracy`` should be
     supplied or ``cells`` should be supplied.
+
     Parameters
     ----------
     estimator : estimator, optional
@@ -153,6 +154,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         dataset : Data wrapper containing the training input samples and the predictions of the
                   original model on the training data.
         Either X,y OR dataset need to be provided, not both.
+
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
@@ -178,6 +180,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         dataset : Data wrapper containing the training input samples and the predictions of the
                   original model on the training data.
         Either X,y OR dataset need to be provided, not both.
+
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
@@ -242,7 +245,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 used_X_train = X_train_QI
 
             # collect feature data (such as min, max)
-
             feature_data = {}
             for feature in self._features:
                 if feature not in feature_data.keys():
@@ -391,13 +393,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         Parameters
         ----------
-        X : {array-like, sparse-matrix}, shape (n_samples, n_features), If provided as a pandas dataframe,
-         may contain both numeric and categorical data.
-            The input samples.
+        X : {array-like, sparse-matrix}, shape (n_samples, n_features), The input samples. If provided as a pandas
+            dataframe, may contain both numeric and categorical data.
         features_names : list of str, The feature names, in the order that they appear in the data,
-                        provided just if X was provided (optional).
-        dataset : Data wrapper containing the training input samples.
-        Either X OR dataset need to be provided, not both.
+                         provided just if X was provided (optional).
+        dataset : Data wrapper containing the training input samples. Either X OR dataset need to be provided, not both.
+
         Returns
         -------
         X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)

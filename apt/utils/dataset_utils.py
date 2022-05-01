@@ -42,7 +42,7 @@ def _load_diabetes(test_set_size: float = 0.3):
 
 def get_diabetes_dataset():
     """
-    Loads the Iris dataset from scikit-learn.
+    Loads the Diabetes dataset from scikit-learn.
 
     :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
     :return: Entire dataset and labels as numpy array.
@@ -52,7 +52,8 @@ def get_diabetes_dataset():
 
 def get_german_credit_dataset(test_set: float = 0.3):
     """
-    Loads the UCI German_credit dataset from `tests/datasets/german` or downloads it if necessary.
+    Loads the UCI German credit dataset from `tests/datasets/german` or downloads it from
+    https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/ if necessary.
 
     :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
     :return: Dataset and labels as pandas dataframes.
@@ -124,7 +125,8 @@ def _modify_german_dataset(data):
 
 def get_adult_dataset():
     """
-    Loads the UCI Adult dataset from `tests/datasets/adult` or downloads it if necessary.
+    Loads the UCI Adult dataset from `tests/datasets/adult` or downloads it from
+    https://archive.ics.uci.edu/ml/machine-learning-databases/adult/ if necessary.
 
     :return: Dataset and labels as pandas dataframes.
     """

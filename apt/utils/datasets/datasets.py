@@ -25,9 +25,8 @@ DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 
 
 def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
-
     """
-    converts from INPUT_DATA_ARRAY_TYPE to numpy array
+    Converts from INPUT_DATA_ARRAY_TYPE to numpy array
     """
     if type(arr) == np.ndarray:
         return arr
@@ -44,7 +43,7 @@ def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
 
 def array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
     """
-    converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
+    Converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
     """
     if type(arr) == np.ndarray:
         return torch.from_numpy(arr)
@@ -94,6 +93,7 @@ class StoredDataset(Dataset):
     def download(url: str, dest_path: str, filename: str, unzip: bool = False) -> None:
         """
         Download the dataset from URL
+
         :param url: dataset URL, the dataset will be requested from this URL
         :param dest_path: local dataset destination path
         :param filename: local dataset filename
@@ -118,6 +118,7 @@ class StoredDataset(Dataset):
     def extract_archive(zip_path: str, dest_path=None, remove_archive=False):
         """
         Extract dataset from archived file
+
         :param zip_path: path to archived file
         :param dest_path: directory path to uncompress the file to
         :param remove_archive: whether remove the archive file after uncompress (default False)
@@ -137,6 +138,7 @@ class StoredDataset(Dataset):
     def split_debug(datafile: str, dest_datafile: str, ratio: int, shuffle=True, delimiter=",", fmt=None) -> None:
         """
         Split the data and take only a part of it
+
         :param datafile: dataset file path
         :param dest_datafile: destination path for the partial dataset file
         :param ratio: part of the dataset to save
@@ -168,6 +170,7 @@ class ArrayDataset(Dataset):
                  features_names: Optional = None, **kwargs):
         """
         ArrayDataset constructor.
+
         :param x: collection of data samples
         :param y: collection of labels (optional)
         :param feature_names: list of str, The feature names, in the order that they appear in the data (optional)
@@ -199,6 +202,7 @@ class PytorchData(Dataset):
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, **kwargs):
         """
         PytorchData constructor.
+
         :param x: collection of data samples
         :param y: collection of labels (optional)
         :param kwargs: dataset parameters
@@ -246,6 +250,7 @@ class DatasetFactory:
     def register(cls, name: str) -> Callable:
         """
         Class method to register Dataset to the internal registry
+
         :param name: dataset name
         :return:
         """
@@ -262,9 +267,11 @@ class DatasetFactory:
     def create_dataset(cls, name: str, **kwargs) -> Dataset:
         """
         Factory command to create dataset instance.
+
         This method gets the appropriate Dataset class from the registry
         and creates an instance of it, while passing in the parameters
         given in ``kwargs``.
+
         :param name: The name of the dataset to create.
         :param kwargs: dataset parameters
         :return: An instance of the dataset that is created.
@@ -283,6 +290,7 @@ class Data:
     def __init__(self, train: Dataset = None, test: Dataset = None, **kwargs):
         """
         Data class constructor.
+
         The class stores train and test datasets.
         If neither of the datasets was provided,
         Both train and test datasets will be create using
