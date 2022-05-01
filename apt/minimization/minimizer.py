@@ -21,7 +21,8 @@ from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnCl
 
 
 class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
-    """ A transformer that generalizes data to representative points.
+    """
+    A transformer that generalizes data to representative points.
 
     Learns data generalizations based on an original model's predictions
     and a target accuracy. Once the generalizations are learned, can
@@ -34,53 +35,37 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     need to supply an existing ``estimator`` to init.
     In summary, either ``estimator`` and ``target_accuracy`` should be
     supplied or ``cells`` should be supplied.
-
-    Parameters
-    ----------
-    estimator : estimator, optional
-        The original model for which generalization is being performed.
-        Should be pre-fitted.
-    target_accuracy : float, optional
-        The required accuracy when applying the base model to the
-        generalized data. Accuracy is measured relative to the original
-        accuracy of the model.
-    categorical_features: list of str, optional
-        The list of categorical features should only be supplied when
-         passing data as a pandas dataframe.
-    features_to_minimize: List of str or numbers, optional
-        The features that need to be minimized in case of pandas data,
-         and indexes of features in case of numpy data.
-    cells : list of object, optional
-        The cells used to generalize records. Each cell must define a
-        range or subset of categories for each feature, as well as a
-        representative value for each feature.
-        This parameter should be used when instantiating a transformer
-        object without first fitting it.
-    train_only_QI : Bool, optional
-        The required method to train data set for minimizing. Default is
-        to train the tree just on the features that are given as
-        features_to_minimize.
-    is_regression : Bool, optional
-        Whether the model is a regression model or not (if False, assumes
-        a classification model). Default is False.
-
-    Attributes
-    ----------
-    features_ : list of str
-        The feature names, in the order that they appear in the data.
-    cells_ : list of object
-        The cells used to generalize records, as learned when calling fit.
-    ncp_ : float
-        The NCP (information loss) score of the resulting generalization,
-        as measured on the training data.
-    generalizations_ : object
-        The generalizations that were learned (actual feature ranges).
     """
 
-    def __init__(self, estimator: Union[BaseEstimator, Model] = None, target_accuracy: float = 0.998,
-                 cells: list = None, categorical_features: Union[np.ndarray, list] = None,
-                 features_to_minimize: Union[np.ndarray, list] = None, train_only_QI: bool = True,
-                 is_regression: bool = False):
+    def __init__(self, estimator: Union[BaseEstimator, Model] = None, target_accuracy: Optional[float] = 0.998,
+                 cells: Optional[list] = None, categorical_features: Optional[Union[np.ndarray, list]] = None,
+                 features_to_minimize: Optional[Union[np.ndarray, list]] = None, train_only_QI: Optional[bool] = True,
+                 is_regression: Optional[bool] = False):
+        """
+        Initialize the GeneralizeToRepresentative class.
+
+        :param estimator: The original model for which generalization is being performed. Should be pre-fitted.
+        :type estimator: sklearn `BaseEstimator` or `Model`
+        :param target_accuracy: The required relative accuracy when applying the base model to the generalized data.
+                                Accuracy is measured relative to the original accuracy of the model.
+        :type target_accuracy: float, optional
+        :param cells: The cells used to generalize records. Each cell must define a range or subset of categories for
+                      each feature, as well as a representative value for each feature. This parameter should be used
+                      when instantiating a transformer object without first fitting it.
+        :type cells: list of objects, optional
+        :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot
+                                     encoded before using them to train the decision tree model).
+        :type categorical_features: list of strings, optional
+        :param features_to_minimize: The features to be minimized.
+        :type features_to_minimize: List of strings or int, optional
+        :param train_only_QI: Whether to train the tree just on the ``features_to_minimize`` or on all features. Default
+                              is only on features_to_minimize.
+        :type train_only_QI: boolean, optional
+        :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
+                              Default is False.
+        :type is_regression: boolean, optional
+        :return None
+        """
         if issubclass(estimator.__class__, Model):
             self.estimator = estimator
         else:
@@ -98,18 +83,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.is_regression = is_regression
 
     def get_params(self, deep=True):
-        """Get parameters for this estimator.
+        """
+        Get parameters
 
-        Parameters
-        ----------
-        deep : boolean, optional
-            If True, will return the parameters for this estimator and contained
-            subobjects that are estimators.
-
-        Returns
-        -------
-        params : mapping of string to any
-            Parameter names mapped to their values.
+        :param deep: If True, will return the parameters for this estimator and contained
+                     sub-objects that are estimators.
+        :type deep: boolean, optional
+        :return: Parameter names mapped to their values
         """
         ret = {}
         ret['target_accuracy'] = self.target_accuracy
@@ -121,12 +101,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return ret
 
     def set_params(self, **params):
-        """Set the parameters of this estimator.
+        """
+        Set parameters
 
-        Returns
-        -------
-        self : object
-            Returns self.
+        :param target_accuracy: The required relative accuracy when applying the base model to the generalized data.
+                                Accuracy is measured relative to the original accuracy of the model.
+        :type target_accuracy: float, optional
+        :param cells: The cells used to generalize records. Each cell must define a range or subset of categories for
+                      each feature, as well as a representative value for each feature. This parameter should be used
+                      when instantiating a transformer object without first fitting it.
+        :type cells: list of objects, optional
+        :return self
         """
         if 'target_accuracy' in params:
             self.target_accuracy = params['target_accuracy']
@@ -136,30 +121,32 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     @property
     def generalizations(self):
+        """
+        Return the generalizations derived from the model and test data.
+
+        :return: generalizations object. Contains 3 sections: 'ranges' that contains ranges for numerical features,
+                                 'categories' that contains sub-groups of categories for categorical features, and
+                                 'untouched' that contains the features that could not be generalized.
+        """
         return self.generalizations_
 
     def fit_transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
-                      features_names: Optional = None, dataset: Optional[ArrayDataset] = None):
-        """Learns the generalizations based on training data, and applies them to the data.
+                      features_names: Optional[list] = None, dataset: Optional[ArrayDataset] = None):
+        """
+        Learns the generalizations based on training data, and applies them to the data.
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
-            The training input samples.
-        y : array-like, shape (n_samples,), optional
-            The target values. An array of int.
-            This should contain the predictions of the original model on ``X``.
-        features_names : list of str, The feature names, in the order that they appear in the data,
-                        provided just if X and y were provided (optional).
-        dataset : Data wrapper containing the training input samples and the predictions of the
-                  original model on the training data.
-        Either X,y OR dataset need to be provided, not both.
-
-        Returns
-        -------
-        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
-            The array containing the representative values to which each record in
-            ``X`` is mapped.
+        :param X: The training input samples.
+        :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
+        :param y: The target values. This should contain the predictions of the original model on ``X``.
+        :type y: array-like, shape (n_samples,), optional
+        :param features_names: The feature names, in the order that they appear in the data. Can be provided when
+                               passing the data as ``X`` and ``y``
+        :type features_names: list of strings, optional
+        :param dataset: Data wrapper containing the training input samples and the predictions of the original model
+                        on the training data. Either ``X``, ``y`` OR ``dataset`` need to be provided, not both.
+        :type dataset: `ArrayDataset`, optional
+        :return: Array containing the representative values to which each record in ``X`` is mapped, as numpy array or
+                 pandas DataFrame (depending on the type of ``X``), shape (n_samples, n_features)
         """
         self.fit(X, y, features_names, dataset=dataset)
         return self.transform(X, features_names, dataset=dataset)
@@ -168,24 +155,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             features_names: Optional = None, dataset: ArrayDataset = None):
         """Learns the generalizations based on training data.
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features), optional
-            The training input samples.
-        y : array-like, shape (n_samples,), optional
-            The target values. An array of int.
-            This should contain the predictions of the original model on ``X``.
-        features_names : list of str, The feature names, in the order that they appear in the data,
-                        provided just if X and y were provided (optional).
-        dataset : Data wrapper containing the training input samples and the predictions of the
-                  original model on the training data.
-        Either X,y OR dataset need to be provided, not both.
-
-        Returns
-        -------
-        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
-            The array containing the representative values to which each record in
-            ``X`` is mapped.
+        :param X: The training input samples.
+        :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
+        :param y: The target values. This should contain the predictions of the original model on ``X``.
+        :type y: array-like, shape (n_samples,), optional
+        :param features_names: The feature names, in the order that they appear in the data. Can be provided when
+                               passing the data as ``X`` and ``y``
+        :type features_names: list of strings, optional
+        :param dataset: Data wrapper containing the training input samples and the predictions of the original model
+                        on the training data. Either ``X``, ``y`` OR ``dataset`` need to be provided, not both.
+        :type dataset: `ArrayDataset`, optional
+        :return self
         """
 
         # take into account that estimator, X, y, cells, features may be None
@@ -388,22 +368,20 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Return the transformer
         return self
 
-    def transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional = None, dataset: ArrayDataset = None):
+    def transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional[list] = None,
+                  dataset: Optional[ArrayDataset] = None):
         """ Transforms data records to representative points.
 
-        Parameters
-        ----------
-        X : {array-like, sparse-matrix}, shape (n_samples, n_features), The input samples. If provided as a pandas
-            dataframe, may contain both numeric and categorical data.
-        features_names : list of str, The feature names, in the order that they appear in the data,
-                         provided just if X was provided (optional).
-        dataset : Data wrapper containing the training input samples. Either X OR dataset need to be provided, not both.
-
-        Returns
-        -------
-        X_transformed : numpy or pandas according to the input type, shape (n_samples, n_features)
-            The array containing the representative values to which each record in
-            ``X`` is mapped.
+        :param X: The training input samples.
+        :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
+        :param features_names: The feature names, in the order that they appear in the data. Can be provided when
+                               passing the data as ``X`` and ``y``
+        :type features_names: list of strings, optional
+        :param dataset: Data wrapper containing the training input samples and the predictions of the original model
+                        on the training data. Either ``X`` OR ``dataset`` need to be provided, not both.
+        :type dataset: `ArrayDataset`, optional
+        :return: Array containing the representative values to which each record in ``X`` is mapped, as numpy array or
+                 pandas DataFrame (depending on the type of ``X``), shape (n_samples, n_features)
         """
 
         # Check if fit has been called

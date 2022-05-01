@@ -27,6 +27,10 @@ DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
     """
     Converts from INPUT_DATA_ARRAY_TYPE to numpy array
+
+    :param arr: the array to transform
+    :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
+    :return the array transformed into a numpy array
     """
     if type(arr) == np.ndarray:
         return arr
@@ -44,6 +48,10 @@ def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
 def array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
     """
     Converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
+
+    :param arr: the array to transform
+    :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
+    :return the array transformed into a pytorch Tensor
     """
     if type(arr) == np.ndarray:
         return torch.from_numpy(arr)
@@ -67,37 +75,59 @@ class Dataset(metaclass=ABCMeta):
 
     @abstractmethod
     def get_samples(self) -> Collection[Any]:
-        """Return data samples"""
+        """
+        Return data samples
+
+        :return: the data samples
+        """
         pass
 
     @abstractmethod
     def get_labels(self) -> Collection[Any]:
-        """Return labels"""
+        """
+        Return labels
+
+        :return: the labels
+        """
         pass
 
 
 class StoredDataset(Dataset):
-    """Abstract Class for Storable Dataset"""
+    """Abstract Class for a Dataset that can be downloaded from a URL and stored in a file"""
 
     @abstractmethod
     def load_from_file(self, path: str):
-        """Load dataset from file"""
+        """
+        Load dataset from file
+
+        :param path: the path to the file
+        :type path: string
+        :return: None
+        """
         pass
 
     @abstractmethod
     def load(self, **kwargs):
-        """Load dataset"""
+        """
+        Load dataset
+
+        :return: None
+        """
         pass
 
     @staticmethod
-    def download(url: str, dest_path: str, filename: str, unzip: bool = False) -> None:
+    def download(url: str, dest_path: str, filename: str, unzip: Optional[bool] = False) -> None:
         """
         Download the dataset from URL
 
         :param url: dataset URL, the dataset will be requested from this URL
+        :type url: string
         :param dest_path: local dataset destination path
+        :type dest_path: string
         :param filename: local dataset filename
-        :param unzip: flag whether or not perform extraction
+        :type filename: string
+        :param unzip: flag whether or not perform extraction. Default is False.
+        :type unzip: boolean, optional
         :return: None
         """
         file_path = os.path.join(dest_path, filename)
@@ -115,13 +145,16 @@ class StoredDataset(Dataset):
             StoredDataset.extract_archive(zip_path=file_path, dest_path=dest_path, remove_archive=False)
 
     @staticmethod
-    def extract_archive(zip_path: str, dest_path=None, remove_archive=False):
+    def extract_archive(zip_path: str, dest_path: Optional[str] = None, remove_archive: Optional[bool] = False):
         """
         Extract dataset from archived file
 
         :param zip_path: path to archived file
+        :type zip_path: string
         :param dest_path: directory path to uncompress the file to
-        :param remove_archive: whether remove the archive file after uncompress (default False)
+        :type dest_path: string, optional
+        :param remove_archive: whether remove the archive file after uncompress. Default is False.
+        :type remove_archive: boolean, optional
         :return: None
         """
         logger.info("Extracting the dataset...")
@@ -135,16 +168,23 @@ class StoredDataset(Dataset):
         logger.info("Extracted the dataset")
 
     @staticmethod
-    def split_debug(datafile: str, dest_datafile: str, ratio: int, shuffle=True, delimiter=",", fmt=None) -> None:
+    def split_debug(datafile: str, dest_datafile: str, ratio: int, shuffle: Optional[bool] = True,
+                    delimiter: Optional[str] = ",", fmt: Optional[Union[str, list]] = None) -> None:
         """
         Split the data and take only a part of it
 
         :param datafile: dataset file path
+        :type datafile: string
         :param dest_datafile: destination path for the partial dataset file
+        :type dest_datafile: string
         :param ratio: part of the dataset to save
-        :param shuffle: whether to shuffle the data or not (default True)
-        :param delimiter: dataset delimiter (default ",")
-        :param fmt: format for the correct data saving
+        :type ratio: int
+        :param shuffle: whether to shuffle the data or not. Default is True.
+        :type shuffle: boolean, optional
+        :param delimiter: dataset delimiter. Default is ","
+        :type delimiter: string, optional
+        :param fmt: format for the correct data saving. As defined by numpy.savetxt(). Default is None.
+        :type fmt: string or sequence of strings, optional
         :return: None
         """
         if os.path.isfile(dest_datafile):
@@ -167,14 +207,17 @@ class ArrayDataset(Dataset):
     """Dataset that is based on x and y arrays (e.g., numpy/pandas/list...)"""
 
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None,
-                 features_names: Optional = None, **kwargs):
+                 features_names: Optional[list] = None, **kwargs):
         """
         ArrayDataset constructor.
 
         :param x: collection of data samples
-        :param y: collection of labels (optional)
-        :param feature_names: list of str, The feature names, in the order that they appear in the data (optional)
-        :param kwargs: dataset parameters
+        :type x: numpy array or pandas DataFrame or list or pytorch Tensor
+        :param y: collection of labels
+        :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
+        :param feature_names: The feature names, in the order that they appear in the data
+        :type feature_names: list of strings, optional
+        :return None
         """
         self.is_pandas = False
         self.features_names = features_names
@@ -189,11 +232,19 @@ class ArrayDataset(Dataset):
             raise ValueError('Non equivalent lengths of x and y')
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
-        """Return data samples as numpy array"""
+        """
+        Get data samples
+
+        :return data samples as numpy array
+        """
         return self._x
 
     def get_labels(self) -> OUTPUT_DATA_ARRAY_TYPE:
-        """Return labels as numpy array"""
+        """
+        Get labels
+
+        :return labels as numpy array
+        """
         return self._y
 
 
@@ -204,8 +255,9 @@ class PytorchData(Dataset):
         PytorchData constructor.
 
         :param x: collection of data samples
-        :param y: collection of labels (optional)
-        :param kwargs: dataset parameters
+        :type x: numpy array or pandas DataFrame or list or pytorch Tensor
+        :param y: collection of labels
+        :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
         """
         self.is_pandas = False
         self._y = array2torch_tensor(self, y) if y is not None else None
@@ -224,17 +276,39 @@ class PytorchData(Dataset):
 
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
-        """Return data samples as numpy array"""
+        """
+        Get data samples
+
+        :return samples as numpy array
+        """
         return array2numpy(self._x)
 
     def get_labels(self) -> OUTPUT_DATA_ARRAY_TYPE:
-        """Return labels as numpy array"""
+        """
+        Get labels
+
+        :return labels as numpy array
+        """
         return array2numpy(self._y) if self._y is not None else None
 
-    def get_sample_item(self, idx) -> Tensor:
+    def get_sample_item(self, idx: int) -> Tensor:
+        """
+        Get the sample according to the given index
+
+        :param idx: the index of the sample to return
+        :type idx: int
+        :return: the sample as a pytorch Tensor
+        """
         return self.x[idx]
 
-    def get_item(self, idx) -> Tensor:
+    def get_item(self, idx: int) -> Tensor:
+        """
+        Get the sample and label according to the given index
+
+        :param idx: the index of the sample to return
+        :type idx: int
+        :return: the sample and label as pytorch Tensors. Returned as a tuple (sample, label)
+        """
         sample, label = self.x[idx], self.y[idx]
         return sample, label
 
@@ -252,7 +326,8 @@ class DatasetFactory:
         Class method to register Dataset to the internal registry
 
         :param name: dataset name
-        :return:
+        :type name: string
+        :return: a Callable that returns the registered dataset class
         """
 
         def inner_wrapper(wrapped_class: Dataset) -> Any:
@@ -273,7 +348,9 @@ class DatasetFactory:
         given in ``kwargs``.
 
         :param name: The name of the dataset to create.
+        :type name: string
         :param kwargs: dataset parameters
+        :type kwargs: keyword arguments as expected by the class
         :return: An instance of the dataset that is created.
         """
         if name not in cls.registry:
@@ -287,14 +364,20 @@ class DatasetFactory:
 
 
 class Data:
-    def __init__(self, train: Dataset = None, test: Dataset = None, **kwargs):
+    def __init__(self, train: Dataset = None, test: Optional[Dataset] = None, **kwargs):
         """
         Data class constructor.
 
         The class stores train and test datasets.
         If neither of the datasets was provided,
-        Both train and test datasets will be create using
-        DatasetFactory to create a dataset instance
+        Both train and test datasets will be created using
+        DatasetFactory.
+
+        :param train: the training set
+        :type train: `Dataset`
+        :param test: the test set
+        :type test: `Dataset`, optional
+        :return None
         """
         if train or test:
             self.train = train
@@ -304,25 +387,49 @@ class Data:
             self.test = DatasetFactory.create_dataset(train=False, **kwargs)
 
     def get_train_set(self) -> Dataset:
-        """Return train DatasetBase"""
+        """
+        Get training set
+
+        :return training 'Dataset`
+        """
         return self.train
 
     def get_test_set(self) -> Dataset:
-        """Return test DatasetBase"""
+        """
+        Get test set
+
+        :return test 'Dataset`
+        """
         return self.test
 
     def get_train_samples(self) -> Collection[Any]:
-        """Return train set samples"""
+        """
+        Get train set samples
+
+        :return training samples
+        """
         return self.train.get_samples()
 
     def get_train_labels(self) -> Collection[Any]:
-        """Return train set labels"""
+        """
+        Get train set labels
+
+        :return training labels
+        """
         return self.train.get_labels()
 
     def get_test_samples(self) -> Collection[Any]:
-        """Return test set samples"""
+        """
+        Get test set samples
+
+        :return test samples
+        """
         return self.test.get_samples()
 
     def get_test_labels(self) -> Collection[Any]:
-        """Return test set labels"""
+        """
+        Get test set labels
+
+        :return test labels
+        """
         return self.test.get_labels()
