@@ -204,21 +204,19 @@ class StoredDataset(Dataset):
 
 
 class ArrayDataset(Dataset):
-    """Dataset that is based on x and y arrays (e.g., numpy/pandas/list...)"""
+    """
+    Dataset that is based on x and y arrays (e.g., numpy/pandas/list...)
+
+    :param x: collection of data samples
+    :type x: numpy array or pandas DataFrame or list or pytorch Tensor
+    :param y: collection of labels
+    :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
+    :param feature_names: The feature names, in the order that they appear in the data
+    :type feature_names: list of strings, optional
+    """
 
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None,
                  features_names: Optional[list] = None, **kwargs):
-        """
-        ArrayDataset constructor.
-
-        :param x: collection of data samples
-        :type x: numpy array or pandas DataFrame or list or pytorch Tensor
-        :param y: collection of labels
-        :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
-        :param feature_names: The feature names, in the order that they appear in the data
-        :type feature_names: list of strings, optional
-        :return None
-        """
         self.is_pandas = False
         self.features_names = features_names
         self._y = array2numpy(self, y) if y is not None else None
@@ -249,16 +247,15 @@ class ArrayDataset(Dataset):
 
 
 class PytorchData(Dataset):
+    """
+    Dataset for pytorch models.
 
+    :param x: collection of data samples
+    :type x: numpy array or pandas DataFrame or list or pytorch Tensor
+    :param y: collection of labels
+    :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
+    """
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, **kwargs):
-        """
-        PytorchData constructor.
-
-        :param x: collection of data samples
-        :type x: numpy array or pandas DataFrame or list or pytorch Tensor
-        :param y: collection of labels
-        :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
-        """
         self.is_pandas = False
         self._y = array2torch_tensor(self, y) if y is not None else None
         self._x = array2torch_tensor(self, x)
@@ -364,20 +361,19 @@ class DatasetFactory:
 
 
 class Data:
+    """
+    Class for storing train and test datasets.
+
+    :param train: the training set
+    :type train: `Dataset`
+    :param test: the test set
+    :type test: `Dataset`, optional
+    """
     def __init__(self, train: Dataset = None, test: Optional[Dataset] = None, **kwargs):
         """
         Data class constructor.
 
-        The class stores train and test datasets.
-        If neither of the datasets was provided,
-        Both train and test datasets will be created using
-        DatasetFactory.
-
-        :param train: the training set
-        :type train: `Dataset`
-        :param test: the test set
-        :type test: `Dataset`, optional
-        :return None
+        If neither of the datasets was provided, both train and test datasets will be created using `DatasetFactory`.
         """
         if train or test:
             self.train = train

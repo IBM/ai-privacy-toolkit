@@ -18,30 +18,26 @@ class Anonymize:
     Class for performing tailored, model-guided anonymization of training datasets for ML models.
 
     Based on the implementation described in: https://arxiv.org/abs/2007.13086
+
+    :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
+              other (when looking at the quasi identifiers). Should be at least 2.
+    :type k: int
+    :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
+                              in case of numpy data.
+    :type quasi_identifiers: np.ndarray or list
+    :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot encoded
+                                 before using them to train the decision tree model).
+    :type categorical_features: list, optional
+    :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
+                          Default is False.
+    :type categorical_features: list, optional
+    :param  train_only_QI: The required method to train data set for anonymization. Default is
+                           to train the tree on all features.
+    :type train_only_QI : boolean, optional
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
                  is_regression: Optional[bool] = False, train_only_QI: Optional[bool] = False):
-        """
-        Initialize the Anonymize class.
-
-        :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
-                  other (when looking at the quasi identifiers). Should be at least 2.
-        :type k: int
-        :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
-                                  in case of numpy data.
-        :type quasi_identifiers: np.ndarray or list
-        :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot encoded
-                                     before using them to train the decision tree model).
-        :type categorical_features: list, optional
-        :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
-                              Default is False.
-        :type categorical_features: list, optional
-        :param  train_only_QI: The required method to train data set for anonymization. Default is
-                               to train the tree on all features.
-        :type train_only_QI : boolean, optional
-        :return None
-        """
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:

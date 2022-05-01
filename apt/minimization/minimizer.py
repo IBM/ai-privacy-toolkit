@@ -35,37 +35,33 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     need to supply an existing ``estimator`` to init.
     In summary, either ``estimator`` and ``target_accuracy`` should be
     supplied or ``cells`` should be supplied.
+
+    :param estimator: The original model for which generalization is being performed. Should be pre-fitted.
+    :type estimator: sklearn `BaseEstimator` or `Model`
+    :param target_accuracy: The required relative accuracy when applying the base model to the generalized data.
+                            Accuracy is measured relative to the original accuracy of the model.
+    :type target_accuracy: float, optional
+    :param cells: The cells used to generalize records. Each cell must define a range or subset of categories for
+                  each feature, as well as a representative value for each feature. This parameter should be used
+                  when instantiating a transformer object without first fitting it.
+    :type cells: list of objects, optional
+    :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot
+                                 encoded before using them to train the decision tree model).
+    :type categorical_features: list of strings, optional
+    :param features_to_minimize: The features to be minimized.
+    :type features_to_minimize: List of strings or int, optional
+    :param train_only_QI: Whether to train the tree just on the ``features_to_minimize`` or on all features. Default
+                          is only on features_to_minimize.
+    :type train_only_QI: boolean, optional
+    :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
+                          Default is False.
+    :type is_regression: boolean, optional
     """
 
     def __init__(self, estimator: Union[BaseEstimator, Model] = None, target_accuracy: Optional[float] = 0.998,
                  cells: Optional[list] = None, categorical_features: Optional[Union[np.ndarray, list]] = None,
                  features_to_minimize: Optional[Union[np.ndarray, list]] = None, train_only_QI: Optional[bool] = True,
                  is_regression: Optional[bool] = False):
-        """
-        Initialize the GeneralizeToRepresentative class.
-
-        :param estimator: The original model for which generalization is being performed. Should be pre-fitted.
-        :type estimator: sklearn `BaseEstimator` or `Model`
-        :param target_accuracy: The required relative accuracy when applying the base model to the generalized data.
-                                Accuracy is measured relative to the original accuracy of the model.
-        :type target_accuracy: float, optional
-        :param cells: The cells used to generalize records. Each cell must define a range or subset of categories for
-                      each feature, as well as a representative value for each feature. This parameter should be used
-                      when instantiating a transformer object without first fitting it.
-        :type cells: list of objects, optional
-        :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot
-                                     encoded before using them to train the decision tree model).
-        :type categorical_features: list of strings, optional
-        :param features_to_minimize: The features to be minimized.
-        :type features_to_minimize: List of strings or int, optional
-        :param train_only_QI: Whether to train the tree just on the ``features_to_minimize`` or on all features. Default
-                              is only on features_to_minimize.
-        :type train_only_QI: boolean, optional
-        :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
-                              Default is False.
-        :type is_regression: boolean, optional
-        :return None
-        """
         if issubclass(estimator.__class__, Model):
             self.estimator = estimator
         else:

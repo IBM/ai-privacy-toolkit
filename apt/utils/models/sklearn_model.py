@@ -30,27 +30,23 @@ class SklearnModel(Model):
 class SklearnClassifier(SklearnModel):
     """
     Wrapper class for scikitlearn classification models.
+
+    :param model: The original sklearn model object.
+    :type model: scikitlearn classifier object
+    :param output_type: The type of output the model yields (vector/label only)
+    :type output_type: `ModelOutputType`
+    :param black_box_access: Boolean describing the type of deployment of the model (when in production).
+                             Set to True if the model is only available via query (API) access, i.e.,
+                             only the outputs of the model are exposed, and False if the model internals
+                             are also available. Default is True.
+    :type black_box_access: boolean, optional
+    :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
+                              unlimited queries to the model API or whether there is a limit to the number of
+                              queries that can be submitted. Default is True.
+    :type unlimited_queries: boolean, optional
     """
     def __init__(self, model: BaseEstimator, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
-        """
-        Initialize a `SklearnClassifier` wrapper object.
-
-        :param model: The original sklearn model object.
-        :type model: scikitlearn classifier object
-        :param output_type: The type of output the model yields (vector/label only)
-        :type output_type: `ModelOutputType`
-        :param black_box_access: Boolean describing the type of deployment of the model (when in production).
-                                 Set to True if the model is only available via query (API) access, i.e.,
-                                 only the outputs of the model are exposed, and False if the model internals
-                                 are also available. Default is True.
-        :type black_box_access: boolean, optional
-        :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
-                                  unlimited queries to the model API or whether there is a limit to the number of
-                                  queries that can be submitted. Default is True.
-        :type unlimited_queries: boolean, optional
-        :return None
-        """
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
         self._art_model = ArtSklearnClassifier(model)
 
@@ -80,25 +76,21 @@ class SklearnClassifier(SklearnModel):
 class SklearnRegressor(SklearnModel):
     """
     Wrapper class for scikitlearn regression models.
+
+    :param model: The original sklearn model object.
+    :type model: scikitlearn regressor object
+    :param black_box_access: Boolean describing the type of deployment of the model (when in production).
+                             Set to True if the model is only available via query (API) access, i.e.,
+                             only the outputs of the model are exposed, and False if the model internals
+                             are also available. Default is True.
+    :type black_box_access: boolean, optional
+    :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
+                              unlimited queries to the model API or whether there is a limit to the number of
+                              queries that can be submitted. Default is True.
+    :type unlimited_queries: boolean, optional
     """
     def __init__(self, model: BaseEstimator, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
-        """
-        Initialize a `SklearnRegressor` wrapper object.
-
-        :param model: The original sklearn model object.
-        :type model: scikitlearn regressor object
-        :param black_box_access: Boolean describing the type of deployment of the model (when in production).
-                                 Set to True if the model is only available via query (API) access, i.e.,
-                                 only the outputs of the model are exposed, and False if the model internals
-                                 are also available. Default is True.
-        :type black_box_access: boolean, optional
-        :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
-                                  unlimited queries to the model API or whether there is a limit to the number of
-                                  queries that can be submitted. Default is True.
-        :type unlimited_queries: boolean, optional
-        :return None
-        """
         super().__init__(model, ModelOutputType.REGRESSOR_SCALAR, black_box_access, unlimited_queries, **kwargs)
         self._art_model = ScikitlearnRegressor(model)
 
