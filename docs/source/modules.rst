@@ -1,8 +1,7 @@
-ai-privacy-toolkit
-==================
+apt
+===
 
 .. toctree::
    :maxdepth: 4
 
    apt
-   tests

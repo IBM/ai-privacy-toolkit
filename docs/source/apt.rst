@@ -5,26 +5,16 @@ Subpackages
 -----------
 
 .. toctree::
+   :maxdepth: 4
 
-    apt.anonymization
-    apt.minimization
-
-Submodules
-----------
-
-apt.utils module
-----------------
-
-.. automodule:: apt.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
+   apt.anonymization
+   apt.minimization
+   apt.utils
 
 Module contents
 ---------------
 
 .. automodule:: apt
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
