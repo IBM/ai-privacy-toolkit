@@ -24,48 +24,6 @@ OUTPUT_DATA_ARRAY_TYPE = np.ndarray
 DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
 
 
-def array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
-    """
-    Converts from INPUT_DATA_ARRAY_TYPE to numpy array
-
-    :param arr: the array to transform
-    :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
-    :return the array transformed into a numpy array
-    """
-    if type(arr) == np.ndarray:
-        return arr
-    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
-        self.is_pandas = True
-        return arr.to_numpy()
-    if isinstance(arr, list):
-        return np.array(arr)
-    if type(arr) == Tensor:
-        return arr.detach().cpu().numpy()
-
-    raise ValueError('Non supported type: ', type(arr).__name__)
-
-
-def array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
-    """
-    Converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
-
-    :param arr: the array to transform
-    :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
-    :return the array transformed into a pytorch Tensor
-    """
-    if type(arr) == np.ndarray:
-        return torch.from_numpy(arr)
-    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
-        self.is_pandas = True
-        return torch.from_numpy(arr.to_numpy())
-    if isinstance(arr, list):
-        return torch.tensor(arr)
-    if type(arr) == Tensor:
-        return arr
-
-    raise ValueError('Non supported type: ', type(arr).__name__)
-
-
 class Dataset(metaclass=ABCMeta):
     """Base Abstract Class for Dataset"""
 
@@ -90,6 +48,46 @@ class Dataset(metaclass=ABCMeta):
         :return: the labels
         """
         pass
+
+    def _array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Converts from INPUT_DATA_ARRAY_TYPE to numpy array
+
+        :param arr: the array to transform
+        :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
+        :return: the array transformed into a numpy array
+        """
+        if type(arr) == np.ndarray:
+            return arr
+        if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+            self.is_pandas = True
+            return arr.to_numpy()
+        if isinstance(arr, list):
+            return np.array(arr)
+        if type(arr) == Tensor:
+            return arr.detach().cpu().numpy()
+
+        raise ValueError('Non supported type: ', type(arr).__name__)
+
+    def _array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
+        """
+        Converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
+
+        :param arr: the array to transform
+        :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
+        :return: the array transformed into a pytorch Tensor
+        """
+        if type(arr) == np.ndarray:
+            return torch.from_numpy(arr)
+        if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+            self.is_pandas = True
+            return torch.from_numpy(arr.to_numpy())
+        if isinstance(arr, list):
+            return torch.tensor(arr)
+        if type(arr) == Tensor:
+            return arr
+
+        raise ValueError('Non supported type: ', type(arr).__name__)
 
 
 class StoredDataset(Dataset):
@@ -219,8 +217,8 @@ class ArrayDataset(Dataset):
                  features_names: Optional[list] = None, **kwargs):
         self.is_pandas = False
         self.features_names = features_names
-        self._y = array2numpy(self, y) if y is not None else None
-        self._x = array2numpy(self, x)
+        self._y = self._array2numpy(y) if y is not None else None
+        self._x = self._array2numpy(x)
         if self.is_pandas:
             if features_names and not np.array_equal(features_names, x.columns):
                 raise ValueError("The supplied features are not the same as in the data features")
@@ -233,7 +231,7 @@ class ArrayDataset(Dataset):
         """
         Get data samples
 
-        :return data samples as numpy array
+        :return: data samples as numpy array
         """
         return self._x
 
@@ -241,7 +239,7 @@ class ArrayDataset(Dataset):
         """
         Get labels
 
-        :return labels as numpy array
+        :return: labels as numpy array
         """
         return self._y
 
@@ -257,36 +255,34 @@ class PytorchData(Dataset):
     """
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, **kwargs):
         self.is_pandas = False
-        self._y = array2torch_tensor(self, y) if y is not None else None
-        self._x = array2torch_tensor(self, x)
+        self._y = self._array2torch_tensor(y) if y is not None else None
+        self._x = self._array2torch_tensor(x)
         if self.is_pandas:
             self.features_names = x.columns
 
         if y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
 
-
         if self._y is not None:
             self.__getitem__ = self.get_item
         else:
             self.__getitem__ = self.get_sample_item
 
-
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """
-        Get data samples
+        Get data samples.
 
-        :return samples as numpy array
+        :return: samples as numpy array
         """
-        return array2numpy(self._x)
+        return self._array2numpy(self._x)
 
     def get_labels(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """
-        Get labels
+        Get labels.
 
-        :return labels as numpy array
+        :return: labels as numpy array
         """
-        return array2numpy(self._y) if self._y is not None else None
+        return self._array2numpy(self._y) if self._y is not None else None
 
     def get_sample_item(self, idx: int) -> Tensor:
         """
@@ -386,7 +382,7 @@ class Data:
         """
         Get training set
 
-        :return training 'Dataset`
+        :return: training 'Dataset`
         """
         return self.train
 
@@ -394,7 +390,7 @@ class Data:
         """
         Get test set
 
-        :return test 'Dataset`
+        :return: test 'Dataset`
         """
         return self.test
 
@@ -402,7 +398,7 @@ class Data:
         """
         Get train set samples
 
-        :return training samples
+        :return: training samples
         """
         return self.train.get_samples()
 
@@ -410,7 +406,7 @@ class Data:
         """
         Get train set labels
 
-        :return training labels
+        :return: training labels
         """
         return self.train.get_labels()
 
@@ -418,7 +414,7 @@ class Data:
         """
         Get test set samples
 
-        :return test samples
+        :return: test samples
         """
         return self.test.get_samples()
 
@@ -426,6 +422,6 @@ class Data:
         """
         Get test set labels
 
-        :return test labels
+        :return: test labels
         """
         return self.test.get_labels()

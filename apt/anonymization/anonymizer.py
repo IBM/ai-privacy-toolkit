@@ -30,10 +30,10 @@ class Anonymize:
     :type categorical_features: list, optional
     :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
                           Default is False.
-    :type categorical_features: list, optional
-    :param  train_only_QI: The required method to train data set for anonymization. Default is
-                           to train the tree on all features.
-    :type train_only_QI : boolean, optional
+    :type is_regression: list, optional
+    :param train_only_QI: The required method to train data set for anonymization. Default is
+                          to train the tree on all features.
+    :type train_only_QI: boolean, optional
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,

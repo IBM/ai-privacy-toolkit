@@ -22,7 +22,7 @@ class SklearnModel(Model):
 
         :param test_data: Test data.
         :type train_data: `Dataset`
-        :return the score as float (for classifiers, between 0 and 1)
+        :return: the score as float (for classifiers, between 0 and 1)
         """
         return self.model.score(test_data.get_samples(), test_data.get_labels(), **kwargs)
 
@@ -56,7 +56,7 @@ class SklearnClassifier(SklearnModel):
 
         :param train_data: Training data.
         :type train_data: `Dataset`
-        :return None
+        :return: None
         """
         encoder = OneHotEncoder(sparse=False)
         y_encoded = encoder.fit_transform(train_data.get_labels().reshape(-1, 1))
@@ -100,7 +100,7 @@ class SklearnRegressor(SklearnModel):
 
         :param train_data: Training data.
         :type train_data: `Dataset`
-        :return None
+        :return: None
         """
         self._art_model.fit(train_data.get_samples(), train_data.get_labels(), **kwargs)
 

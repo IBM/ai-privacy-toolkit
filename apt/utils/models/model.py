@@ -66,7 +66,7 @@ class Model(metaclass=ABCMeta):
 
         :param test_data: Test data.
         :type train_data: `Dataset`
-        :return the score as float (for classifiers, between 0 and 1)
+        :return: the score as float (for classifiers, between 0 and 1)
         """
         return NotImplementedError
 

@@ -49,9 +49,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                  encoded before using them to train the decision tree model).
     :type categorical_features: list of strings, optional
     :param features_to_minimize: The features to be minimized.
-    :type features_to_minimize: List of strings or int, optional
+    :type features_to_minimize: list of strings or int, optional
     :param train_only_QI: Whether to train the tree just on the ``features_to_minimize`` or on all features. Default
-                          is only on features_to_minimize.
+                          is only on ``features_to_minimize``.
     :type train_only_QI: boolean, optional
     :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
                           Default is False.
@@ -107,7 +107,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                       each feature, as well as a representative value for each feature. This parameter should be used
                       when instantiating a transformer object without first fitting it.
         :type cells: list of objects, optional
-        :return self
+        :return: self
         """
         if 'target_accuracy' in params:
             self.target_accuracy = params['target_accuracy']
@@ -161,7 +161,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         :param dataset: Data wrapper containing the training input samples and the predictions of the original model
                         on the training data. Either ``X``, ``y`` OR ``dataset`` need to be provided, not both.
         :type dataset: `ArrayDataset`, optional
-        :return self
+        :return: self
         """
 
         # take into account that estimator, X, y, cells, features may be None
