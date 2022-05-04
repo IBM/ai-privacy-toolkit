@@ -1,7 +1,5 @@
 from typing import Optional
 
-import numpy as np
-
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.base import BaseEstimator
 
@@ -70,7 +68,7 @@ class SklearnClassifier(SklearnModel):
         :type x: `Dataset`
         :return: Predictions from the model as numpy array (class probabilities, if supported).
         """
-        return self._art_model.predict(x, **kwargs)
+        return self._art_model.predict(x.get_samples(), **kwargs)
 
 
 class SklearnRegressor(SklearnModel):
@@ -112,4 +110,4 @@ class SklearnRegressor(SklearnModel):
         :type x: `Dataset`
         :return: Predictions from the model as numpy array.
         """
-        return self._art_model.predict(x, **kwargs)
+        return self._art_model.predict(x.get_samples(), **kwargs)

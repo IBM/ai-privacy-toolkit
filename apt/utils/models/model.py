@@ -10,6 +10,10 @@ class ModelOutputType(Enum):
     CLASSIFIER_SCALAR = auto()  # label only
     REGRESSOR_SCALAR = auto()  # value
 
+class ScoringMethod(Enum):
+    ACCURACY = auto()  # number of correct predictions divided by the number of samples
+    MEAN_SQUARED_ERROR = auto()  # mean squared error between the predictions and true labels
+
 
 class Model(metaclass=ABCMeta):
     """
@@ -54,7 +58,7 @@ class Model(metaclass=ABCMeta):
         Perform predictions using the model for input `x`.
 
         :param x: Input samples.
-        :type x: `np.ndarray` or `pandas.DataFrame`
+        :type x: `Dataset`
         :return: Predictions from the model as numpy array.
         """
         raise NotImplementedError

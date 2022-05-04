@@ -5,7 +5,7 @@ Implementation of utility classes for dataset handling
 """
 
 from abc import ABCMeta, abstractmethod
-from typing import Callable, Collection, Any, Union, List, Optional
+from typing import Callable, Collection, Any, Union, List, Optional, Type
 
 import tarfile
 import os
@@ -323,7 +323,7 @@ class DatasetFactory:
         :return: a Callable that returns the registered dataset class
         """
 
-        def inner_wrapper(wrapped_class: Dataset) -> Any:
+        def inner_wrapper(wrapped_class: Type[Dataset]) -> Any:
             if name in cls.registry:
                 logger.warning('Dataset %s already exists. Will replace it', name)
             cls.registry[name] = wrapped_class
