@@ -6,7 +6,8 @@ from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 
 class ModelOutputType(Enum):
-    CLASSIFIER_VECTOR = auto()  # probabilities or logits
+    CLASSIFIER_PROBABILITIES = auto()  # vector of probabilities
+    CLASSIFIER_LOGITS = auto()  # vector of logits
     CLASSIFIER_SCALAR = auto()  # label only
     REGRESSOR_SCALAR = auto()  # value
 

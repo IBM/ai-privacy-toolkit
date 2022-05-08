@@ -1,9 +1,11 @@
 from typing import Optional
 
 import numpy as np
+from sklearn.preprocessing import OneHotEncoder
+
 import tensorflow as tf
 from tensorflow import keras
-from sklearn.preprocessing import OneHotEncoder
+tf.compat.v1.disable_eager_execution()
 
 from apt.utils.models import Model, ModelOutputType, ScoringMethod
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
@@ -41,8 +43,10 @@ class KerasClassifier(KerasModel):
     def __init__(self, model: keras.models.Model, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
-        tf.compat.v1.disable_eager_execution()
-        self._art_model = ArtKerasClassifier(model)
+        logits = False
+        if output_type == ModelOutputType.CLASSIFIER_LOGITS:
+            logits = True
+        self._art_model = ArtKerasClassifier(model, use_logits=logits)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """
@@ -77,7 +81,7 @@ class KerasClassifier(KerasModel):
         :return: the score as float (between 0 and 1)
         """
         y = check_and_transform_label_format(test_data.get_labels(), self._art_model.nb_classes)
-        predicted = self.predict(test_data.get_samples())
+        predicted = self.predict(test_data)
         if scoring_method == ScoringMethod.ACCURACY:
             return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
 
@@ -135,7 +139,9 @@ class KerasClassifier(KerasModel):
 #         :return: the score as float
 #         """
 #         y = check_and_transform_label_format(test_data.get_labels(), self._art_model.nb_classes)
-#         predicted = self.predict(test_data.get_samples())
+#         predicted = self.predict(test_data)
 #         if scoring_method == ScoringMethod.MEAN_SQUARED_ERROR:
 #             mse = keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.SUM)
 #             return mse(y, predicted).numpy()
+#         else:
+#             raise NotImplementedError('Only MEAN_SQUARED_ERROR supported as scoring method')

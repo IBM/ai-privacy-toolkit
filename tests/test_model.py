@@ -7,15 +7,14 @@ from apt.utils import dataset_utils
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier
 
-from tensorflow import keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Softmax, Input
+from tensorflow.keras.layers import Dense, Input
 
 
 def test_sklearn_classifier():
     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset()
     underlying_model = RandomForestClassifier()
-    model = SklearnClassifier(underlying_model, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(underlying_model, ModelOutputType.CLASSIFIER_PROBABILITIES)
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     model.fit(train)
@@ -48,25 +47,15 @@ def test_keras_classifier():
     underlying_model.add(Dense(10, activation="relu"))
     underlying_model.add(Dense(3, activation='softmax'))
 
-    underlying_model.compile(loss="categorical_crossentropy", optimizer="adam",
-                             metrics=["accuracy"])
-    # underlying_model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(lr=0.01),
-    #                          metrics=["accuracy"])
+    underlying_model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
-    # sometimes required for wrapper to work
-    from sklearn.preprocessing import OneHotEncoder
+    model = KerasClassifier(underlying_model, ModelOutputType.CLASSIFIER_PROBABILITIES)
 
-    encoder = OneHotEncoder(sparse=False)
-    y_encoded = encoder.fit_transform(y_train.reshape(-1, 1))
-    underlying_model.fit(x_train, y_encoded, epochs=10)
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    model.fit(train)
+    pred = model.predict(test)
+    assert(pred.shape[0] == x_test.shape[0])
 
-    # model = KerasClassifier(underlying_model, ModelOutputType.CLASSIFIER_VECTOR)
-    #
-    # train = ArrayDataset(x_train, y_train)
-    # test = ArrayDataset(x_test, y_test)
-    # model.fit(train)
-    # pred = model.predict(test)
-    # assert(pred.shape[0] == x_test.shape[0])
-    #
-    # score = model.score(test)
-    # assert(0.0 <= score <= 1.0)
+    score = model.score(test)
+    assert(0.0 <= score <= 1.0)
