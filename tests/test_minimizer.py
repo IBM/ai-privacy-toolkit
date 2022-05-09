@@ -11,7 +11,7 @@ from sklearn.preprocessing import OneHotEncoder
 
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from apt.utils.dataset_utils import get_iris_dataset, get_adult_dataset, get_nursery_dataset, get_german_credit_dataset
+from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_nursery_dataset_pd, get_german_credit_dataset_pd
 from apt.utils.datasets import ArrayDataset
 from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor
 
@@ -39,7 +39,7 @@ def test_minimizer_params(data):
     y = [1, 1, 0]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
 
     gen = GeneralizeToRepresentative(model, cells=cells)
@@ -63,9 +63,10 @@ def test_minimizer_fit(data):
     y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
-    predictions = model.predict(X)
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -73,7 +74,7 @@ def test_minimizer_fit(data):
     train_dataset = ArrayDataset(X, predictions, features_names=features)
 
     gen.fit(dataset=train_dataset)
-    transformed = gen.transform(dataset=ArrayDataset(X))
+    transformed = gen.transform(dataset=ad)
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {}, 'categories': {}, 'untouched': ['height', 'age']}
 
@@ -131,9 +132,9 @@ def test_minimizer_fit_pandas(data):
     encoded = pd.DataFrame(encoded)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
-    predictions = model.predict(encoded)
+    predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -212,9 +213,9 @@ def test_minimizer_params_categorical(data):
     encoded = pd.DataFrame(encoded)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
-    predictions = model.predict(encoded)
+    predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
     # Append classifier to preprocessing pipeline.
@@ -244,16 +245,17 @@ def test_minimizer_fit_QI(data):
     QI = ['age', 'weight']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
-    predictions = model.predict(X)
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
     gen = GeneralizeToRepresentative(model, target_accuracy=0.5, features_to_minimize=QI)
     train_dataset = ArrayDataset(X, predictions, features_names=features)
     gen.fit(dataset=train_dataset)
-    transformed = gen.transform(dataset=ArrayDataset(X))
+    transformed = gen.transform(dataset=ad)
     gener = gen.generalizations_
     expexted_generalizations = {'ranges': {'age': [], 'weight': [67.5]}, 'categories': {}, 'untouched': ['height']}
     for key in expexted_generalizations['ranges']:
@@ -313,9 +315,9 @@ def test_minimizer_fit_pandas_QI(data):
     encoded = pd.DataFrame(encoded)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
-    predictions = model.predict(encoded)
+    predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -351,13 +353,13 @@ def test_minimizer_fit_pandas_QI(data):
 
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
-    (x_train, y_train), (x_test, y_test) = get_iris_dataset()
+    (x_train, y_train), (x_test, y_test) = get_iris_dataset_np()
     QI = ['sepal length (cm)', 'petal length (cm)']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(x_train, y_train))
-    predictions = model.predict(x_train)
+    predictions = model.predict(ArrayDataset(x_train))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -391,7 +393,7 @@ def test_minimize_ndarray_iris():
 
 
 def test_minimize_pandas_adult():
-    (x_train, y_train), (x_test, y_test) = get_adult_dataset()
+    (x_train, y_train), (x_test, y_test) = get_adult_dataset_pd()
     x_train = x_train.head(1000)
     y_train = y_train.head(1000)
 
@@ -420,9 +422,9 @@ def test_minimize_pandas_adult():
     encoded = pd.DataFrame(encoded)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y_train))
-    predictions = model.predict(encoded)
+    predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -466,7 +468,7 @@ def test_minimize_pandas_adult():
 
 
 def test_german_credit_pandas():
-    (x_train, y_train), (x_test, y_test) = get_german_credit_dataset()
+    (x_train, y_train), (x_test, y_test) = get_german_credit_dataset_pd()
     features = ["Existing_checking_account", "Duration_in_month", "Credit_history", "Purpose", "Credit_amount",
                 "Savings_account", "Present_employment_since", "Installment_rate", "Personal_status_sex", "debtors",
                 "Present_residence", "Property", "Age", "Other_installment_plans", "Housing",
@@ -493,9 +495,9 @@ def test_german_credit_pandas():
     encoded = pd.DataFrame(encoded)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y_train))
-    predictions = model.predict(encoded)
+    predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -545,7 +547,7 @@ def test_regression():
     base_est = DecisionTreeRegressor(random_state=10, min_samples_split=2)
     model = SklearnRegressor(base_est)
     model.fit(ArrayDataset(x_train, y_train))
-    predictions = model.predict(x_train)
+    predictions = model.predict(ArrayDataset(x_train))
     QI = ['age', 'bmi', 's2', 's5']
     features = ['age', 'sex', 'bmi', 'bp',
                 's1', 's2', 's3', 's4', 's5', 's6']
@@ -626,9 +628,10 @@ def test_X_y(data):
     QI = [0, 2]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
-    predictions = model.predict(X)
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 
@@ -676,9 +679,10 @@ def test_X_y_features_names(data):
     QI = ['age', 'weight']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_VECTOR)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
-    predictions = model.predict(X)
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
 

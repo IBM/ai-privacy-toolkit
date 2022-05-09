@@ -8,6 +8,7 @@ from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
 from art.estimators.regression.scikitlearn import ScikitlearnRegressor
+from art.utils import check_and_transform_label_format
 
 
 class SklearnModel(Model):
@@ -52,12 +53,14 @@ class SklearnClassifier(SklearnModel):
         """
         Fit the model using the training data.
 
-        :param train_data: Training data.
+        :param train_data: Training data. Labels are expected to either be one-hot encoded or a 1D-array of categorical
+                           labels (consecutive integers starting at 0).
         :type train_data: `Dataset`
         :return: None
         """
-        encoder = OneHotEncoder(sparse=False)
-        y_encoded = encoder.fit_transform(train_data.get_labels().reshape(-1, 1))
+        y = train_data.get_labels()
+        self.nb_classes = self.get_nb_classes(y)
+        y_encoded = check_and_transform_label_format(y, nb_classes=self.nb_classes)
         self._art_model.fit(train_data.get_samples(), y_encoded, **kwargs)
 
     def predict(self, x: Dataset, **kwargs) -> OUTPUT_DATA_ARRAY_TYPE:

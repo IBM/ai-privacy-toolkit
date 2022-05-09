@@ -52,12 +52,12 @@ class KerasClassifier(KerasModel):
         """
         Fit the model using the training data.
 
-        :param train_data: Training data.
+        :param train_data: Training data. Labels are expected to either be one-hot encoded or a 1D-array of categorical
+                           labels (consecutive integers starting at 0).
         :type train_data: `Dataset`
         :return: None
         """
-        encoder = OneHotEncoder(sparse=False)
-        y_encoded = encoder.fit_transform(train_data.get_labels().reshape(-1, 1))
+        y_encoded = check_and_transform_label_format(train_data.get_labels())
         self._art_model.fit(train_data.get_samples(), y_encoded, **kwargs)
 
     def predict(self, x: Dataset, **kwargs) -> OUTPUT_DATA_ARRAY_TYPE:
@@ -84,6 +84,8 @@ class KerasClassifier(KerasModel):
         predicted = self.predict(test_data)
         if scoring_method == ScoringMethod.ACCURACY:
             return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+        else:
+            raise NotImplementedError
 
 
 # class KerasRegressor(KerasModel):
