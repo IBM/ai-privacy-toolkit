@@ -12,7 +12,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
@@ -234,24 +234,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     feature_data[feature] = fd
 
             # prepare data for DT
-            categorical_features = [f for f in self._features if f in self.categorical_features and
-                                    f in self.features_to_minimize]
-
-            numeric_transformer = Pipeline(
-                steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
-            )
-
-            numeric_features = [f for f in self._features if f not in self.categorical_features and
-                                f in self.features_to_minimize]
-            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
-
-            preprocessor_QI_features = ColumnTransformer(
-                transformers=[
-                    ("num", numeric_transformer, numeric_features),
-                    ("cat", categorical_transformer, categorical_features),
-                ]
-            )
-            preprocessor_QI_features.fit(x_QI)
 
             # preprocessor to fit data that have features not included in QI (to get accuracy)
             numeric_features = [f for f in self._features if f not in self.categorical_features]
@@ -266,9 +248,29 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 ]
             )
             preprocessor.fit(x)
-            x_prepared = preprocessor.transform(X_train)
+
             if self.train_only_QI:
+                categorical_features = [f for f in self._features if f in self.categorical_features and
+                                        f in self.features_to_minimize]
+
+                numeric_transformer = Pipeline(
+                        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+                )
+
+                numeric_features = [f for f in self._features if f not in self.categorical_features and
+                                    f in self.features_to_minimize]
+                categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+                preprocessor_QI_features = ColumnTransformer(
+                        transformers=[
+                            ("num", numeric_transformer, numeric_features),
+                            ("cat", categorical_transformer, categorical_features),
+                        ]
+                )
+                preprocessor_QI_features.fit(x_QI)
                 x_prepared = preprocessor_QI_features.transform(X_train_QI)
+            else:
+                x_prepared = preprocessor.transform(X_train)
 
             self._preprocessor = preprocessor
 
@@ -297,9 +299,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._calculate_generalizations()
 
             # apply generalizations to test data
-            x_prepared_test = preprocessor.transform(X_test)
             if self.train_only_QI:
                 x_prepared_test = preprocessor_QI_features.transform(X_test_QI)
+            else:
+                x_prepared_test = preprocessor.transform(X_test)
 
             x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self.categorical_data.columns)
 
