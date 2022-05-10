@@ -173,7 +173,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         if dataset and dataset.get_samples() is not None and dataset.get_labels() is not None:
             self.n_features_ = dataset.get_samples().shape[1]
-
         elif dataset and dataset.features_names:
             self.n_features_ = len(dataset.features_names)
         else:
@@ -231,7 +230,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         fd['max'] = max(values)
                         fd['range'] = max(values) - min(values)
                     else:
-                        fd['range'] = len(values)
+                        fd['range'] = len(np.unique(values))
                     feature_data[feature] = fd
 
             # prepare data for DT
