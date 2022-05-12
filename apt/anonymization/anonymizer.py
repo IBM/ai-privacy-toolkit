@@ -101,11 +101,11 @@ class Anonymize:
             # build DT just on QI features
             x_anonymizer_train = x_prepared[:, self.quasi_identifiers]
         if self.is_regression:
-            self.anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+            self._anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
         else:
-            self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+            self._anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
 
-        self.anonymizer.fit(x_anonymizer_train, y)
+        self._anonymizer.fit(x_anonymizer_train, y)
         cells_by_id = self._calculate_cells(x, x_anonymizer_train)
         return self._anonymize_data(x, x_anonymizer_train, cells_by_id)
 
@@ -113,16 +113,16 @@ class Anonymize:
         # x is original data, x_anonymizer_train is only QIs + 1-hot encoded
         cells_by_id = {}
         leaves = []
-        for node, feature in enumerate(self.anonymizer.tree_.feature):
+        for node, feature in enumerate(self._anonymizer.tree_.feature):
             if feature == -2:  # leaf node
                 leaves.append(node)
-                hist = [int(i) for i in self.anonymizer.tree_.value[node][0]]
+                hist = [int(i) for i in self._anonymizer.tree_.value[node][0]]
                 # TODO we may change the method for choosing representative for cell
                 # label_hist = self.anonymizer.tree_.value[node][0]
                 # label = int(self.anonymizer.classes_[np.argmax(label_hist)])
                 cell = {'label': 1, 'hist': hist, 'id': int(node)}
                 cells_by_id[cell['id']] = cell
-        self.nodes = leaves
+        self._nodes = leaves
         self._find_representatives(x, x_anonymizer_train, cells_by_id.values())
         return cells_by_id
 
@@ -153,8 +153,8 @@ class Anonymize:
                     cell['representative'][feature] = min_value
 
     def _find_sample_nodes(self, samples):
-        paths = self.anonymizer.decision_path(samples).toarray()
-        node_set = set(self.nodes)
+        paths = self._anonymizer.decision_path(samples).toarray()
+        node_set = set(self._nodes)
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & node_set))[0] for p in paths]
 
     def _find_sample_cells(self, samples, cells_by_id):
