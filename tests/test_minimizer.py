@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 import pandas as pd
+from numpy.testing import assert_almost_equal
+
 from sklearn.compose import ColumnTransformer
 
 from sklearn.datasets import load_boston, load_diabetes
@@ -912,13 +914,12 @@ def test_blackbox_model():
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ad)
     gener = gen.generalizations
-    expected_generalizations = {'ranges': {'0': [], '1': [], '2': [4.849999904632568, 5.049999952316284],
-                                           '3': [0.7000000029802322, 1.600000023841858]},
+    expected_generalizations = {'ranges': {'0': [], '1': [], '2': [4.849999904632568], '3': [0.7000000029802322]},
                                 'categories': {},
                                 'untouched': []}
 
     for key in expected_generalizations['ranges']:
-        assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
+        assert_almost_equal(expected_generalizations['ranges'][key], gener['ranges'][key])
     for key in expected_generalizations['categories']:
         assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
                 set([frozenset(sl) for sl in gener['categories'][key]]))
