@@ -937,3 +937,25 @@ def test_blackbox_model():
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+
+def test_untouched():
+    cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}}, "label": 0,
+              'categories': {'gender': ['male']}, "representative": {"age": 26, "height": 149}},
+             {"id": 2, "ranges": {"age": {"start": 39, "end": None}}, "label": 1,
+              'categories': {'gender': ['female']}, "representative": {"age": 58, "height": 163}},
+             {"id": 3, "ranges": {"age": {"start": None, "end": 38}}, "label": 0,
+              'categories': {'gender': ['male']}, "representative": {"age": 31, "height": 184}},
+             {"id": 4, "ranges": {"age": {"start": 39, "end": None}}, "label": 1,
+              'categories': {'gender': ['male', 'female']}, "representative": {"age": 45, "height": 176}}
+             ]
+    gen = GeneralizeToRepresentative(cells=cells)
+    gen._calculate_generalizations()
+    gener = gen.generalizations
+    expected_generalizations = {'ranges': {'age': [38, 39]}, 'categories': {}, 'untouched': ['gender']}
+    for key in expected_generalizations['ranges']:
+        assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
+    for key in expected_generalizations['categories']:
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
+                set([frozenset(sl) for sl in gener['categories'][key]]))
+    assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
