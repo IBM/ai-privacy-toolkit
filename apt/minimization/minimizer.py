@@ -416,38 +416,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         if not self._features:
             self._features = [i for i in range(x.shape[1])]
 
-        representatives = pd.DataFrame(columns=self._features)  # only columns
-        generalized = pd.DataFrame(x, columns=self._features, copy=True)  # original data
         mapped = np.zeros(x.shape[0])  # to mark records we already mapped
-
-        # iterate over cells (leaves in decision tree)
+        all_indexes = []
         for i in range(len(self.cells)):
-            # Copy the representatives from the cells into another data structure:
-            # iterate over features in test data
-            for feature in self._features:
-                # if feature has a representative value in the cell and should not
-                # be left untouched, take the representative value
-                if feature in self.cells[i]['representative'] and \
-                        ('untouched' not in self.cells[i]
-                         or feature not in self.cells[i]['untouched']):
-                    representatives.loc[i, feature] = self.cells[i]['representative'][feature]
-                # else, drop the feature (removes from representatives columns that
-                # do not have a representative value or should remain untouched)
-                elif feature in representatives.columns.tolist():
-                    representatives = representatives.drop(feature, axis=1)
-
-            # get the indexes of all records that map to this cell
             indexes = self._get_record_indexes_for_cell(x, self.cells[i], mapped)
+            all_indexes.append(indexes)
+        generalized = self._generalize_indexes(x, self.cells, all_indexes)
 
-            # replace the values in the representative columns with the representative
-            # values (leaves others untouched)
-            if indexes and not representatives.columns.empty:
-                if len(indexes) > 1:
-                    replace = pd.concat([representatives.loc[i].to_frame().T] * len(indexes)).reset_index(drop=True)
-                else:
-                    replace = representatives.loc[i].to_frame().T.reset_index(drop=True)
-                replace.index = indexes
-                generalized.loc[indexes, representatives.columns] = replace
         if dataset and dataset.is_pandas:
             return generalized
         elif isinstance(X, pd.DataFrame):
@@ -711,11 +686,19 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & nodeSet))[0] for p in paths]
 
     def _generalize(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
+        mapping_to_cells = self._map_to_cells(prepared_data, level_nodes, cells_by_id)
+        all_indexes = []
+        for i in range(len(cells)):
+            # get the indexes of all records that map to this cell
+            indexes = [j for j in mapping_to_cells if mapping_to_cells[j]['id'] == cells[i]['id']]
+            all_indexes.append(indexes)
+        return self._generalize_indexes(original_data, cells, all_indexes)
+
+    def _generalize_indexes(self, original_data, cells, all_indexes):
         # prepared data include one hot encoded categorical data + QI
         representatives = pd.DataFrame(columns=self._features)  # empty except for columns
-        generalized = pd.DataFrame(prepared_data, columns=self._categorical_data.columns, copy=True)
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
-        mapping_to_cells = self._map_to_cells(generalized, level_nodes, cells_by_id)
+
         # iterate over cells (leaves in decision tree)
         for i in range(len(cells)):
             # This code just copies the representatives from the cells into another data structure
@@ -731,9 +714,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 elif feature in representatives.columns.tolist():
                     representatives = representatives.drop(feature, axis=1)
 
-            # get the indexes of all records that map to this cell
-            indexes = [j for j in mapping_to_cells if mapping_to_cells[j]['id'] == cells[i]['id']]
-
+            indexes = all_indexes[i]
             # replaces the values in the representative columns with the representative values
             # (leaves others untouched)
             if indexes and not representatives.columns.empty:
