@@ -238,8 +238,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             X_train_QI = X_train.loc[:, self.features_to_minimize]
             X_test_QI = X_test.loc[:, self.features_to_minimize]
             used_X_train = X_train
+            used_X_test = X_test
             if self.train_only_features_to_minimize:
                 used_X_train = X_train_QI
+                used_X_test = X_test_QI
 
             # collect feature data (such as min, max)
             feature_data = {}
@@ -255,48 +257,20 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         fd['range'] = len(np.unique(values))
                     feature_data[feature] = fd
 
-            # prepare data for DT
-
-            # preprocessor to fit data that have features not included in QI (to get accuracy)
-            numeric_features = [f for f in self._features if f not in self.categorical_features]
-            numeric_transformer = Pipeline(
-                steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
-            )
-            categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
-            preprocessor = ColumnTransformer(
-                transformers=[
-                    ("num", numeric_transformer, numeric_features),
-                    ("cat", categorical_transformer, self.categorical_features),
-                ]
-            )
-            preprocessor.fit(x)
-
-            if self.train_only_features_to_minimize:
-                categorical_features = [f for f in self._features if f in self.categorical_features and
-                                        f in self.features_to_minimize]
-
+            # default encoder in case none provided
+            if self.encoder is None:
+                numeric_features = [f for f in self._features if f not in self.categorical_features]
                 numeric_transformer = Pipeline(
                         steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
                 )
-
-                numeric_features = [f for f in self._features if f not in self.categorical_features and
-                                    f in self.features_to_minimize]
                 categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
-
-                preprocessor_QI_features = ColumnTransformer(
+                self.encoder = ColumnTransformer(
                         transformers=[
                             ("num", numeric_transformer, numeric_features),
-                            ("cat", categorical_transformer, categorical_features),
+                            ("cat", categorical_transformer, self.categorical_features),
                         ]
                 )
-                preprocessor_QI_features.fit(x_QI)
-                x_prepared = preprocessor_QI_features.transform(X_train_QI)
-            else:
-                x_prepared = preprocessor.transform(X_train)
-
-            self._preprocessor = preprocessor
-            if self.encoder is None:
-                self.encoder = preprocessor
+                self.encoder.fit(x)
 
             self.cells = []
             self._categorical_values = {}
@@ -306,11 +280,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             else:
                 self._dt = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                                   min_samples_leaf=1)
-            self._dt.fit(x_prepared, y_train)
 
+            # prepare data for DT
             self._encode_categorical_features(used_data, save_mapping=True)
-
-            x_prepared = pd.DataFrame(x_prepared, columns=self._categorical_data.columns)
+            x_prepared = self._encode_categorical_features(used_X_train)
+            self._dt.fit(x_prepared, y_train)
+            x_prepared_test = self._encode_categorical_features(used_X_test)
 
             self._calculate_cells()
             self._modify_cells()
@@ -324,15 +299,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # self._cells currently holds the generalization created from the tree leaves
             self._calculate_generalizations()
-
-            # apply generalizations to test data
-            if self.train_only_features_to_minimize:
-                x_prepared_test = preprocessor_QI_features.transform(X_test_QI)
-            else:
-                x_prepared_test = preprocessor.transform(X_test)
-
-            x_prepared_test = pd.DataFrame(x_prepared_test, index=X_test.index, columns=self._categorical_data.columns)
-
             generalized = self._generalize(X_test, x_prepared_test, nodes, self.cells, self._cells_by_id)
 
             # check accuracy
@@ -473,7 +439,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         mapped.itemset(i, 1)
         return True
 
-    def _encode_categorical_features(self, X, save_mapping = False):
+    def _encode_categorical_features(self, X, save_mapping=False):
         if save_mapping:
             self._categorical_values = {}
             self._one_hot_vector_features_to_features = {}
@@ -499,7 +465,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 except KeyError:
                     print("feature " + feature + "not found in training data")
 
-        self._categorical_data = X.drop(features_to_remove, axis=1)
+        new_data = X.drop(features_to_remove, axis=1)
+        if save_mapping:
+            self._encoded_features = new_data.columns
+        return new_data
 
     def _cell_contains_numeric(self, f, range, x):
         i = self._features.index(f)
@@ -538,7 +507,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             return [cell]
 
         cells = []
-        feature = self._categorical_data.columns[feature_index]
+        feature = self._encoded_features[feature_index]
         threshold = self._dt.tree_.threshold[node]
         left_child = self._dt.tree_.children_left[node]
         right_child = self._dt.tree_.children_right[node]
@@ -569,7 +538,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _modify_cells(self):
         cells = []
-        features = self._categorical_data.columns
+        features = self._encoded_features
         for cell in self.cells:
             new_cell = {'id': cell['id'], 'label': cell['label'], 'ranges': {}, 'categories': {}, 'hist': cell['hist'],
                         'untouched': [], 'representative': None}
@@ -844,7 +813,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self._remove_categorical_untouched(self._generalizations)
 
     def _find_range_count(self, samples, ranges):
-        samples_df = pd.DataFrame(samples, columns=self._categorical_data.columns)
+        samples_df = pd.DataFrame(samples, columns=self._encoded_features)
         range_counts = {}
         last_value = None
         for r in ranges.keys():
