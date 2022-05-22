@@ -74,8 +74,8 @@ def test_minimizer_fit(data):
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
     train_dataset = ArrayDataset(X, predictions, features_names=features)
 
     gen.fit(dataset=train_dataset)
@@ -101,6 +101,9 @@ def test_minimizer_fit(data):
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_minimizer_fit_pandas(data):
@@ -145,7 +148,8 @@ def test_minimizer_fit_pandas(data):
 
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5,
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features)
     train_dataset = ArrayDataset(X, predictions)
     gen.fit(dataset=train_dataset)
@@ -168,6 +172,9 @@ def test_minimizer_fit_pandas(data):
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+
+    rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_minimizer_params_categorical(data):
@@ -226,11 +233,15 @@ def test_minimizer_params_categorical(data):
         predictions = np.argmax(predictions, axis=1)
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5,
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features, cells=cells)
     train_dataset = ArrayDataset(X, predictions)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ArrayDataset(X))
+
+    rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_minimizer_fit_QI(data):
@@ -257,8 +268,8 @@ def test_minimizer_fit_QI(data):
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5, features_to_minimize=QI)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=QI)
     train_dataset = ArrayDataset(X, predictions, features_names=features)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ad)
@@ -283,6 +294,9 @@ def test_minimizer_fit_QI(data):
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_minimizer_fit_pandas_QI(data):
@@ -329,7 +343,8 @@ def test_minimizer_fit_pandas_QI(data):
 
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5,
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features, features_to_minimize=QI)
     train_dataset = ArrayDataset(X, predictions)
     gen.fit(dataset=train_dataset)
@@ -356,6 +371,9 @@ def test_minimizer_fit_pandas_QI(data):
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
+    rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_minimize_ndarray_iris():
     features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
@@ -368,8 +386,8 @@ def test_minimize_ndarray_iris():
     predictions = model.predict(ArrayDataset(x_train))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.3, features_to_minimize=QI)
+    target_accuracy = 0.3
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=QI)
     # gen.fit(dataset=ArrayDataset(x_train, predictions))
     transformed = gen.fit_transform(dataset=ArrayDataset(x_train, predictions, features_names=features))
     gener = gen.generalizations
@@ -396,6 +414,9 @@ def test_minimize_ndarray_iris():
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_minimize_pandas_adult():
@@ -433,8 +454,8 @@ def test_minimize_pandas_adult():
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7,
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features, features_to_minimize=QI)
     gen.fit(dataset=ArrayDataset(x_train, predictions, features_names=features))
     transformed = gen.transform(dataset=ArrayDataset(x_train))
@@ -472,6 +493,9 @@ def test_minimize_pandas_adult():
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
 
+    rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_german_credit_pandas():
     (x_train, y_train), (x_test, y_test) = get_german_credit_dataset_pd()
@@ -506,8 +530,8 @@ def test_german_credit_pandas():
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7,
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features, features_to_minimize=QI)
     gen.fit(dataset=ArrayDataset(x_train, predictions))
     transformed = gen.transform(dataset=ArrayDataset(x_train))
@@ -545,6 +569,9 @@ def test_german_credit_pandas():
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
 
+    rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_regression():
     dataset = load_diabetes()
@@ -558,7 +585,8 @@ def test_regression():
     features = ['age', 'sex', 'bmi', 'bp',
                 's1', 's2', 's3', 's4', 's5', 's6']
 
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, is_regression=True,
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, is_regression=True,
                                      features_to_minimize=QI)
     gen.fit(dataset=ArrayDataset(x_train, predictions, features_names=features))
     transformed = gen.transform(dataset=ArrayDataset(x_train, features_names=features))
@@ -615,6 +643,9 @@ def test_regression():
         assert (ncp > 0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
 
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_X_y(data):
     features = [0, 1, 2]
@@ -640,8 +671,8 @@ def test_X_y(data):
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5, features_to_minimize=QI)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=QI)
     gen.fit(X=X, y=predictions)
     transformed = gen.transform(X)
     gener = gen.generalizations
@@ -665,6 +696,9 @@ def test_X_y(data):
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_X_y_features_names(data):
@@ -691,8 +725,8 @@ def test_X_y_features_names(data):
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5, features_to_minimize=QI)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=QI)
     gen.fit(X=X, y=predictions, features_names=features)
     transformed = gen.transform(X=X, features_names=features)
     gener = gen.generalizations
@@ -716,6 +750,9 @@ def test_X_y_features_names(data):
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_BaseEstimator_classification(data):
@@ -760,7 +797,8 @@ def test_BaseEstimator_classification(data):
 
     # Append classifier to preprocessing pipeline.
     # Now we have a full prediction pipeline.
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5,
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
                                      categorical_features=categorical_features, features_to_minimize=QI)
     train_dataset = ArrayDataset(X, predictions)
     gen.fit(dataset=train_dataset)
@@ -787,6 +825,9 @@ def test_BaseEstimator_classification(data):
         assert (ncp > 0)
         assert (((transformed[modified_features]).equals(X[modified_features])) == False)
 
+    rel_accuracy = model.score(preprocessor.transform(transformed), predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_BaseEstimator_regression():
     dataset = load_diabetes()
@@ -799,8 +840,8 @@ def test_BaseEstimator_regression():
     QI = ['age', 'bmi', 's2', 's5']
     features = ['age', 'sex', 'bmi', 'bp',
                 's1', 's2', 's3', 's4', 's5', 's6']
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.7, is_regression=True,
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, is_regression=True,
                                      features_to_minimize=QI)
     gen.fit(dataset=ArrayDataset(x_train, predictions, features_names=features))
     transformed = gen.transform(dataset=ArrayDataset(x_train, features_names=features))
@@ -857,6 +898,9 @@ def test_BaseEstimator_regression():
         assert (ncp > 0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
 
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_keras_model():
     (X, y), (x_test, y_test) = get_iris_dataset_np()
@@ -874,8 +918,8 @@ def test_keras_model():
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
     test_dataset = ArrayDataset(x_test, predictions)
 
     gen.fit(dataset=test_dataset)
@@ -895,6 +939,9 @@ def test_keras_model():
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
 
 def test_blackbox_model():
     (X, y), (x_test, y_test) = get_iris_dataset_np()
@@ -907,8 +954,8 @@ def test_blackbox_model():
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
-
-    gen = GeneralizeToRepresentative(model, target_accuracy=0.5)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
     train_dataset = ArrayDataset(x_test, predictions)
 
     gen.fit(dataset=train_dataset)
@@ -938,6 +985,9 @@ def test_blackbox_model():
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
         assert (((transformed[indexes]) != (X[indexes])).any())
+
+    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
 def test_untouched():
