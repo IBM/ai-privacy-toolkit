@@ -94,7 +94,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
                 loss.backward()
 
                 self._optimizer.step()
-                correct = self.get_step_correct(model_outputs, o_batch)
+                correct = self.get_step_correct(model_outputs[-1], o_batch)
                 tot_correct += correct
                 total += o_batch.shape[0]
             train_acc = float(tot_correct) / total
