@@ -125,7 +125,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         if is_best:
             shutil.copyfile(filepath, os.path.join(path, 'model_best.tar'))
 
-    def load_checkpoint(self, model_name: str, path: str = None):
+    def load_checkpoint_by_path(self, model_name: str, path: str = None):
         """
         Load model only based on the check point path
         :param model_name: check point filename
@@ -150,6 +150,12 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
 
         if self._optimizer and 'opt_state_dict' in checkpoint:
             self._optimizer.load_state_dict(checkpoint['opt_state_dict'])
+
+    def load_latest_checkpoint(self):
+        self.load_checkpoint_by_path('latest.tar')
+
+    def load_best_checkpoint(self):
+        self.load_checkpoint_by_path('model_best.tar')
 
 
 class PyTorchClassifier(PyTorchModel):
