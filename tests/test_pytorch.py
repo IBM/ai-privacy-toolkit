@@ -48,16 +48,20 @@ def test_nursery_pytorch():
             out = self.fc4(out)
             return self.classifier(out)
 
-    mlp_model = pytorch_model(4, 24)
-    mlp_model = torch.nn.DataParallel(mlp_model)
+    model = pytorch_model(4, 24)
+    model = torch.nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(mlp_model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-    mlp_art_model = PyTorchClassifier(model=mlp_model, output_type=ModelOutputType.CLASSIFIER_VECTOR, loss=criterion,
+    art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_VECTOR, loss=criterion,
                                       optimizer=optimizer, input_shape=(24,),
                                       nb_classes=4)
-    mlp_art_model.fit(ArrayDataset(x_train.astype(np.float32), y_train))
+    art_model.fit(ArrayDataset(x_train.astype(np.float32), y_train))
 
-    pred = np.array([np.argmax(arr) for arr in mlp_art_model.predict(ArrayDataset(x_test.astype(np.float32)))])
+    pred = np.array([np.argmax(arr) for arr in art_model.predict(ArrayDataset(x_test.astype(np.float32)))])
 
     print('Base model accuracy: ', np.sum(pred == y_test) / len(y_test))
+    art_model.load_best_state_dict_checkpoint()
+
+
+
