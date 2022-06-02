@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 
-from apt.utils.datasets import ArrayDataset
+from apt.utils.datasets import ArrayDataset, Data, Dataset
+from apt.utils.datasets.datasets import PytorchData
 from apt.utils.models import ModelOutputType
 from apt.utils.models.pytorch_model import PyTorchClassifier
 from art.utils import load_nursery
@@ -54,14 +55,11 @@ def test_nursery_pytorch():
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
     art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_VECTOR, loss=criterion,
-                                      optimizer=optimizer, input_shape=(24,),
-                                      nb_classes=4)
-    art_model.fit(ArrayDataset(x_train.astype(np.float32), y_train))
+                                  optimizer=optimizer, input_shape=(24,),
+                                  nb_classes=4)
+    art_model.fit(PytorchData(x_train.astype(np.float32), y_train))
 
     pred = np.array([np.argmax(arr) for arr in art_model.predict(ArrayDataset(x_test.astype(np.float32)))])
 
     print('Base model accuracy: ', np.sum(pred == y_test) / len(y_test))
-    art_model.load_best_state_dict_checkpoint()
-
-
-
+    art_model.load_best_model_checkpoint()
