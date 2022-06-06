@@ -40,7 +40,7 @@ class pytorch_model(nn.Module):
         out = self.fc4(out)
         return self.classifier(out)
 
-def test_nursery_pytorch():
+def test_nursery_pytorch_state_dict():
     (x_train, y_train), (x_test, y_test), _, _ = load_nursery(test_set=0.5)
     # reduce size of training set to make attack slightly better
     train_set_size = 500
@@ -59,9 +59,37 @@ def test_nursery_pytorch():
     art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_VECTOR, loss=criterion,
                                   optimizer=optimizer, input_shape=(24,),
                                   nb_classes=4)
-    art_model.fit(PytorchData(x_train.astype(np.float32), y_train))
+    art_model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=False)
 
     pred = np.array([np.argmax(arr) for arr in art_model.predict(ArrayDataset(x_test.astype(np.float32)))])
 
     print('Base model accuracy: ', np.sum(pred == y_test) / len(y_test))
     art_model.load_best_state_dict_checkpoint()
+
+
+def test_nursery_pytorch_save_entire_model():
+    (x_train, y_train), (x_test, y_test), _, _ = load_nursery(test_set=0.5)
+    # reduce size of training set to make attack slightly better
+    train_set_size = 500
+    x_train = x_train[:train_set_size]
+    y_train = y_train[:train_set_size]
+    x_test = x_test[:train_set_size]
+    y_test = y_test[:train_set_size]
+
+
+
+    model = pytorch_model(4, 24)
+    # model = torch.nn.DataParallel(model)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+
+    art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_VECTOR, loss=criterion,
+                                  optimizer=optimizer, input_shape=(24,),
+                                  nb_classes=4)
+    art_model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True)
+
+    pred = np.array([np.argmax(arr) for arr in art_model.predict(ArrayDataset(x_test.astype(np.float32)))])
+
+    print('Base model accuracy: ', np.sum(pred == y_test) / len(y_test))
+    art_model.load_best_model_checkpoint()
+
