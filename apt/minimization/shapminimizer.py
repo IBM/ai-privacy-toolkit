@@ -1,3 +1,5 @@
+from itertools import accumulate
+
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin, MetaEstimatorMixin
 from sklearn.compose import ColumnTransformer
@@ -9,9 +11,11 @@ from typing import Union
 import numpy as np
 from sklearn.tree._tree import Tree
 from aix360.algorithms.shap import KernelExplainer
-#from AIX360.aix360.algorithms.shap import KernelExplainer
 
-class Minimizer(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
+
+# from AIX360.aix360.algorithms.shap import KernelExplainer
+
+class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
     # TODO: add type hints and fix when integrating, check if need cells
     def __init__(self, estimator, data_encoder=None,
                  target_accuracy: float = 0.998, categorical_features: Union[np.ndarray, list] = None,
@@ -37,12 +41,24 @@ class Minimizer(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         :return:
         """
 
+    @staticmethod
+    def get_feature_indices(numerical_features, categorical_features, categorical_encoder):
+        numerical_indices = {feature: [i] for i, feature in enumerate(numerical_features)}
+        base = len(numerical_indices)
+        categorical_indices = {}
+        for feature, categories in zip(categorical_features, categorical_encoder.categories_):
+            categorical_indices[feature] = list(range(base, base + len(categories)))
+            base = base + len(categories)
+
+        return {**numerical_indices, **categorical_indices}
     @classmethod
-    def _calc_dt_splits(cls, dt: Union[Tree, None]):
-        if dt is None:
+    def _calc_dt_splits(cls, dt: Tree, node_id: int):
+        if node_id == -1:
             return 0
-        return (1 if ((dt.children_left is not None) or (dt.children_right is not None)) else 0) + \
-               cls._calc_dt_splits(dt.children_right) + cls._calc_dt_splits(dt.children_left)
+        left_id = dt.children_left[node_id]
+        right_id = dt.children_right[node_id]
+        return (1 if ((left_id != -1) or (right_id != -1)) else 0) + \
+               cls._calc_dt_splits(dt, right_id) + cls._calc_dt_splits(dt, left_id)
 
     def fit(self, X: pd.DataFrame, y=None):
         numeric_transformer = Pipeline(
@@ -60,16 +76,22 @@ class Minimizer(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
                 ("cat", categorical_transformer, self._categorical_features),
             ]
         )
+        # ########
+        # categorical_transformer.fit(X[self._categorical_features])
+        # ########
         X = self._data_encoder.fit_transform(X)
-        X = pd.DataFrame(X, columns=self._data_encoder.get_feature_names_out())
-        y = y if y is not None else self._estimator.transform(X)
+        columns = list(numeric_features) + list(self._data_encoder.named_transformers_["cat"].get_feature_names())
+        # X[]
+        X = pd.DataFrame(X, columns=columns)
+        y = y if y is not None else self._estimator.predict(X)
 
-        #     Calculate decision-tree on all features. get number of splits and set as max depth.
-        max_depth = self._calc_dt_splits(DecisionTreeClassifier().fit(X, y).tree_)
+        # Calculate decision-tree on all features. get number of splits and set as max depth.
+        # node_id=0 means root
+        max_depth = self._calc_dt_splits(DecisionTreeClassifier().fit(X, y).tree_, node_id=0)
 
         feature_categories = {
-            feature_name: [name for name in X.columns if name.startswith(f"cat__{feature_name}")]
-            for feature_name in self._categorical_features
+            feature_name: [name for name in X.columns if name.startswith(f"x{i}_")]
+            for i, feature_name in enumerate(self._categorical_features)
         }
         categorical_dts = {
             feature_name: DecisionTreeClassifier(max_depth=max_depth).fit(X[feature_categories[feature_name]], y)
@@ -86,7 +108,6 @@ class Minimizer(BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         shap_values = explainer.explain_instance(X)
         global_shap_like_encoded = np.sum(sum(abs(shap_matrix) for shap_matrix in shap_values), axis=0)
         global_shap_categorical_like_encoded = global_shap_like_encoded[self._data_encoder.output_indices_["cat"]]
-
 
         # Are the indices here given correctly? Do we need to get them from column transformer?
         global_shap_categorical = {
