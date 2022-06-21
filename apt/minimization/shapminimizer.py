@@ -4,10 +4,11 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin, MetaEstimatorMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Set
 import numpy as np
 from sklearn.tree._tree import Tree
 from aix360.algorithms.shap import KernelExplainer
@@ -42,6 +43,10 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         self._features_to_minimize = features_to_minimize
         self._train_only_QI = train_only_QI
         self._feature_dts: Union[dict, None] = None
+
+        self._numerical_features = None
+        self._generalizations = None
+        self._categories_dict = None
 
     def _calc_numerical_dt(self):
         """ Calculates a per feature decision tree for numerical features
@@ -114,18 +119,53 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         )
 
     @staticmethod
-    def _get_generalizations_from_dts(dts: Dict[str, Tree], numerical_features, categorical_features):
-        # TODO: Implement
+    def _get_numerical_generalization(dt: Tree):
+        """
+
+        :param dt: single feature decision tree trained on numerical data
+        :return: thresholds of generalization.
+        :type List[int]
+        """
+        # TODO: Make sure the values returned are always unique
+        return dt.threshold[:dt.node_count]
+
+    @staticmethod
+    def _get_categorical_generalization(dt: Tree, categories):
+        """
+        :param categories: categories of feature in the order of OHE.
+        :param dt: single feature decision tree trained on categorical OHE data.
+        :return: set of sets of generalized categories (untouched categories are not included).
+        """
+        # dt.features contains which category each node is split by or a negative if none.
+        categories_indices = \
+            set(range(dt.n_features)).difference(set([category for category in dt.feature if category >= 0]))
+        return set(set(categories[index] for index in categories_indices))
+
+    @classmethod
+    def _get_generalizations_from_dts(cls, dts: Dict[str, Tree], numerical_features: List[str],
+                                      categorical_features: List[str], categories_dict: Dict[str, List[str]]):
+        """
+
+        :param dts: feature decision trees
+        :param numerical_features: numerical feature names
+        :param categorical_features: categorical feature names
+        :param categories_dict: categories of each feature by feature name
+        :type Dict[str, List[str]]
+        :return: thresholds for numerical features, generalized categories for categorical features and a list of
+         features that were not generalized at all.
+        :type Dict[str, Union[Dict, List]]
+        """
         raise NotImplementedError
         numerical_thresholds = {
-            # TODO: MAKE UNIQUE
-            feature_name: dts[feature_name].threshold
+            cls._get_numerical_generalization(dts[feature_name])
             for feature_name in numerical_features
         }
         categories_per_feature = {
-            # ...
+            feature_name: cls._get_categorical_generalization(dts[feature_name], categories_dict[feature_name])
+            for feature_name in categorical_features
         }
         untouched_features = [
+            # TODO: think how to implement this. Might need to change how the method functions.
             # ...
         ]
         return {
@@ -164,38 +204,50 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             X.columns
         # All non categorical features are numerical
         categorical_features = self._categorical_features
-        numerical_features = [f for f in self._features_to_minimize if f not in categorical_features and
-                            f in self._features_to_minimize]
+        numerical_features = self._numerical_features = \
+            [f for f in self._features_to_minimize if f not in categorical_features and f in self._features_to_minimize]
         all_features = numerical_features + categorical_features
+
+        # Split to train and test sets.
+        if y is None:
+            X_train, X_test = train_test_split(X, test_size=0.4)
+        else:
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4)
 
         # Initialize and fit new encoder if non was supplied by the user.
         if self._data_encoder is None:
             self._data_encoder = self._init_encoder(numerical_features, categorical_features)
-            self._data_encoder.fit(X)
+            self._data_encoder.fit(X_train)
+
+        # Get categories
+        self._categories_dict = \
+            dict(zip(categorical_features, self._data_encoder.named_transformers_["cat"].categories_))
 
         # Encode X and make into pd.Dataframe.
         encoded_columns_names = \
             numerical_features + list(self._data_encoder.named_transformers_["cat"].get_feature_names())
-        X = pd.DataFrame(self._data_encoder.transform(X), columns=encoded_columns_names)
+        X_train = pd.DataFrame(self._data_encoder.transform(X_train), columns=encoded_columns_names)
+        X_test = pd.DataFrame(self._data_encoder.transform(X_test), columns=encoded_columns_names)
 
         # Calculate predictions of the estimator on unencoded data if not supplied by user.
         if y is None:
-            y = self._estimator.predict(X)
+            y_train = self._estimator.predict(X_train)
+            y_test = self._estimator.predict(X_test)
 
         # Train decision-tree on all features. get number of splits and set as max depth.
         # root_id=0 means root
-        max_depth = self._calc_dt_splits(DecisionTreeClassifier().fit(X, y).tree_, root_id=0)
+        max_depth = self._calc_dt_splits(DecisionTreeClassifier().fit(X_train, y_train).tree_, root_id=0)
 
         feature_indices = self._get_feature_indices(numerical_features, categorical_features,
                                                     self._data_encoder.named_transformers_["cat"])
 
         self._feature_dts = {
-            feature_name: DecisionTreeClassifier(max_depth=max_depth).fit(X.iloc[:, indices], y)
+            feature_name: DecisionTreeClassifier(max_depth=max_depth).fit(X_train.iloc[:, indices], y_train)
             for feature_name, indices in feature_indices.items()
         }
 
         # global_shap_dict =\
-        #     self._calculate_global_shap(estimator=self._estimator, X=X, background_size=100,
+        #     self._calculate_global_shap(estimator=self._estimator, X=X_train, background_size=100,
         #                                 feature_indices=feature_indices, random_state=self._random_state)
         global_shap_dict = {feature_name: i for i, feature_name in enumerate(all_features)}
 
@@ -207,3 +259,9 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
 
     def transform(self, X):
         raise NotImplementedError
+
+    @property
+    def generalizations(self):
+        if self._generalizations is None:
+            return self._get_generalizations_from_dts(self._feature_dts, self._numerical_features,
+                                                      self._categorical_features, self._categories_dict)

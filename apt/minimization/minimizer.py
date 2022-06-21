@@ -638,7 +638,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # level is higher than root
         if depth < 0:
             return None
-        # return all nodes with depth == level or leaves higher than level
+        # return all nodes with node_depth == depth or leaves higher than level
         return [i for i, x in enumerate(node_depth) if x == depth or (x < depth and is_leaves[i])]
 
     def _attach_cells_representatives(self, prepared_data, originalTrainFeatures, labelFeature, level_nodes):
