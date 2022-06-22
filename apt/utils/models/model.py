@@ -168,12 +168,12 @@ class BlackboxClassifier(Model):
             y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
             x_pred = np.vstack((x_train_pred, x_test_pred))
             y_pred = np.vstack((y_train_pred, y_test_pred))
-        elif x_train_pred is None or y_train_pred is None:
+        elif x_test_pred is not None and y_test_pred is not None:
             self.nb_classes = self.get_nb_classes(y_test_pred)
             y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
             x_pred = x_test_pred
             y_pred = y_test_pred
-        elif x_test_pred is None or y_test_pred is None:
+        elif x_train_pred is not None and y_train_pred is not None:
             self.nb_classes = self.get_nb_classes(y_train_pred)
             y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
             x_pred = x_train_pred
