@@ -400,6 +400,8 @@ class Data:
 
         :return: training samples
         """
+        if self.train is None:
+            return None
         return self.train.get_samples()
 
     def get_train_labels(self) -> Collection[Any]:
@@ -408,6 +410,8 @@ class Data:
 
         :return: training labels
         """
+        if self.train is None:
+            return None
         return self.train.get_labels()
 
     def get_test_samples(self) -> Collection[Any]:

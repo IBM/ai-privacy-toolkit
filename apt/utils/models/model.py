@@ -153,19 +153,36 @@ class BlackboxClassifier(Model):
     def __init__(self, model: Data, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access=True, unlimited_queries=False, **kwargs)
-        x = model.get_train_samples()
-        y = model.get_train_labels()
-        self.nb_classes = self.get_nb_classes(y)
-        y = check_and_transform_label_format(y, nb_classes=self.nb_classes)
+        x_train_pred = model.get_train_samples()
+        y_train_pred = model.get_train_labels()
+        x_test_pred = model.get_test_samples()
+        y_test_pred = model.get_test_labels()
 
-        if model.get_test_samples() is not None and type(x) == np.ndarray:
-            x = np.vstack((x, model.get_test_samples()))
+        if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:
+            if type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray \
+               or type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray:
+                raise NotImplementedError("X/Y Data should be np ndarray")
 
-        if model.get_test_labels() is not None and type(y) == np.ndarray:
-            y = np.vstack((y, check_and_transform_label_format(model.get_test_labels(), nb_classes=self.nb_classes)))
+            self.nb_classes = self.get_nb_classes(y_train_pred)
+            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
+            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
+            x_pred = np.vstack((x_train_pred, x_test_pred))
+            y_pred = np.vstack((y_train_pred, y_test_pred))
+        elif x_train_pred is None or y_train_pred is None:
+            self.nb_classes = self.get_nb_classes(y_test_pred)
+            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
+            x_pred = x_test_pred
+            y_pred = y_test_pred
+        elif x_test_pred is None or y_test_pred is None:
+            self.nb_classes = self.get_nb_classes(y_train_pred)
+            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
+            x_pred = x_train_pred
+            y_pred = y_train_pred
+        else:
+            raise NotImplementedError("Invalid data - None")
 
-        predict_fn = (x, y)
-        self._art_model = BlackBoxClassifier(predict_fn, x.shape[1:], self.nb_classes, fuzzy_float_compare=True)
+        predict_fn = (x_pred, y_pred)
+        self._art_model = BlackBoxClassifier(predict_fn, x_pred.shape[1:], self.nb_classes, fuzzy_float_compare=True)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """
