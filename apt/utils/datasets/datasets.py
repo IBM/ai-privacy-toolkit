@@ -292,7 +292,7 @@ class PytorchData(Dataset):
         :type idx: int
         :return: the sample as a pytorch Tensor
         """
-        return self.x[idx]
+        return self._x[idx]
 
     def get_item(self, idx: int) -> Tensor:
         """
@@ -302,11 +302,11 @@ class PytorchData(Dataset):
         :type idx: int
         :return: the sample and label as pytorch Tensors. Returned as a tuple (sample, label)
         """
-        sample, label = self.x[idx], self.y[idx]
+        sample, label = self._x[idx], self._y[idx]
         return sample, label
 
     def __len__(self):
-        return len(self.x)
+        return len(self._x)
 
 
 class DatasetFactory:
