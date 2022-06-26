@@ -73,3 +73,75 @@ def test_blackbox_classifier():
 
     score = model.score(test)
     assert(0.0 <= score <= 1.0)
+
+def test_blackbox_classifier_no_test():
+    (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
+
+    train = ArrayDataset(x_train, y_train)
+
+    data = Data(train)
+    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(train)
+    assert(pred.shape[0] == x_train.shape[0])
+
+    score = model.score(train)
+    assert(0.0 <= score <= 1.0)
+
+
+def test_blackbox_classifier_no_train():
+    (_, _), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    test = ArrayDataset(x_test, y_test)
+    data = Data(test=test)
+    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(test)
+    assert(pred.shape[0] == x_test.shape[0])
+
+    score = model.score(test)
+    assert(0.0 <= score <= 1.0)
+
+
+def test_blackbox_classifier_no_test_y():
+    (x_train, y_train), (x_test, _) = dataset_utils.get_iris_dataset_np()
+
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test)
+    data = Data(train, test)
+    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(train)
+    assert(pred.shape[0] == x_train.shape[0])
+
+    score = model.score(train)
+    assert(0.0 <= score <= 1.0)
+
+    # since no test_y, BBC should use only test thus predict test should fail
+    unable_to_predict_test = False
+    try:
+        model.predict(test)
+    except  BaseException:
+        unable_to_predict_test = True
+
+    assert (unable_to_predict_test, True)
+
+def test_blackbox_classifier_no_train_y():
+    (x_train, _), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    train = ArrayDataset(x_train)
+    test = ArrayDataset(x_test, y_test)
+    data = Data(train, test)
+    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(test)
+    assert (pred.shape[0] == x_test.shape[0])
+
+    score = model.score(test)
+    assert (0.0 <= score <= 1.0)
+
+    # since no train_y, BBC should use only test thus predict train should fail
+    unable_to_predict_train = False
+    try:
+        model.predict(train)
+    except BaseException:
+        unable_to_predict_train = True
+
+    assert(unable_to_predict_train,True)
+
