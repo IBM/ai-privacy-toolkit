@@ -1,6 +1,8 @@
 import pytest
+import numpy as np
 
-from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, BlackboxClassifier
+from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, \
+    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction
 from apt.utils.datasets import ArrayDataset, Data
 from apt.utils import dataset_utils
 
@@ -67,7 +69,7 @@ def test_blackbox_classifier():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     pred = model.predict(test)
     assert(pred.shape[0] == x_test.shape[0])
 
@@ -80,7 +82,7 @@ def test_blackbox_classifier_no_test():
     train = ArrayDataset(x_train, y_train)
 
     data = Data(train)
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     pred = model.predict(train)
     assert(pred.shape[0] == x_train.shape[0])
 
@@ -93,7 +95,7 @@ def test_blackbox_classifier_no_train():
 
     test = ArrayDataset(x_test, y_test)
     data = Data(test=test)
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     pred = model.predict(test)
     assert(pred.shape[0] == x_test.shape[0])
 
@@ -107,7 +109,7 @@ def test_blackbox_classifier_no_test_y():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test)
     data = Data(train, test)
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     pred = model.predict(train)
     assert(pred.shape[0] == x_train.shape[0])
 
@@ -129,7 +131,7 @@ def test_blackbox_classifier_no_train_y():
     train = ArrayDataset(x_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -144,4 +146,39 @@ def test_blackbox_classifier_no_train_y():
         unable_to_predict_train = True
 
     assert(unable_to_predict_train,True)
+
+def test_blackbox_classifier_probabilities():
+    (x_train, _), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
+
+    train = ArrayDataset(x_train, y_train)
+
+    data = Data(train)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(train)
+    assert (pred.shape[0] == x_train.shape[0])
+    assert (0.0 < pred).all()
+    assert (pred < 1.0).all()
+
+    score = model.score(train)
+    assert (0.0 <= score <= 1.0)
+
+
+def test_blackbox_classifier_predict():
+    def predict(x):
+        return [0.23, 0.56, 0.21]
+
+    (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
+
+    train = ArrayDataset(x_train, y_train)
+
+    model = BlackboxClassifierPredictFunction(predict, ModelOutputType.CLASSIFIER_PROBABILITIES, (4,), 3)
+    pred = model.predict(train)
+    assert (pred.shape[0] == x_train.shape[0])
+    assert (0.0 < pred).all()
+    assert (pred < 1.0).all()
+
+    score = model.score(train)
+    assert (0.0 <= score <= 1.0)
+
 

@@ -18,7 +18,8 @@ from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_german_credit_dataset_pd
 from apt.utils.datasets import ArrayDataset, Data
-from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier, BlackboxClassifier
+from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier, \
+    BlackboxClassifierPredictions
 
 
 @pytest.fixture
@@ -949,7 +950,7 @@ def test_blackbox_model():
     test_data = ArrayDataset(x_test, y_test)
     data = Data(train_data, test_data)
 
-    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
     ad = ArrayDataset(x_test)
     predictions = model.predict(ad)
     if predictions.shape[1] > 1:
