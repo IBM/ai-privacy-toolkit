@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, BlackboxClassifier
 from apt.utils.datasets import ArrayDataset, Data
@@ -144,4 +145,21 @@ def test_blackbox_classifier_no_train_y():
         unable_to_predict_train = True
 
     assert(unable_to_predict_train,True)
+
+def test_blackbox_classifier_probabilities():
+    (x_train, _), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
+
+    train = ArrayDataset(x_train, y_train)
+
+    data = Data(train)
+    model = BlackboxClassifier(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    pred = model.predict(train)
+    assert (pred.shape[0] == x_train.shape[0])
+    assert (0.0 < pred).all()
+    assert (pred < 1.0).all()
+
+    score = model.score(train)
+    assert (0.0 <= score <= 1.0)
+
 

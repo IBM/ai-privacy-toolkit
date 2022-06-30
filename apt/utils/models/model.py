@@ -126,7 +126,7 @@ class Model(metaclass=ABCMeta):
         :return: the number of classes as integer
         """
         if len(y.shape) == 1:
-            return len(np.unique(y))
+            return np.max(y) + 1
         else:
             return y.shape[1]
 
@@ -136,11 +136,10 @@ class BlackboxClassifier(Model):
     Wrapper for black-box ML classification models.
 
     :param model: The training and/or test data along with the model's predictions for the data. Assumes that the data
-                  is represented as numpy arrays. Labels are expected to either be one-hot encoded or
+                  is represented as numpy arrays. Labels are expected to either be class probabilities (multi-column) or
                   a 1D-array of categorical labels (consecutive integers starting at 0).
     :type model: `Data` object
-    :param output_type: The type of output the model yields (vector/label only for classifiers,
-                        value for regressors)
+    :param output_type: The type of output the model yields (vector/label only)
     :type output_type: `ModelOutputType`
     :param black_box_access: Boolean describing the type of deployment of the model (when in production).
                              Always assumed to be True for this wrapper.
@@ -153,34 +152,36 @@ class BlackboxClassifier(Model):
     def __init__(self, model: Data, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access=True, unlimited_queries=False, **kwargs)
+        self.nb_classes = None
         x_train_pred = model.get_train_samples()
         y_train_pred = model.get_train_labels()
         x_test_pred = model.get_test_samples()
         y_test_pred = model.get_test_labels()
 
+        if y_train_pred is not None and len(y_train_pred.shape) == 1:
+            self.nb_classes = self.get_nb_classes(y_train_pred)
+            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
+        if y_test_pred is not None and len(y_test_pred.shape) == 1:
+            if self.nb_classes is None:
+                self.nb_classes = self.get_nb_classes(y_test_pred)
+            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
+
         if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:
             if type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray \
                or type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray:
-                raise NotImplementedError("X/Y Data should be np ndarray")
-
-            self.nb_classes = self.get_nb_classes(y_train_pred)
-            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
-            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
+                raise NotImplementedError("X/Y Data should be numpy array")
             x_pred = np.vstack((x_train_pred, x_test_pred))
             y_pred = np.vstack((y_train_pred, y_test_pred))
         elif x_test_pred is not None and y_test_pred is not None:
-            self.nb_classes = self.get_nb_classes(y_test_pred)
-            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
             x_pred = x_test_pred
             y_pred = y_test_pred
         elif x_train_pred is not None and y_train_pred is not None:
-            self.nb_classes = self.get_nb_classes(y_train_pred)
-            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
             x_pred = x_train_pred
             y_pred = y_train_pred
         else:
             raise NotImplementedError("Invalid data - None")
 
+        self.nb_classes = self.get_nb_classes(y_pred)
         predict_fn = (x_pred, y_pred)
         self._art_model = BlackBoxClassifier(predict_fn, x_pred.shape[1:], self.nb_classes, fuzzy_float_compare=True)
 
