@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Tuple
 from enum import Enum, auto
 import numpy as np
 
@@ -135,55 +135,41 @@ class BlackboxClassifier(Model):
     """
     Wrapper for black-box ML classification models.
 
-    :param model: The training and/or test data along with the model's predictions for the data. Assumes that the data
-                  is represented as numpy arrays. Labels are expected to either be class probabilities (multi-column) or
-                  a 1D-array of categorical labels (consecutive integers starting at 0).
-    :type model: `Data` object
+    :param model: The training and/or test data along with the model's predictions for the data or a callable predict
+                  method.
+    :type model: `Data` object or Callable
     :param output_type: The type of output the model yields (vector/label only)
     :type output_type: `ModelOutputType`
     :param black_box_access: Boolean describing the type of deployment of the model (when in production).
-                             Always assumed to be True for this wrapper.
+                             Always assumed to be True (black box) for this wrapper.
     :type black_box_access: boolean, optional
     :param unlimited_queries: Boolean indicating whether a user can perform unlimited queries to the model API.
-                              Always assumed to be False for this wrapper.
     :type unlimited_queries: boolean, optional
     """
 
-    def __init__(self, model: Data, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
+    def __init__(self, model: Any, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
-        super().__init__(model, output_type, black_box_access=True, unlimited_queries=False, **kwargs)
-        self.nb_classes = None
-        x_train_pred = model.get_train_samples()
-        y_train_pred = model.get_train_labels()
-        x_test_pred = model.get_test_samples()
-        y_test_pred = model.get_test_labels()
+        super().__init__(model, output_type, black_box_access=True, unlimited_queries=unlimited_queries, **kwargs)
+        self._nb_classes = None
+        self._input_shape = None
 
-        if y_train_pred is not None and len(y_train_pred.shape) == 1:
-            self.nb_classes = self.get_nb_classes(y_train_pred)
-            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self.nb_classes)
-        if y_test_pred is not None and len(y_test_pred.shape) == 1:
-            if self.nb_classes is None:
-                self.nb_classes = self.get_nb_classes(y_test_pred)
-            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self.nb_classes)
+    @property
+    def nb_classes(self) -> int:
+        """
+        Return the number of prediction classes of the model.
 
-        if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:
-            if type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray \
-               or type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray:
-                raise NotImplementedError("X/Y Data should be numpy array")
-            x_pred = np.vstack((x_train_pred, x_test_pred))
-            y_pred = np.vstack((y_train_pred, y_test_pred))
-        elif x_test_pred is not None and y_test_pred is not None:
-            x_pred = x_test_pred
-            y_pred = y_test_pred
-        elif x_train_pred is not None and y_train_pred is not None:
-            x_pred = x_train_pred
-            y_pred = y_train_pred
-        else:
-            raise NotImplementedError("Invalid data - None")
+        :return: Number of prediction classes of the model.
+        """
+        return self._nb_classes
 
-        self.nb_classes = self.get_nb_classes(y_pred)
-        predict_fn = (x_pred, y_pred)
-        self._art_model = BlackBoxClassifier(predict_fn, x_pred.shape[1:], self.nb_classes, fuzzy_float_compare=True)
+    @property
+    def input_shape(self) -> Tuple[int, ...]:
+        """
+        Return the shape of input to the model.
+
+        :return: Shape of input to the model.
+        """
+        return self._input_shape
 
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """
@@ -213,8 +199,91 @@ class BlackboxClassifier(Model):
         :return: the score as float (for classifiers, between 0 and 1)
         """
         predicted = self._art_model.predict(test_data.get_samples())
-        y = check_and_transform_label_format(test_data.get_labels(), nb_classes=self.nb_classes)
+        y = check_and_transform_label_format(test_data.get_labels(), nb_classes=self._nb_classes)
         if scoring_method == ScoringMethod.ACCURACY:
             return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
         else:
             raise NotImplementedError
+
+
+class BlackboxClassifierPredictions(BlackboxClassifier):
+    """
+    Wrapper for black-box ML classification models using data and predictions.
+
+    :param model: The training and/or test data along with the model's predictions for the data. Assumes that the data
+                  is represented as numpy arrays. Labels are expected to either be class probabilities (multi-column) or
+                  a 1D-array of categorical labels (consecutive integers starting at 0).
+    :type model: `Data` object
+    :param output_type: The type of output the model yields (vector/label only)
+    :type output_type: `ModelOutputType`
+    :param black_box_access: Boolean describing the type of deployment of the model (when in production).
+                             Always assumed to be True for this wrapper.
+    :type black_box_access: boolean, optional
+    :param unlimited_queries: Boolean indicating whether a user can perform unlimited queries to the model API.
+                              Always assumed to be False for this wrapper.
+    :type unlimited_queries: boolean, optional
+    """
+
+    def __init__(self, model: Data, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
+                 unlimited_queries: Optional[bool] = True, **kwargs):
+        super().__init__(model, output_type, black_box_access=True, unlimited_queries=False, **kwargs)
+        x_train_pred = model.get_train_samples()
+        y_train_pred = model.get_train_labels()
+        x_test_pred = model.get_test_samples()
+        y_test_pred = model.get_test_labels()
+
+        if y_train_pred is not None and len(y_train_pred.shape) == 1:
+            self._nb_classes = self.get_nb_classes(y_train_pred)
+            y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self._nb_classes)
+        if y_test_pred is not None and len(y_test_pred.shape) == 1:
+            if self._nb_classes is None:
+                self._nb_classes = self.get_nb_classes(y_test_pred)
+            y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self._nb_classes)
+
+        if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:
+            if type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray \
+               or type(y_train_pred) != np.ndarray or type(y_test_pred) != np.ndarray:
+                raise NotImplementedError("X/Y Data should be numpy array")
+            x_pred = np.vstack((x_train_pred, x_test_pred))
+            y_pred = np.vstack((y_train_pred, y_test_pred))
+        elif x_test_pred is not None and y_test_pred is not None:
+            x_pred = x_test_pred
+            y_pred = y_test_pred
+        elif x_train_pred is not None and y_train_pred is not None:
+            x_pred = x_train_pred
+            y_pred = y_train_pred
+        else:
+            raise NotImplementedError("Invalid data - None")
+
+        self._nb_classes = self.get_nb_classes(y_pred)
+        self._input_shape = x_pred.shape[1:]
+        predict_fn = (x_pred, y_pred)
+        self._art_model = BlackBoxClassifier(predict_fn, self._input_shape, self._nb_classes, fuzzy_float_compare=True)
+
+
+class BlackboxClassifierPredictFunction(BlackboxClassifier):
+    """
+    Wrapper for black-box ML classification models using a predict function.
+
+    :param model: Function that takes in an `np.ndarray` of input data and returns predictions either as class
+                  probabilities (multi-column) or a 1D-array of categorical labels (consecutive integers starting at 0).
+    :type model: Callable
+    :param output_type: The type of output the model yields (vector/label only)
+    :type output_type: `ModelOutputType`
+    :param input_shape: Shape of input to the model.
+    :type input_shape: Tuple[int, ...]
+    :param nb_classes: Number of prediction classes of the model.
+    :type  nb_classes: int
+    :param black_box_access: Boolean describing the type of deployment of the model (when in production).
+                             Always assumed to be True for this wrapper.
+    :type black_box_access: boolean, optional
+    :param unlimited_queries: Boolean indicating whether a user can perform unlimited queries to the model API.
+    :type unlimited_queries: boolean, optional
+    """
+
+    def __init__(self, model: Callable, output_type: ModelOutputType, input_shape: Tuple[int, ...], nb_classes: int,
+                 black_box_access: Optional[bool] = True, unlimited_queries: Optional[bool] = True, **kwargs):
+        super().__init__(model, output_type, black_box_access=True, unlimited_queries=unlimited_queries, **kwargs)
+        self._nb_classes = nb_classes
+        self._input_shape = input_shape
+        self._art_model = BlackBoxClassifier(model, self._input_shape, self._nb_classes)
