@@ -11,7 +11,7 @@ from sklearn.tree import DecisionTreeClassifier
 from typing import Union, Dict, List, Set
 import numpy as np
 from sklearn.tree._tree import Tree
-from aix360.algorithms.shap import KernelExplainer
+from AIX360.aix360.algorithms.shap import KernelExplainer
 from sklearn.utils import resample
 
 
@@ -198,6 +198,71 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             for feature_name, indices in feature_indices.items()
         }
 
+    @classmethod
+    def _transform_numerical_feature(cls, dt: Tree, X: np.ndarray, medians: list, depth: int, node_id: int=0):
+        if X.size == 0:
+            return
+        threshold = dt.threshold[node_id]
+        left_id = dt.children_left[node_id]
+        right_id = dt.children_right[node_id]
+        if (left_id < 0 and right_id < 0) or depth == 0:
+            X[:] = medians[node_id]
+        if left_id >= 0:
+            cls._transform_numerical_feature(dt, X[X <= threshold], medians, depth - 1, left_id)
+        if right_id >= 0:
+            cls._transform_numerical_feature(dt, X[X > threshold], medians, depth - 1, right_id)
+        assert False, "Should not get here"
+
+
+    @classmethod
+    def _transform_categorical_feature(cls, dt: Tree, X: np.ndarray, majors: list, depth: int, node_id: int=0):
+        if X.size == 0:
+            return
+        representative_values[node_id] = X.sum(axis=0).argmax()
+        split_feature = dt.feature[node_id]
+        threshold = dt.threshold[node_id]
+        left_id = dt.children_left[node_id]
+        right_id = dt.children_right[node_id]
+        if (left_id and right_id) or depth == 0:
+            X[:] = majors[node_id]
+
+
+    @classmethod
+    def _transform(cls):
+        raise NotImplementedError
+
+
+    @classmethod
+    def populate_representative_median(cls, dt: Tree, X: np.ndarray, node_id, representative_values):
+        if X.size == 0:
+            return
+        threshold = dt.threshold[node_id]
+        representative_values[node_id] = np.median(X)
+        left_id = dt.children_left[node_id]
+        right_id = dt.children_right[node_id]
+        if left_id >= 0:
+            cls.populate_representative_median(dt, X[X <= threshold], left_id, representative_values)
+        if right_id >= 0:
+            cls.populate_representative_median(dt, X[X > threshold], right_id, representative_values)
+
+    @classmethod
+    def populate_representative_majority(cls, dt: Tree, X: np.ndarray, node_id, representative_values):
+        # since data is one hot encoded this line gets the majority index
+        if X.size == 0:
+            return
+        representative_values[node_id] = X.sum(axis=0).argmax()
+        split_feature = dt.feature[node_id]
+        threshold = dt.threshold[node_id]
+        left_id = dt.children_left[node_id]
+        right_id = dt.children_right[node_id]
+        # the threshold for encoded data is 0.5, therefore we take the column of the split feature and test threshold
+        # on it in order to split the data between the left and right child
+        if left_id >= 0:
+            cls.populate_representative_majority(dt, X[:, X[split_feature] <= threshold], left_id, representative_values)
+        if right_id >= 0:
+            cls.populate_representative_majority(dt, X[:, X[split_feature] > threshold], right_id, representative_values)
+
+
     def fit(self, X: pd.DataFrame, y=None):
         # Get features to minimize form X if non are specified in __init__
         self._features_to_minimize = self._features_to_minimize if self._features_to_minimize is not None else \
@@ -251,11 +316,30 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         #                                 feature_indices=feature_indices, random_state=self._random_state)
         global_shap_dict = {feature_name: i for i, feature_name in enumerate(all_features)}
 
+        # calculate generalization values (medians and majority)
+        generalization_arrays = {
+            feature_name: [None] * self._feature_dts[feature_name].tree_.node_count
+            for feature_name in all_features
+        }
+        for feature_name in numerical_features:
+            self.populate_representative_median(self._feature_dts[feature_name].tree_,
+                                                X_train.iloc[:, feature_indices[feature_name]].to_numpy(), 0,
+                                                generalization_arrays[feature_name])
+        for feature_name in categorical_features:
+            self.populate_representative_majority(self._feature_dts[feature_name].tree_,
+                                                  X_train.iloc[:, feature_indices[feature_name]].to_numpy(), 0,
+                                                  generalization_arrays[feature_name])
+
+
+
+
+
         # Order features_dts according to heuristic (here it is SHAP)
         shap_sorted_features = sorted(list(global_shap_dict.items()), key=lambda tup: tup[1])
         for feature_name, shap_value in shap_sorted_features:
             # TODO: Implement pruning and use here.
             dt = self._feature_dts[feature_name]
+
 
     def transform(self, X):
         raise NotImplementedError
