@@ -117,6 +117,9 @@ class Model(metaclass=ABCMeta):
         """
         return self._unlimited_queries
 
+    def is_one_hot(self, y:OUTPUT_DATA_ARRAY_TYPE) -> bool:
+        return len(y.shape) == 2 and y.shape[1] > 1
+
     def get_nb_classes(self, y: OUTPUT_DATA_ARRAY_TYPE) -> int:
         """
         Get the number of classes from an array of labels
@@ -125,10 +128,16 @@ class Model(metaclass=ABCMeta):
         :type y: numpy array
         :return: the number of classes as integer
         """
-        if len(y.shape) == 1:
-            return np.max(y) + 1
-        else:
+        if y is None:
+            return 0
+
+        if type(y) != np.ndarray:
+            raise ValueError("Input should be numpy array")
+
+        if self.is_one_hot(y):
             return y.shape[1]
+        else:
+            return int(np.max(y) + 1)
 
 
 class BlackboxClassifier(Model):
