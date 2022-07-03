@@ -1,6 +1,8 @@
+from copy import deepcopy
 from itertools import accumulate
 
 import pandas as pd
+import sklearn.metrics
 from sklearn.base import BaseEstimator, TransformerMixin, MetaEstimatorMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -13,6 +15,7 @@ import numpy as np
 from sklearn.tree._tree import Tree
 from AIX360.aix360.algorithms.shap import KernelExplainer
 from sklearn.utils import resample
+from sklearn.metrics import accuracy_score
 
 
 # from AIX360.aix360.algorithms.shap import KernelExplainer
@@ -199,38 +202,53 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         }
 
     @classmethod
-    def _transform_numerical_feature(cls, dt: Tree, X: np.ndarray, medians: list, depth: int, node_id: int=0):
+    def _transform_numerical_feature(cls, dt: Tree, X: np.ndarray, medians: list, depth: int, node_id: int = 0):
         if X.size == 0:
             return
+        # check if each split results in left and right children
         threshold = dt.threshold[node_id]
         left_id = dt.children_left[node_id]
         right_id = dt.children_right[node_id]
         if (left_id < 0 and right_id < 0) or depth == 0:
-            X[:] = medians[node_id]
+            return medians[node_id]
         if left_id >= 0:
             cls._transform_numerical_feature(dt, X[X <= threshold], medians, depth - 1, left_id)
         if right_id >= 0:
-            cls._transform_numerical_feature(dt, X[X > threshold], medians, depth - 1, right_id)
-        assert False, "Should not get here"
-
+            X[X > threshold] = cls._transform_numerical_feature(dt, X[X > threshold], medians, depth - 1, right_id)
+        return X
 
     @classmethod
-    def _transform_categorical_feature(cls, dt: Tree, X: np.ndarray, majors: list, depth: int, node_id: int=0):
-        if X.size == 0:
+    def _transform_categorical_feature(cls, dt: Tree, X: np.ndarray, majors: list, depth: int, node_id: int = 0):
+        # TODO Debug and make sure it works
+        if X[0].size == 0:
             return
-        representative_values[node_id] = X.sum(axis=0).argmax()
         split_feature = dt.feature[node_id]
         threshold = dt.threshold[node_id]
         left_id = dt.children_left[node_id]
         right_id = dt.children_right[node_id]
         if (left_id and right_id) or depth == 0:
-            X[:] = majors[node_id]
-
+            X[:] = 0
+            X[:, majors[node_id]] = 1
+            return X
+        y = X[split_feature]
+        if left_id >= 0:
+            X[:, X <= threshold] = cls._transform_categorical_feature(dt, X[:, X <= threshold], majors, depth - 1, left_id)
+        if right_id >= 0:
+            X[:, X > threshold] = cls._transform_categorical_feature(dt, X[:, X > threshold], majors, depth - 1, right_id)
+        return X
 
     @classmethod
-    def _transform(cls):
-        raise NotImplementedError
+    def _transform_in_place(cls, dts, X, depths: Dict[str, int], numerical_features, categorical_features,
+                            feature_indices, generalizations_arrays):
+        for feature in numerical_features:
+            index = feature_indices[feature][0]
+            X[:, index] = cls._transform_numerical_feature(dts[feature].tree_, X[:, index],
+                                                           generalizations_arrays[feature], depths[feature], 0)
 
+        for feature in categorical_features:
+            indices = feature_indices[feature]
+            X[:, indices] = cls._transform_categorical_feature(dts[feature].tree_, X[:, indices],
+                                               generalizations_arrays[feature], depths[feature], 0)
 
     @classmethod
     def populate_representative_median(cls, dt: Tree, X: np.ndarray, node_id, representative_values):
@@ -258,10 +276,18 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         # the threshold for encoded data is 0.5, therefore we take the column of the split feature and test threshold
         # on it in order to split the data between the left and right child
         if left_id >= 0:
-            cls.populate_representative_majority(dt, X[:, X[split_feature] <= threshold], left_id, representative_values)
+            cls.populate_representative_majority(dt, X[:, X[split_feature] <= threshold], left_id,
+                                                 representative_values)
         if right_id >= 0:
-            cls.populate_representative_majority(dt, X[:, X[split_feature] > threshold], right_id, representative_values)
+            cls.populate_representative_majority(dt, X[:, X[split_feature] > threshold], right_id,
+                                                 representative_values)
 
+    @classmethod
+    def _calculate_tree_depth(cls, dt, node_id=0):
+        if node_id < 0:
+            return 0
+        return 1 + max(cls._calculate_tree_depth(dt, dt.tree_.children_left[node_id]),
+                       cls._calculate_tree_depth(dt, dt.tree_.children_right[node_id]))
 
     def fit(self, X: pd.DataFrame, y=None):
         # Get features to minimize form X if non are specified in __init__
@@ -330,16 +356,49 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
                                                   X_train.iloc[:, feature_indices[feature_name]].to_numpy(), 0,
                                                   generalization_arrays[feature_name])
 
-
-
-
-
         # Order features_dts according to heuristic (here it is SHAP)
         shap_sorted_features = sorted(list(global_shap_dict.items()), key=lambda tup: tup[1])
+        dts = self._feature_dts
+        depths = {feature_name: self._calculate_tree_depth(self._feature_dts[feature_name], 0)
+                  for feature_name in all_features}
+        X_test_transformed = np.copy(X_test)
         for feature_name, shap_value in shap_sorted_features:
             # TODO: Implement pruning and use here.
             dt = self._feature_dts[feature_name]
+            # self._transform_in_place(self._feature_dts, X_test_transformed, depths, numerical_features,
+            #                          categorical_features,
+            #                          feature_indices, generalization_arrays)
+            y_transformed = self._estimator.predict(X_test_transformed)
+            accuracy = accuracy_score(y_test, y_transformed)
 
+            for i in range(depths[feature_name]):
+                if accuracy < self._target_accuracy:
+                    break
+                if depths[feature_name] == 1:
+                    print("hi")
+                depths[feature_name] -= 1
+                self._transform_in_place(self._feature_dts, X_test_transformed, depths,
+                                         [feature_name] if feature_name in numerical_features else [],
+                                         [feature_name] if feature_name in categorical_features else [],
+                                         feature_indices, generalization_arrays)
+                y_transformed = self._estimator.predict(X_test_transformed)
+                accuracy = accuracy_score(y_test, y_transformed)
+
+            if accuracy < self._target_accuracy:
+                depths[feature_name] += 1
+                X_test_transformed[:, feature_indices[feature_name]] = X_test.iloc[:, feature_indices[feature_name]]
+                self._transform_in_place(self._feature_dts, X_test_transformed, depths,
+                                         [feature_name] if feature_name in numerical_features else [],
+                                         [feature_name] if feature_name in categorical_features else [],
+                                         feature_indices,
+                                         generalization_arrays)
+
+            # while accuracy > self._target_accuracy and depths[feature_name] > 1:
+            #     depths[feature_name] -= 1
+            #     self._transform_in_place(self._feature_dts, X_test_transformed, depths, [feature_name] if feature_name in numerical_features else [],
+            #                              [feature_name] if feature_name in categorical_features else [], feature_indices, generalization_arrays)
+            #     accuracy = accuracy_score(y_test, y_transformed)
+            # depths[feature_name] = pruning_level + 1
 
     def transform(self, X):
         raise NotImplementedError

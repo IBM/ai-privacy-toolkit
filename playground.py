@@ -8,6 +8,5 @@ if __name__ == '__main__':
     encoded_data, unencoded_data = gss_data.encoded_data, gss_data.unencoded_data
     random_forest = RandomForestClassifier()
     random_forest.fit(*encoded_data.model_train)
-    minimizer = Minimizer(random_forest, categorical_features=gss_data.categorical_features)
+    minimizer = Minimizer(random_forest, categorical_features=gss_data.categorical_features, target_accuracy=0.8)
     ret = minimizer.fit(unencoded_data.model_train.X)
-
