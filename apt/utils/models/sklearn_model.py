@@ -5,6 +5,7 @@ from sklearn.base import BaseEstimator
 
 from apt.utils.models import Model, ModelOutputType
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
+from apt.utils.models.model import get_nb_classes
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
 from art.estimators.regression.scikitlearn import ScikitlearnRegressor
@@ -59,7 +60,7 @@ class SklearnClassifier(SklearnModel):
         :return: None
         """
         y = train_data.get_labels()
-        self.nb_classes = self.get_nb_classes(y)
+        self.nb_classes = get_nb_classes(y)
         y_encoded = check_and_transform_label_format(y, nb_classes=self.nb_classes)
         self._art_model.fit(train_data.get_samples(), y_encoded, **kwargs)
 
