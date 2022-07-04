@@ -194,7 +194,7 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         # TODO: Check kmeans instead of resample.Change that if needed.
         background_X = resample(X, n_samples=background_size, random_state=random_state)
         explainer = KernelExplainer(estimator.predict_proba, background_X)
-        shap_values = explainer.explain_instance(X)
+        shap_values = explainer.explain_instance(X, nsamples=70)
         global_shap_like_encoded = np.sum(sum(abs(shap_matrix) for shap_matrix in shap_values), axis=0)
         return {
             feature_name: np.sum(global_shap_like_encoded[indices])
@@ -232,9 +232,11 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             return X
         y = X[split_feature]
         if left_id >= 0:
-            X[:, X <= threshold] = cls._transform_categorical_feature(dt, X[:, X <= threshold], majors, depth - 1, left_id)
+            X[:, y <= threshold] = cls._transform_categorical_feature(dt, X[:, y <= threshold], majors, depth - 1,
+                                                                      left_id)
         if right_id >= 0:
-            X[:, X > threshold] = cls._transform_categorical_feature(dt, X[:, X > threshold], majors, depth - 1, right_id)
+            X[:, y > threshold] = cls._transform_categorical_feature(dt, X[:, y > threshold], majors, depth - 1,
+                                                                     right_id)
         return X
 
     @classmethod
@@ -248,7 +250,7 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
         for feature in categorical_features:
             indices = feature_indices[feature]
             X[:, indices] = cls._transform_categorical_feature(dts[feature].tree_, X[:, indices],
-                                               generalizations_arrays[feature], depths[feature], 0)
+                                                               generalizations_arrays[feature], depths[feature], 0)
 
     @classmethod
     def populate_representative_median(cls, dt: Tree, X: np.ndarray, node_id, representative_values):
@@ -337,10 +339,10 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             for feature_name, indices in feature_indices.items()
         }
 
-        # global_shap_dict =\
-        #     self._calculate_global_shap(estimator=self._estimator, X=X_train, background_size=100,
-        #                                 feature_indices=feature_indices, random_state=self._random_state)
-        global_shap_dict = {feature_name: i for i, feature_name in enumerate(all_features)}
+        global_shap_dict = \
+            self._calculate_global_shap(estimator=self._estimator, X=X_train, background_size=20,
+                                        feature_indices=feature_indices, random_state=self._random_state)
+        # global_shap_dict = {feature_name: i for i, feature_name in enumerate(all_features)}
 
         # calculate generalization values (medians and majority)
         generalization_arrays = {
@@ -370,7 +372,7 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             #                          feature_indices, generalization_arrays)
             y_transformed = self._estimator.predict(X_test_transformed)
             accuracy = accuracy_score(y_test, y_transformed)
-
+            init_depth = depths[feature_name]
             for i in range(depths[feature_name]):
                 if accuracy < self._target_accuracy:
                     break
@@ -387,11 +389,12 @@ class Minimizer():  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
             if accuracy < self._target_accuracy:
                 depths[feature_name] += 1
                 X_test_transformed[:, feature_indices[feature_name]] = X_test.iloc[:, feature_indices[feature_name]]
-                self._transform_in_place(self._feature_dts, X_test_transformed, depths,
-                                         [feature_name] if feature_name in numerical_features else [],
-                                         [feature_name] if feature_name in categorical_features else [],
-                                         feature_indices,
-                                         generalization_arrays)
+                if depths[feature_name] != init_depth:
+                    self._transform_in_place(self._feature_dts, X_test_transformed, depths,
+                                             [feature_name] if feature_name in numerical_features else [],
+                                             [feature_name] if feature_name in categorical_features else [],
+                                             feature_indices,
+                                             generalization_arrays)
 
             # while accuracy > self._target_accuracy and depths[feature_name] > 1:
             #     depths[feature_name] -= 1
