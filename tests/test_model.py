@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, \
-    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction
+    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes
 from apt.utils.datasets import ArrayDataset, Data
 from apt.utils import dataset_utils
 
@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestClassifier
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
-from apt.utils.models.model import get_nb_classes, is_one_hot
+
 from art.utils import to_categorical
 
 

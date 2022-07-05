@@ -3,9 +3,8 @@ from typing import Optional
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.base import BaseEstimator
 
-from apt.utils.models import Model, ModelOutputType
+from apt.utils.models import Model, ModelOutputType, get_nb_classes
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
-from apt.utils.models.model import get_nb_classes
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
 from art.estimators.regression.scikitlearn import ScikitlearnRegressor
