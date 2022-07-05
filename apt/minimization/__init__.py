@@ -13,4 +13,6 @@ them to new data.
 It is also possible to export the generalizations as feature ranges.
 
 """
-from apt.minimization.minimizer import GeneralizeToRepresentative
+from .minimizer import GeneralizeToRepresentative
+from .orderedfeatureminimizer import OrderedFeatureMinimizer
+from .shapminimizer import ShapMinimizer
