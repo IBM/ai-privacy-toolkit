@@ -3,7 +3,7 @@ from typing import Optional
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.base import BaseEstimator
 
-from apt.utils.models import Model, ModelOutputType
+from apt.utils.models import Model, ModelOutputType, get_nb_classes
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
@@ -59,7 +59,7 @@ class SklearnClassifier(SklearnModel):
         :return: None
         """
         y = train_data.get_labels()
-        self.nb_classes = self.get_nb_classes(y)
+        self.nb_classes = get_nb_classes(y)
         y_encoded = check_and_transform_label_format(y, nb_classes=self.nb_classes)
         self._art_model.fit(train_data.get_samples(), y_encoded, **kwargs)
 
