@@ -405,18 +405,6 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                                              generalization_arrays)
                 else:
                     untouched_features.append(feature_name)
-        X_test = X_test.to_numpy()
-        print(untouched_features)
-        filtered_numerical_features = [feature for feature in self._numerical_features if feature not in untouched_features]
-        filtered_categorical_features = [feature for feature in self._categorical_features if feature not in untouched_features]
-        self._transform_in_place(
-            self._feature_dts, X_test, self._depths, filtered_numerical_features,
-            filtered_categorical_features, self._get_feature_indices(self._numerical_features, self._categorical_features,
-                                                                  self._data_encoder.named_transformers_["cat"]),
-            self._generalization_arrays
-        )
-        y_transformed = self._estimator.predict(X_test)
-        print(f"accuracy: {accuracy_score(y_test, y_transformed)}")
 
     @classmethod
     def _get_ordered_features(cls, estimator, encoder, X_train, numerical_features, categorical_features,
