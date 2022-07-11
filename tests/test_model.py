@@ -77,7 +77,7 @@ def test_blackbox_classifier():
     assert(pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(0.0 <= score <= 1.0)
+    assert(score == 1.0)
 
 def test_blackbox_classifier_no_test():
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
@@ -90,7 +90,7 @@ def test_blackbox_classifier_no_test():
     assert(pred.shape[0] == x_train.shape[0])
 
     score = model.score(train)
-    assert(0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
 
 def test_blackbox_classifier_no_train():
@@ -103,7 +103,7 @@ def test_blackbox_classifier_no_train():
     assert(pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
 
 def test_blackbox_classifier_no_test_y():
@@ -117,7 +117,7 @@ def test_blackbox_classifier_no_test_y():
     assert(pred.shape[0] == x_train.shape[0])
 
     score = model.score(train)
-    assert(0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
     # since no test_y, BBC should use only test thus predict test should fail
     unable_to_predict_test = False
@@ -139,7 +139,7 @@ def test_blackbox_classifier_no_train_y():
     assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert (0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
     # since no train_y, BBC should use only test thus predict train should fail
     unable_to_predict_train = False
@@ -164,7 +164,7 @@ def test_blackbox_classifier_probabilities():
     assert (pred < 1.0).all()
 
     score = model.score(train)
-    assert (0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
 
 def test_blackbox_classifier_predict():
@@ -172,6 +172,7 @@ def test_blackbox_classifier_predict():
         return [0.23, 0.56, 0.21]
 
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
 
     train = ArrayDataset(x_train, y_train)
 
@@ -182,7 +183,7 @@ def test_blackbox_classifier_predict():
     assert (pred < 1.0).all()
 
     score = model.score(train)
-    assert (0.0 <= score <= 1.0)
+    assert (score == 1.0)
 
 def test_is_one_hot():
     (_, y_train), (_, _) = dataset_utils.get_iris_dataset_np()

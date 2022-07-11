@@ -944,53 +944,6 @@ def test_keras_model():
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_blackbox_model():
-    (X, y), (x_test, y_test) = get_iris_dataset_np()
-    train_data = ArrayDataset(X, y)
-    test_data = ArrayDataset(x_test, y_test)
-    data = Data(train_data, test_data)
-
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
-    ad = ArrayDataset(x_test)
-    predictions = model.predict(ad)
-    if predictions.shape[1] > 1:
-        predictions = np.argmax(predictions, axis=1)
-    target_accuracy = 0.5
-    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
-    train_dataset = ArrayDataset(x_test, predictions)
-
-    gen.fit(dataset=train_dataset)
-    transformed = gen.transform(dataset=ad)
-    gener = gen.generalizations
-    expected_generalizations = {'ranges': {'0': [], '1': [], '2': [4.849999904632568], '3': [0.7000000029802322]},
-                                'categories': {},
-                                'untouched': []}
-
-    for key in expected_generalizations['ranges']:
-        assert_almost_equal(expected_generalizations['ranges'][key], gener['ranges'][key])
-    for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
-    assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
-
-    features = ['0', '1', '2', '3']
-    modified_features = [f for f in features if
-                         f in expected_generalizations['categories'].keys() or f in expected_generalizations[
-                             'ranges'].keys()]
-    indexes = []
-    for i in range(len(features)):
-        if features[i] in modified_features:
-            indexes.append(i)
-    assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_test, indexes, axis=1)).all())
-    ncp = gen.ncp
-    if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
-        assert (((transformed[indexes]) != (X[indexes])).any())
-
-    rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
-
-
 def test_untouched():
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}}, "label": 0,
               'categories': {'gender': ['male']}, "representative": {"age": 26, "height": 149}},

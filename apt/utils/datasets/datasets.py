@@ -38,7 +38,7 @@ class Dataset(metaclass=ABCMeta):
 
         :return: the data samples
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_labels(self) -> Collection[Any]:
@@ -47,7 +47,16 @@ class Dataset(metaclass=ABCMeta):
 
         :return: the labels
         """
-        pass
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        raise NotImplementedError
 
     def _array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
         """
@@ -102,7 +111,7 @@ class StoredDataset(Dataset):
         :type path: string
         :return: None
         """
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def load(self, **kwargs):
@@ -111,7 +120,7 @@ class StoredDataset(Dataset):
 
         :return: None
         """
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def download(url: str, dest_path: str, filename: str, unzip: Optional[bool] = False) -> None:
@@ -224,7 +233,7 @@ class ArrayDataset(Dataset):
                 raise ValueError("The supplied features are not the same as in the data features")
             self.features_names = x.columns.to_list()
 
-        if y is not None and len(self._x) != len(self._y):
+        if self._y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
@@ -242,6 +251,70 @@ class ArrayDataset(Dataset):
         :return: labels as numpy array
         """
         return self._y
+
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        raise NotImplementedError
+
+
+class DatasetWithPredictions(Dataset):
+    """
+    Dataset that is based on arrays (e.g., numpy/pandas/list...). Includes predictions from a model, and possibly also
+    features and true labels.
+
+    :param x: collection of data samples
+    :type x: numpy array or pandas DataFrame or list or pytorch Tensor
+    :param y: collection of labels
+    :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
+    :param feature_names: The feature names, in the order that they appear in the data
+    :type feature_names: list of strings, optional
+    """
+
+    def __init__(self, pred: INPUT_DATA_ARRAY_TYPE, x: Optional[INPUT_DATA_ARRAY_TYPE] = None,
+                 y: Optional[INPUT_DATA_ARRAY_TYPE] = None, features_names: Optional[list] = None, **kwargs):
+        self.is_pandas = False
+        self.features_names = features_names
+        self._pred = self._array2numpy(pred)
+        self._y = self._array2numpy(y) if y is not None else None
+        self._x = self._array2numpy(x) if x is not None else None
+        if self.is_pandas and x is not None:
+            if features_names and not np.array_equal(features_names, x.columns):
+                raise ValueError("The supplied features are not the same as in the data features")
+            self.features_names = x.columns.to_list()
+
+        if self._y is not None and len(self._pred) != len(self._y):
+            raise ValueError('Non equivalent lengths of pred and y')
+
+        if self._x is not None and len(self._x) != len(self._pred):
+            raise ValueError('Non equivalent lengths of x and pred')
+
+    def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get data samples
+
+        :return: data samples as numpy array
+        """
+        return self._x
+
+    def get_labels(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get labels
+
+        :return: labels as numpy array
+        """
+        return self._y
+
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        return self._pred
 
 
 class PytorchData(Dataset):
@@ -283,6 +356,14 @@ class PytorchData(Dataset):
         :return: labels as numpy array
         """
         return self._array2numpy(self._y) if self._y is not None else None
+
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        raise NotImplementedError
 
     def get_sample_item(self, idx: int) -> Tensor:
         """

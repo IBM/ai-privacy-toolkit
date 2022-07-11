@@ -270,7 +270,8 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
         self._nb_classes = get_nb_classes(y_pred)
         self._input_shape = x_pred.shape[1:]
         predict_fn = (x_pred, y_pred)
-        self._art_model = BlackBoxClassifier(predict_fn, self._input_shape, self._nb_classes, fuzzy_float_compare=True)
+        self._art_model = BlackBoxClassifier(predict_fn, self._input_shape, self._nb_classes, fuzzy_float_compare=True,
+                                             preprocessing=None)
 
 
 class BlackboxClassifierPredictFunction(BlackboxClassifier):
@@ -298,4 +299,4 @@ class BlackboxClassifierPredictFunction(BlackboxClassifier):
         super().__init__(model, output_type, black_box_access=True, unlimited_queries=unlimited_queries, **kwargs)
         self._nb_classes = nb_classes
         self._input_shape = input_shape
-        self._art_model = BlackBoxClassifier(model, self._input_shape, self._nb_classes)
+        self._art_model = BlackBoxClassifier(model, self._input_shape, self._nb_classes, preprocessing=None)
