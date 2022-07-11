@@ -172,6 +172,7 @@ def test_blackbox_classifier_predict():
         return [0.23, 0.56, 0.21]
 
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
 
     train = ArrayDataset(x_train, y_train)
 
