@@ -233,7 +233,7 @@ class ArrayDataset(Dataset):
                 raise ValueError("The supplied features are not the same as in the data features")
             self.features_names = x.columns.to_list()
 
-        if y is not None and len(self._x) != len(self._y):
+        if self._y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
@@ -251,6 +251,14 @@ class ArrayDataset(Dataset):
         :return: labels as numpy array
         """
         return self._y
+
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        raise NotImplementedError
 
 
 class DatasetWithPredictions(Dataset):
@@ -278,10 +286,10 @@ class DatasetWithPredictions(Dataset):
                 raise ValueError("The supplied features are not the same as in the data features")
             self.features_names = x.columns.to_list()
 
-        if y is not None and len(self._pred) != len(self._y):
+        if self._y is not None and len(self._pred) != len(self._y):
             raise ValueError('Non equivalent lengths of pred and y')
 
-        if x is not None and len(self._x) != len(self._pred):
+        if self._x is not None and len(self._x) != len(self._pred):
             raise ValueError('Non equivalent lengths of x and pred')
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
@@ -348,6 +356,14 @@ class PytorchData(Dataset):
         :return: labels as numpy array
         """
         return self._array2numpy(self._y) if self._y is not None else None
+
+    def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Get predictions
+
+        :return: predictions as numpy array
+        """
+        raise NotImplementedError
 
     def get_sample_item(self, idx: int) -> Tensor:
         """
