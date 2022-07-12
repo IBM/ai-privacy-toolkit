@@ -258,7 +258,7 @@ class ArrayDataset(Dataset):
 
         :return: predictions as numpy array
         """
-        raise NotImplementedError
+        return None
 
 
 class DatasetWithPredictions(Dataset):
@@ -333,7 +333,7 @@ class PytorchData(Dataset):
         if self.is_pandas:
             self.features_names = x.columns
 
-        if y is not None and len(self._x) != len(self._y):
+        if self._y is not None and len(self._x) != len(self._y):
             raise ValueError('Non equivalent lengths of x and y')
 
         if self._y is not None:
@@ -363,7 +363,7 @@ class PytorchData(Dataset):
 
         :return: predictions as numpy array
         """
-        raise NotImplementedError
+        return None
 
     def get_sample_item(self, idx: int) -> Tensor:
         """
