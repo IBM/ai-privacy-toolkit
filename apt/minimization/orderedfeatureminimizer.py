@@ -188,12 +188,17 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         }
 
         categories_per_feature = {}
+        untouched_features = untouched_features.copy()
         for feature_name in categorical_features:
-            categories_per_feature[feature_name] = [{
+            generalization = [{
                 categories_dict[feature_name][category]
                 for category in cls._get_categorical_generalization(dts[feature_name].tree_, depths[feature_name],
                                                                     generalization_arrays[feature_name])
             }]
+            if len(generalization[0]) > 1:
+                categories_per_feature[feature_name] = generalization
+            else:
+                untouched_features.append(feature_name)
 
         # categories_per_feature = {
         #     feature_name: [{
@@ -424,7 +429,11 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                                                                      self._data_encoder.named_transformers_["cat"]),
             self._generalization_arrays
         )
-        return X_transformed
+        categorical_encoder = self._data_encoder.named_transformers_["cat"]
+        X_out_cat = \
+            categorical_encoder.inverse_transform(X_transformed[:, len(self._numerical_features):])
+        HAHA = pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1), columns=self._numerical_features + self._categorical_features)
+        return pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1), columns=self._numerical_features + self._categorical_features)
 
     @property
     def generalizations(self):
@@ -438,3 +447,7 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                                                       filtered_categorical_features, self._untouched_features,
                                                       self._categories_dict, self._generalization_arrays,
                                                       self._depths)
+
+    def fit_transform(self, X, y=None):
+        self.fit(X, y)
+        return self.transform(X)
