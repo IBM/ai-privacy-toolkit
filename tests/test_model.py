@@ -79,6 +79,8 @@ def test_blackbox_classifier():
     score = model.score(test)
     assert(score == 1.0)
 
+    assert model.model_type is None
+
 def test_blackbox_classifier_no_test():
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
 
