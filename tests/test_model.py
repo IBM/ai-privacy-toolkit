@@ -72,7 +72,7 @@ def test_blackbox_classifier():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
     assert(pred.shape[0] == x_test.shape[0])
 
@@ -81,13 +81,24 @@ def test_blackbox_classifier():
 
     assert model.model_type is None
 
+
+def test_blackbox_classifier_mismatch():
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    data = Data(train, test)
+    with pytest.raises(ValueError):
+        model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+
+
 def test_blackbox_classifier_no_test():
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
 
     train = ArrayDataset(x_train, y_train)
 
     data = Data(train)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(train)
     assert(pred.shape[0] == x_train.shape[0])
 
@@ -100,7 +111,7 @@ def test_blackbox_classifier_no_train():
 
     test = ArrayDataset(x_test, y_test)
     data = Data(test=test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
     assert(pred.shape[0] == x_test.shape[0])
 
@@ -114,7 +125,7 @@ def test_blackbox_classifier_no_test_y():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(train)
     assert(pred.shape[0] == x_train.shape[0])
 
@@ -136,7 +147,7 @@ def test_blackbox_classifier_no_train_y():
     train = ArrayDataset(x_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -171,7 +182,7 @@ def test_blackbox_classifier_probabilities():
 
 def test_blackbox_classifier_predict():
     def predict(x):
-        return [0.23, 0.56, 0.21]
+        return np.array([[0.23, 0.56, 0.21] for i in range(x.shape[0])])
 
     (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
     y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
@@ -186,6 +197,7 @@ def test_blackbox_classifier_predict():
 
     score = model.score(train)
     assert (score == 1.0)
+
 
 def test_is_one_hot():
     (_, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
