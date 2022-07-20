@@ -78,6 +78,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         """
         # Put the model in the training mode
         self._model.train()
+        print(nb_epochs)
 
         if self._optimizer is None:  # pragma: no cover
             raise ValueError("An optimizer is needed to train the model, but none for provided.")
@@ -122,7 +123,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
                 tot_correct += correct
                 total += o_batch.shape[0]
             val_loss, val_acc = self._eval(x, y, num_batch, batch_size)
-            # print acc TODO
+            print(val_acc)
             best_acc = max(val_acc, best_acc)
             if save_checkpoints:
                 if save_entire_model:
@@ -222,7 +223,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             raise FileNotFoundError(msg)
 
         else:
-            self._model = torch.load(filepath)
+            self._model._model = torch.load(filepath)
 
     def load_latest_model_checkpoint(self):
         """
