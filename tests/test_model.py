@@ -199,12 +199,30 @@ def test_blackbox_classifier_predict():
     assert (score == 1.0)
 
 
+def test_blackbox_classifier_predict_scalar():
+    def predict(x):
+        return np.array([[1.0] for i in range(x.shape[0])])
+
+    (x_train, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0, 1, 0] for i in range(105)])
+
+    train = ArrayDataset(x_train, y_train)
+
+    model = BlackboxClassifierPredictFunction(predict, ModelOutputType.CLASSIFIER_SCALAR, (4,), 3)
+    pred = model.predict(train)
+    assert (pred.shape[0] == x_train.shape[0])
+
+    score = model.score(train)
+    assert (score == 1.0)
+
+
 def test_is_one_hot():
     (_, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
 
     assert (not is_one_hot(y_train))
     assert (not is_one_hot(y_train.reshape(-1,1)))
     assert (is_one_hot(to_categorical(y_train)))
+
 
 def test_get_nb_classes():
     (_, y_train), (_, y_test) = dataset_utils.get_iris_dataset_np()
