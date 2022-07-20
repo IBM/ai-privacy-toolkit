@@ -7,12 +7,14 @@ import tensorflow as tf
 from tensorflow import keras
 tf.compat.v1.disable_eager_execution()
 
+from sklearn.metrics import mean_squared_error
+
 from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.utils import check_and_transform_label_format
 from art.estimators.classification.keras import KerasClassifier as ArtKerasClassifier
-# from art.estimators.regression.keras import KerasRegressor as ArtKerasRegressor
+from art.estimators.regression.keras import KerasRegressor as ArtKerasRegressor
 
 
 class KerasModel(Model):
@@ -90,62 +92,60 @@ class KerasClassifier(KerasModel):
             raise NotImplementedError
 
 
-# class KerasRegressor(KerasModel):
-#     """
-#     Wrapper class for keras regression models.
-#
-#     :param model: The original keras model object.
-#     :type model: `keras.models.Model`
-#     :param black_box_access: Boolean describing the type of deployment of the model (when in production).
-#                              Set to True if the model is only available via query (API) access, i.e.,
-#                              only the outputs of the model are exposed, and False if the model internals
-#                              are also available. Default is True.
-#     :type black_box_access: boolean, optional
-#     :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
-#                               unlimited queries to the model API or whether there is a limit to the number of
-#                               queries that can be submitted. Default is True.
-#     :type unlimited_queries: boolean, optional
-#     """
-#     def __init__(self, model: keras.models.Model, black_box_access: Optional[bool] = True,
-#                  unlimited_queries: Optional[bool] = True, **kwargs):
-#         super().__init__(model, ModelOutputType.REGRESSOR_SCALAR, black_box_access, unlimited_queries, **kwargs)
-#         self._art_model = ArtKerasRegressor(model)
-#
-#     def fit(self, train_data: Dataset, **kwargs) -> None:
-#         """
-#         Fit the model using the training data.
-#
-#         :param train_data: Training data.
-#         :type train_data: `Dataset`
-#         :return: None
-#         """
-#         self._art_model.fit(train_data.get_samples(), train_data.get_labels(), **kwargs)
-#
-#     def predict(self, x: Dataset, **kwargs) -> OUTPUT_DATA_ARRAY_TYPE:
-#         """
-#         Perform predictions using the model for input `x`.
-#
-#         :param x: Input samples.
-#         :type x: `Dataset`
-#         :return: Predictions from the model as numpy array.
-#         """
-#         return self._art_model.predict(x.get_samples(), **kwargs)
-#
-#     def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.MEAN_SQUARED_ERROR,
-#               **kwargs):
-#         """
-#         Score the model using test data.
-#
-#         :param test_data: Test data.
-#         :type train_data: `Dataset`
-#         :param scoring_method: The method for scoring predictions. Default is ACCURACY.
-#         :type scoring_method: `ScoringMethod`, optional
-#         :return: the score as float
-#         """
-#         y = check_and_transform_label_format(test_data.get_labels(), self._art_model.nb_classes)
-#         predicted = self.predict(test_data)
-#         if scoring_method == ScoringMethod.MEAN_SQUARED_ERROR:
-#             mse = keras.losses.MeanSquaredError(reduction=keras.losses.Reduction.SUM)
-#             return mse(y, predicted).numpy()
-#         else:
-#             raise NotImplementedError('Only MEAN_SQUARED_ERROR supported as scoring method')
+class KerasRegressor(KerasModel):
+    """
+    Wrapper class for keras regression models.
+
+    :param model: The original keras model object.
+    :type model: `keras.models.Model`
+    :param black_box_access: Boolean describing the type of deployment of the model (when in production).
+                             Set to True if the model is only available via query (API) access, i.e.,
+                             only the outputs of the model are exposed, and False if the model internals
+                             are also available. Default is True.
+    :type black_box_access: boolean, optional
+    :param unlimited_queries: If black_box_access is True, this boolean indicates whether a user can perform
+                              unlimited queries to the model API or whether there is a limit to the number of
+                              queries that can be submitted. Default is True.
+    :type unlimited_queries: boolean, optional
+    """
+    def __init__(self, model: keras.models.Model, black_box_access: Optional[bool] = True,
+                 unlimited_queries: Optional[bool] = True, **kwargs):
+        super().__init__(model, ModelOutputType.REGRESSOR_SCALAR, black_box_access, unlimited_queries, **kwargs)
+        self._art_model = ArtKerasRegressor(model)
+
+    def fit(self, train_data: Dataset, **kwargs) -> None:
+        """
+        Fit the model using the training data.
+
+        :param train_data: Training data.
+        :type train_data: `Dataset`
+        :return: None
+        """
+        self._art_model.fit(train_data.get_samples(), train_data.get_labels(), **kwargs)
+
+    def predict(self, x: Dataset, **kwargs) -> OUTPUT_DATA_ARRAY_TYPE:
+        """
+        Perform predictions using the model for input `x`.
+
+        :param x: Input samples.
+        :type x: `Dataset`
+        :return: Predictions from the model as numpy array.
+        """
+        return self._art_model.predict(x.get_samples(), **kwargs)
+
+    def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.MEAN_SQUARED_ERROR,
+              **kwargs):
+        """
+        Score the model using test data.
+
+        :param test_data: Test data.
+        :type train_data: `Dataset`
+        :param scoring_method: The method for scoring predictions. Default is ACCURACY.
+        :type scoring_method: `ScoringMethod`, optional
+        :return: the score as float
+        """
+        predicted = self.predict(test_data)
+        if scoring_method == ScoringMethod.MEAN_SQUARED_ERROR:
+            return mean_squared_error(test_data.get_labels(), predicted)
+        else:
+            raise NotImplementedError('Only MEAN_SQUARED_ERROR supported as scoring method')

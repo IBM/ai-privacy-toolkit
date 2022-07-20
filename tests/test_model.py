@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, \
+from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, KerasRegressor, \
     BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes
 from apt.utils.datasets import ArrayDataset, Data
 from apt.utils import dataset_utils
@@ -64,6 +64,28 @@ def test_keras_classifier():
 
     score = model.score(test)
     assert(0.0 <= score <= 1.0)
+
+
+def test_keras_regressor():
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_diabetes_dataset_np()
+
+    underlying_model = Sequential()
+    underlying_model.add(Input(shape=(10,)))
+    underlying_model.add(Dense(100, activation="relu"))
+    underlying_model.add(Dense(10, activation="relu"))
+    underlying_model.add(Dense(1))
+
+    underlying_model.compile(loss="mean_squared_error", optimizer="adam", metrics=["accuracy"])
+
+    model = KerasRegressor(underlying_model)
+
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    model.fit(train)
+    pred = model.predict(test)
+    assert (pred.shape[0] == x_test.shape[0])
+
+    score = model.score(test)
 
 
 def test_blackbox_classifier():
