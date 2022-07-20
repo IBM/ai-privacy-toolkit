@@ -58,9 +58,11 @@ def test_nursery_pytorch_state_dict():
                               optimizer=optimizer, input_shape=(24,),
                               nb_classes=4)
     model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=False, nb_epochs=100)
+    model.load_latest_state_dict_checkpoint()
     score = model.score(ArrayDataset(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
+    # python pytorch numpy
     model.load_best_state_dict_checkpoint()
     score = model.score(ArrayDataset(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
@@ -68,6 +70,7 @@ def test_nursery_pytorch_state_dict():
 
 
 def test_nursery_pytorch_save_entire_model():
+
     (x_train, y_train), (x_test, y_test), _, _ = load_nursery(test_set=0.5)
     # reduce size of training set to make attack slightly better
     train_set_size = 500
@@ -90,6 +93,6 @@ def test_nursery_pytorch_save_entire_model():
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
     art_model.load_best_model_checkpoint()
-    #score = art_model.score(ArrayDataset(x_test.astype(np.float32), y_test))
+    score = art_model.score(ArrayDataset(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)

@@ -122,6 +122,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
                 tot_correct += correct
                 total += o_batch.shape[0]
             val_loss, val_acc = self._eval(x, y, num_batch, batch_size)
+            # print acc TODO
             best_acc = max(val_acc, best_acc)
             if save_checkpoints:
                 if save_entire_model:
