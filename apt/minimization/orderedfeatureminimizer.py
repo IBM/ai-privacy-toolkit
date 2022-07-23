@@ -317,9 +317,9 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
 
         # Split to train and test sets.
         if y is None:
-            X_train, X_test = train_test_split(X, test_size=0.4)
+            X_train, X_test = train_test_split(X, test_size=0.4, random_state=self._random_state)
         else:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=self._random_state)
 
         # Initialize and fit new encoder if non was supplied by the user.
         if self._data_encoder is None:
@@ -343,13 +343,13 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
 
         # Train decision-tree on all features. get number of splits and set as max depth.
         # root_id=0 means root
-        max_depth = self._calc_dt_splits(DecisionTreeClassifier().fit(X_train, y_train).tree_, root_id=0)
+        max_depth = self._calc_dt_splits(DecisionTreeClassifier(random_state=self._random_state).fit(X_train, y_train).tree_, root_id=0)
 
         feature_indices = self._get_feature_indices(numerical_features, categorical_features,
                                                     self._data_encoder.named_transformers_["cat"])
 
         self._feature_dts = {
-            feature_name: DecisionTreeClassifier(max_depth=max_depth).fit(X_train.iloc[:, indices], y_train)
+            feature_name: DecisionTreeClassifier(max_depth=max_depth, random_state=self._random_state).fit(X_train.iloc[:, indices], y_train)
             for feature_name, indices in feature_indices.items()
         }
 
