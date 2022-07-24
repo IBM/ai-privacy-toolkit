@@ -246,6 +246,8 @@ class BlackboxClassifier(Model):
         :type scoring_method: `ScoringMethod`, optional
         :return: the score as float (for classifiers, between 0 and 1)
         """
+        if test_data.get_samples() is None or test_data.get_labels() is None:
+            raise ValueError('score can only be computed when test data and labels are available')
         predicted = self._art_model.predict(test_data.get_samples())
         y = check_and_transform_label_format(test_data.get_labels(), nb_classes=self._nb_classes)
         if scoring_method == ScoringMethod.ACCURACY:
@@ -276,9 +278,13 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access=True, unlimited_queries=False, **kwargs)
         x_train_pred = model.get_train_samples()
-        y_train_pred = model.get_train_labels()
+        y_train_pred = model.get_train_predictions()
+        if y_train_pred is None:
+            y_train_pred = model.get_train_labels()
         x_test_pred = model.get_test_samples()
-        y_test_pred = model.get_test_labels()
+        y_test_pred = model.get_test_predictions()
+        if y_test_pred is None:
+            y_test_pred = model.get_test_labels()
 
         if y_train_pred is not None:
             check_correct_model_output(y_train_pred, self.output_type)

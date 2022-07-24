@@ -477,7 +477,7 @@ class Data:
 
     def get_train_samples(self) -> Collection[Any]:
         """
-        Get train set samples
+        Get train set samples, or None if no training data provided
 
         :return: training samples
         """
@@ -487,13 +487,23 @@ class Data:
 
     def get_train_labels(self) -> Collection[Any]:
         """
-        Get train set labels
+        Get train set labels, or None if no training labels provided
 
         :return: training labels
         """
         if self.train is None:
             return None
         return self.train.get_labels()
+
+    def get_train_predictions(self) -> Collection[Any]:
+        """
+        Get train set predictions, or None if no training predictions provided
+
+        :return: training labels
+        """
+        if self.train is None:
+            return None
+        return self.train.get_predictions()
 
     def get_test_samples(self) -> Collection[Any]:
         """
@@ -509,8 +519,18 @@ class Data:
         """
         Get test set labels
 
-        :return: test labels, or None if no test data provided
+        :return: test labels, or None if no test labels provided
         """
         if self.test is None:
             return None
         return self.test.get_labels()
+
+    def get_test_predictions(self) -> Collection[Any]:
+        """
+        Get test set predictions, or None if no test predictions provided
+
+        :return: test labels
+        """
+        if self.test is None:
+            return None
+        return self.test.get_predictions()
