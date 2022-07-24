@@ -1,17 +1,21 @@
-import logging
+""" Pytorch Model Wrapper"""
 import os
-import random
 import shutil
-from typing import Optional, Tuple
+import logging
 
+from typing import Optional, Tuple
 import numpy as np
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+
 from art.utils import check_and_transform_label_format, logger
 from apt.utils.datasets.datasets import PytorchData
 from apt.utils.models import Model, ModelOutputType
 from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE
-
 from art.estimators.classification.pytorch import PyTorchClassifier as ArtPyTorchClassifier
-import torch
+
+
+logger = logging.getLogger(__name__)
 
 
 class PyTorchModel(Model):
@@ -22,9 +26,9 @@ class PyTorchModel(Model):
 
 class PyTorchClassifierWrapper(ArtPyTorchClassifier):
     """
-        Wrapper class for pytorch classifier model.
-        Extension for Pytorch ART model
-        """
+    Wrapper class for pytorch classifier model.
+    Extension for Pytorch ART model
+    """
 
     def get_step_correct(self, outputs, targets) -> int:
         """get number of correctly classified labels"""
@@ -35,43 +39,47 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         else:
             return int(torch.sum(torch.round(outputs, axis=-1) == targets).item())
 
-    def _eval(self, x: np.ndarray, y: np.ndarray, nb_epochs, batch_size):
-
+    def _eval(self, loader: DataLoader):
+        """inner function for model evaluation"""
         self.model.eval()
 
         total_loss = 0
         correct = 0
         total = 0
-        y = check_and_transform_label_format(y, self.nb_classes)
-        x_preprocessed, y_preprocessed = self._apply_preprocessing(x, y, fit=True)
-        y_preprocessed = self.reduce_labels(y_preprocessed)
-        num_batch = int(np.ceil(len(x_preprocessed) / float(batch_size)))
-        ind = np.arange(len(x_preprocessed))
-        for epoch in range(nb_epochs):
-            random.shuffle(ind)
-            for m in range(num_batch):
-                inputs = torch.from_numpy(x_preprocessed[ind[m * batch_size: (m + 1) * batch_size]]).to(self._device)
-                targets = torch.from_numpy(y_preprocessed[ind[m * batch_size: (m + 1) * batch_size]]).to(self._device)
-                targets = targets.to(self.device)
-                outputs = self.model(inputs)
-                loss = self._loss(outputs, targets)
-                total_loss += (loss.item() * targets.size(0))
-                total += targets.size(0)
-                correct += self.get_step_correct(outputs, targets)
+
+        for inputs, targets in loader:
+            inputs = inputs.to(self._device)
+            targets = targets.to(self._device)
+
+            outputs = self.model(inputs)
+            loss = self._loss(outputs, targets)
+            total_loss += loss.item() * targets.size(0)
+            total += targets.size(0)
+            correct += self.get_step_correct(outputs, targets)
 
         return total_loss / total, float(correct) / total
 
-    def fit(self, x: np.ndarray, y: np.ndarray, x_validation: np.ndarray = None, y_validation: np.ndarray = None,
-            batch_size: int = 128, nb_epochs: int = 10, save_checkpoints: bool = True, save_entire_model=True,
-            path=os.getcwd(), **kwargs) -> None:
+    def fit(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        x_validation: np.ndarray = None,
+        y_validation: np.ndarray = None,
+        batch_size: int = 128,
+        nb_epochs: int = 10,
+        save_checkpoints: bool = True,
+        save_entire_model=True,
+        path=os.getcwd(),
+        **kwargs,
+    ) -> None:
         """
         Fit the classifier on the training set `(x, y)`.
         :param x: Training data.
         :param y: Target values (class labels) one-hot-encoded of shape (nb_samples, nb_classes) or index labels
             of shape (nb_samples,).
         :param x_validation: Validation data (optional).
-        :param y_validation: Target validation values (class labels) one-hot-encoded of shape (nb_samples, nb_classes) or index labels
-            of shape (nb_samples,) (optional).
+        :param y_validation: Target validation values (class labels) one-hot-encoded of shape
+            (nb_samples, nb_classes) or index labels of shape (nb_samples,) (optional).
         :param batch_size: Size of batches.
         :param nb_epochs: Number of epochs to use for training.
         :param save_checkpoints: Boolean, save checkpoints if True.
@@ -87,18 +95,24 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             raise ValueError("An optimizer is needed to train the model, but none for provided.")
 
         _y = check_and_transform_label_format(y, self.nb_classes)
-        if x_validation is None or y_validation is None:
-            x_validation = x
-            y_validation = y
-
         # Apply preprocessing
         x_preprocessed, y_preprocessed = self._apply_preprocessing(x, _y, fit=True)
-
         # Check label shape
         y_preprocessed = self.reduce_labels(y_preprocessed)
 
-        num_batch = int(np.ceil(len(x_preprocessed) / float(batch_size)))
-        ind = np.arange(len(x_preprocessed))
+        train_dataset = TensorDataset(torch.from_numpy(x_preprocessed), torch.from_numpy(y_preprocessed))
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+        if x_validation is None or y_validation is None:
+            val_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
+            logger.info("Using train set for validation")
+        else:
+            _y_val = check_and_transform_label_format(y_validation, self.nb_classes)
+            x_val_preprocessed, y_val_preprocessed = self._apply_preprocessing(x_validation, _y_val, fit=False)
+            # Check label shape
+            y_val_preprocessed = self.reduce_labels(y_val_preprocessed)
+            val_dataset = TensorDataset(torch.from_numpy(x_val_preprocessed), torch.from_numpy(y_val_preprocessed))
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
 
         # Start training
         for epoch in range(nb_epochs):
@@ -106,40 +120,38 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             total = 0
             best_acc = 0
             # Shuffle the examples
-            random.shuffle(ind)
 
             # Train for one epoch
-            for m in range(num_batch):
-                i_batch = torch.from_numpy(x_preprocessed[ind[m * batch_size: (m + 1) * batch_size]]).to(self._device)
-                o_batch = torch.from_numpy(y_preprocessed[ind[m * batch_size: (m + 1) * batch_size]]).to(self._device)
-
+            for inputs, targets in train_loader:
+                inputs = inputs.to(self._device)
+                targets = targets.to(self._device)
                 # Zero the parameter gradients
                 self._optimizer.zero_grad()
 
                 # Perform prediction
-                model_outputs = self._model(i_batch)
+                model_outputs = self._model(inputs)
 
                 # Form the loss function
-                loss = self._loss(model_outputs[-1], o_batch)
+                loss = self._loss(model_outputs[-1], targets)
 
                 loss.backward()
 
                 self._optimizer.step()
-                correct = self.get_step_correct(model_outputs[-1], o_batch)
+                correct = self.get_step_correct(model_outputs[-1], targets)
                 tot_correct += correct
-                total += o_batch.shape[0]
+                total += targets.shape[0]
 
-            val_loss, val_acc = self._eval(x_validation, y_validation, num_batch, batch_size)
-            print(val_acc)
+            val_loss, val_acc = self._eval(val_loader)
+            logger.info(f"Epoch{epoch + 1}/{nb_epochs} Val_Loss: {val_loss}, Val_Acc: {val_acc}")
+
             best_acc = max(val_acc, best_acc)
             if save_checkpoints:
                 if save_entire_model:
-                    self.save_checkpoint_model(is_best=best_acc <= val_acc)
+                    self.save_checkpoint_model(is_best=best_acc <= val_acc, path=path)
                 else:
-                    self.save_checkpoint_state_dict(is_best=best_acc <= val_acc)
+                    self.save_checkpoint_state_dict(is_best=best_acc <= val_acc, path=path)
 
-    def save_checkpoint_state_dict(self, is_best: bool, path=os.getcwd(),
-                                   filename="latest.tar") -> None:
+    def save_checkpoint_state_dict(self, is_best: bool, path=os.getcwd(), filename="latest.tar") -> None:
         """
         Saves checkpoint as latest.tar or best.tar
         :param is_best: whether the model is the best achieved model
@@ -148,16 +160,19 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         :return: None
         """
         # add path
-        checkpoint = os.path.join(path, 'checkpoints')
+        checkpoint = os.path.join(path, "checkpoints")
         path = checkpoint
         os.makedirs(path, exist_ok=True)
         filepath = os.path.join(path, filename)
         state = dict()
-        state['state_dict'] = self.model.state_dict()
-        state['opt_state_dict'] = self.optimizer.state_dict()
+        state["state_dict"] = self.model.state_dict()
+        state["opt_state_dict"] = self.optimizer.state_dict()
+
+        logger.info(f"Saving checkpoint state dictionary: {filepath}")
         torch.save(state, filepath)
         if is_best:
-            shutil.copyfile(filepath, os.path.join(path, 'model_best.tar'))
+            shutil.copyfile(filepath, os.path.join(path, "model_best.tar"))
+            logger.info(f"Saving best state dictionary checkpoint: {os.path.join(path, 'model_best.tar')}")
 
     def save_checkpoint_model(self, is_best: bool, path=os.getcwd(), filename="latest.tar") -> None:
         """
@@ -167,13 +182,15 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         :param filename: checkpoint name
         :return: None
         """
-        checkpoint = os.path.join(path, 'checkpoints')
+        checkpoint = os.path.join(path, "checkpoints")
         path = checkpoint
         os.makedirs(path, exist_ok=True)
         filepath = os.path.join(path, filename)
+        logger.info(f"Saving checkpoint model : {filepath}")
         torch.save(self.model, filepath)
         if is_best:
-            shutil.copyfile(filepath, os.path.join(path, 'model_best.tar'))
+            shutil.copyfile(filepath, os.path.join(path, "model_best.tar"))
+            logger.info(f"Saving best checkpoint model: {os.path.join(path, 'model_best.tar')}")
 
     def load_checkpoint_state_dict_by_path(self, model_name: str, path: str = None):
         """
@@ -183,7 +200,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         :return: loaded model
         """
         if path is None:
-            path = os.path.join(os.getcwd(), 'checkpoints')
+            path = os.path.join(os.getcwd(), "checkpoints")
 
         filepath = os.path.join(path, model_name)
         if not os.path.exists(filepath):
@@ -193,25 +210,26 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
 
         else:
             checkpoint = torch.load(filepath)
-        self.model.load_state_dict(checkpoint['state_dict'])
+        self.model.load_state_dict(checkpoint["state_dict"])
+        self.model.to(self.device)
 
-        if self._optimizer and 'opt_state_dict' in checkpoint:
-            self._optimizer.load_state_dict(checkpoint['opt_state_dict'])
+        if self._optimizer and "opt_state_dict" in checkpoint:
+            self._optimizer.load_state_dict(checkpoint["opt_state_dict"])
         self.model.eval()
 
     def load_latest_state_dict_checkpoint(self):
         """
-            Load model state dict only based on the check point path (latest.tar)
-            :return: loaded model
+        Load model state dict only based on the check point path (latest.tar)
+        :return: loaded model
         """
-        self.load_checkpoint_state_dict_by_path('latest.tar')
+        self.load_checkpoint_state_dict_by_path("latest.tar")
 
     def load_best_state_dict_checkpoint(self):
         """
-            Load model state dict only based on the check point path (model_best.tar)
-            :return: loaded model
+        Load model state dict only based on the check point path (model_best.tar)
+        :return: loaded model
         """
-        self.load_checkpoint_state_dict_by_path('model_best.tar')
+        self.load_checkpoint_state_dict_by_path("model_best.tar")
 
     def load_checkpoint_model_by_path(self, model_name: str, path: str = None):
         """
@@ -221,7 +239,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         :return: loaded model
         """
         if path is None:
-            path = os.path.join(os.getcwd(), 'checkpoints')
+            path = os.path.join(os.getcwd(), "checkpoints")
 
         filepath = os.path.join(path, model_name)
         if not os.path.exists(filepath):
@@ -230,22 +248,23 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             raise FileNotFoundError(msg)
 
         else:
-            self._model._model = torch.load(filepath)
+            self._model._model = torch.load(filepath, map_location=self.device)
+            self.model.to(self.device)
             self.model.eval()
 
     def load_latest_model_checkpoint(self):
         """
-            Load entire model only based on the check point path (latest.tar)
-            :return: loaded model
+        Load entire model only based on the check point path (latest.tar)
+        :return: loaded model
         """
-        self.load_checkpoint_model_by_path('latest.tar')
+        self.load_checkpoint_model_by_path("latest.tar")
 
     def load_best_model_checkpoint(self):
         """
-            Load entire model only based on the check point path (model_best.tar)
-            :return: loaded model
+        Load entire model only based on the check point path (model_best.tar)
+        :return: loaded model
         """
-        self.load_checkpoint_model_by_path('model_best.tar')
+        self.load_checkpoint_model_by_path("model_best.tar")
 
 
 class PyTorchClassifier(PyTorchModel):
@@ -253,9 +272,18 @@ class PyTorchClassifier(PyTorchModel):
     Wrapper class for pytorch classification models.
     """
 
-    def __init__(self, model: "torch.nn.Module", output_type: ModelOutputType, loss: "torch.nn.modules.loss._Loss",
-                 input_shape: Tuple[int, ...], nb_classes: int, optimizer: "torch.optim.Optimizer",
-                 black_box_access: Optional[bool] = True, unlimited_queries: Optional[bool] = True, **kwargs):
+    def __init__(
+        self,
+        model: "torch.nn.Module",
+        output_type: ModelOutputType,
+        loss: "torch.nn.modules.loss._Loss",
+        input_shape: Tuple[int, ...],
+        nb_classes: int,
+        optimizer: "torch.optim.Optimizer",
+        black_box_access: Optional[bool] = True,
+        unlimited_queries: Optional[bool] = True,
+        **kwargs,
+    ):
         """
         Initialization specifically for the PyTorch-based implementation.
 
@@ -278,9 +306,17 @@ class PyTorchClassifier(PyTorchModel):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
         self._art_model = PyTorchClassifierWrapper(model, loss, input_shape, nb_classes, optimizer)
 
-    def fit(self, train_data: PytorchData, validation_data: PytorchData = None, batch_size: int = 128,
-            nb_epochs: int = 10,
-            save_checkpoints: bool = True, save_entire_model=True, path=os.getcwd(), **kwargs) -> None:
+    def fit(
+        self,
+        train_data: PytorchData,
+        validation_data: PytorchData = None,
+        batch_size: int = 128,
+        nb_epochs: int = 10,
+        save_checkpoints: bool = True,
+        save_entire_model=True,
+        path=os.getcwd(),
+        **kwargs,
+    ) -> None:
         """
         Fit the model using the training data.
 
@@ -296,9 +332,30 @@ class PyTorchClassifier(PyTorchModel):
         :param kwargs: Dictionary of framework-specific arguments. This parameter is not currently
         supported for PyTorch and providing it takes no effect.
         """
-        self._art_model.fit(train_data.get_samples(), train_data.get_labels().reshape(-1, 1),
-                            validation_data.get_samples(), validation_data.get_labels().reshape(-1, 1), batch_size,
-                            nb_epochs, save_checkpoints, save_entire_model, path, **kwargs)
+        if validation_data is None:
+            self._art_model.fit(
+                x=train_data.get_samples(),
+                y=train_data.get_labels().reshape(-1, 1),
+                batch_size=batch_size,
+                nb_epochs=nb_epochs,
+                save_checkpoints=save_checkpoints,
+                save_entire_model=save_entire_model,
+                path=path,
+                **kwargs,
+            )
+        else:
+            self._art_model.fit(
+                x=train_data.get_samples(),
+                y=train_data.get_labels().reshape(-1, 1),
+                x_validation=validation_data.get_samples(),
+                y_validation=validation_data.get_labels().reshape(-1, 1),
+                batch_size=batch_size,
+                nb_epochs=nb_epochs,
+                save_checkpoints=save_checkpoints,
+                save_entire_model=save_entire_model,
+                path=path,
+                **kwargs,
+            )
 
     def predict(self, x: PytorchData, **kwargs) -> OUTPUT_DATA_ARRAY_TYPE:
         """
@@ -332,15 +389,15 @@ class PyTorchClassifier(PyTorchModel):
 
     def load_latest_state_dict_checkpoint(self):
         """
-            Load model state dict only based on the check point path (latest.tar)
-            :return: loaded model
+        Load model state dict only based on the check point path (latest.tar)
+        :return: loaded model
         """
         self._art_model.load_latest_state_dict_checkpoint()
 
     def load_best_state_dict_checkpoint(self):
         """
-            Load model state dict only based on the check point path (model_best.tar)
-            :return: loaded model
+        Load model state dict only based on the check point path (model_best.tar)
+        :return: loaded model
         """
         self._art_model.load_best_state_dict_checkpoint()
 
@@ -355,14 +412,14 @@ class PyTorchClassifier(PyTorchModel):
 
     def load_latest_model_checkpoint(self):
         """
-            Load entire model only based on the check point path (latest.tar)
-            :return: loaded model
+        Load entire model only based on the check point path (latest.tar)
+        :return: loaded model
         """
         self._art_model.load_latest_model_checkpoint()
 
     def load_best_model_checkpoint(self):
         """
-            Load entire model only based on the check point path (model_best.tar)
-            :return: loaded model
+        Load entire model only based on the check point path (model_best.tar)
+        :return: loaded model
         """
         self._art_model.load_best_model_checkpoint()
