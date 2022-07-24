@@ -2,7 +2,7 @@ numpy~=1.22.3
 pandas~=1.1.3
 scipy~=1.5.2
 scikit-learn~=1.0.2
-adversarial-robustness-toolkit>=1.9.1
+adversarial-robustness-toolkit~=1.11.0
 
 # testing
 pytest~=6.1.1
