@@ -437,14 +437,11 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         categorical_encoder = self._data_encoder.named_transformers_["cat"]
         X_out_cat = \
             categorical_encoder.inverse_transform(X_transformed[:, len(self._numerical_features):])
-        HAHA = pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1),
-                            columns=self._numerical_features + self._categorical_features)
         return pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1),
                             columns=self._numerical_features + self._categorical_features)
 
     @property
     def generalizations(self):
-        # TODO: Implement this. Use untouched features.
         if self._generalizations is None:
             self._generalizations = self._get_generalizations_from_dts(
                 self._feature_dts, self._numerical_features,
