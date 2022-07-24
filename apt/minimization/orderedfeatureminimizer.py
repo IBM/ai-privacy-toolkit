@@ -34,35 +34,30 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         :param features_to_minimize: Currently not implemented. Please do not use.
         :param train_only_QI: Currently not implemented. Please do not use.
         :param random_state:
+        :param ordered_features:
         """
-        self._ordered_features = ordered_features
-        self._random_state = random_state
+        # if features_to_minimize is not None:
+        #     raise NotImplementedError
+        # if train_only_QI is not None:
+        #     raise NotImplementedError
+
         self._estimator = estimator
         self._data_encoder = data_encoder
         self._target_accuracy = target_accuracy
         self._categorical_features = categorical_features
         self._features_to_minimize = features_to_minimize
         self._train_only_QI = train_only_QI
-        self._feature_dts: Union[dict, None] = None
+        self._random_state = random_state
+        self._ordered_features = ordered_features
 
         self._numerical_features = None
+        self._feature_dts: Union[Dict[str, Tree]]
         self._generalizations = None
-        self._categories_dict = None
+        self._categories_dict: Dict
         self._depths: Dict[str, int]
         self._generalization_arrays: Dict[str, List]
         self._untouched_features: List[str]
-
-    def _calc_numerical_dt(self):
-        """ Calculates a per feature decision tree for numerical features
-
-        :return:
-        """
-
-    def _calc_categorical_dt(self):
-        """ Calculates a per feature decision tree for categorical features
-
-        :return:
-        """
+        self.feature_indices = None
 
     @staticmethod
     def _get_feature_indices(numerical_features, categorical_features, categorical_encoder):
@@ -178,18 +173,15 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
          features that were not generalized at all.
         :type Dict[str, Union[Dict, List]]
         """
-        # numerical_thresholds = {}
-        # for feature_name in numerical_features:
-        #     numerical_thresholds[feature_name] =
         numerical_thresholds = {
             feature_name: cls._get_numerical_generalization(dts[feature_name].tree_, depths[feature_name],
-                                              generalization_arrays[feature_name])
-            for feature_name in numerical_features
+                                                            generalization_arrays[feature_name])
+            for feature_name in {feature for feature in numerical_features if feature not in untouched_features}
         }
 
         categories_per_feature = {}
         untouched_features = untouched_features.copy()
-        for feature_name in categorical_features:
+        for feature_name in {feature for feature in categorical_features if feature not in untouched_features}:
             generalization = [{
                 categories_dict[feature_name][category]
                 for category in cls._get_categorical_generalization(dts[feature_name].tree_, depths[feature_name],
@@ -199,15 +191,6 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                 categories_per_feature[feature_name] = generalization
             else:
                 untouched_features.append(feature_name)
-
-        # categories_per_feature = {
-        #     feature_name: [{
-        #         categories_dict[category]
-        #         for category in cls._get_categorical_generalization(dts[feature_name].tree_, depths[feature_name],
-        #                                                             generalization_arrays[feature_name])
-        #     }]
-        #     for feature_name in categorical_features
-        # }
 
         return {
             "ranges": numerical_thresholds,
@@ -316,6 +299,8 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         all_features = numerical_features + categorical_features
 
         # Split to train and test sets.
+        # Train set is used to train the feature dts
+        # Test set is used for ordering data and for pruning
         if y is None:
             X_train, X_test = train_test_split(X, test_size=0.4, random_state=self._random_state)
         else:
@@ -341,15 +326,18 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
             y_train = self._estimator.predict(X_train)
             y_test = self._estimator.predict(X_test)
 
-        # Train decision-tree on all features. get number of splits and set as max depth.
+        # Train decision-tree on all features. get number of splits and set as max depth for training feature dts.
         # root_id=0 means root
-        max_depth = self._calc_dt_splits(DecisionTreeClassifier(random_state=self._random_state).fit(X_train, y_train).tree_, root_id=0)
+        max_depth = self._calc_dt_splits(
+            DecisionTreeClassifier(random_state=self._random_state).fit(X_train, y_train).tree_, root_id=0)
 
-        feature_indices = self._get_feature_indices(numerical_features, categorical_features,
+        self.feature_indices = feature_indices = self._get_feature_indices(numerical_features, categorical_features,
                                                     self._data_encoder.named_transformers_["cat"])
 
         self._feature_dts = {
-            feature_name: DecisionTreeClassifier(max_depth=max_depth, random_state=self._random_state).fit(X_train.iloc[:, indices], y_train)
+            feature_name:
+                DecisionTreeClassifier(max_depth=max_depth, random_state=self._random_state)
+                .fit(X_train.iloc[:, indices], y_train)
             for feature_name, indices in feature_indices.items()
         }
 
@@ -370,7 +358,6 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         # Order features_dts according to heuristic
         self._depths = depths = {feature_name: self._calculate_tree_depth(self._feature_dts[feature_name], 0)
                                  for feature_name in all_features}
-        X_test_transformed = np.copy(X_test)
 
         if self._ordered_features is not None:
             ordered_features = self._ordered_features
@@ -378,38 +365,59 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
             ordered_features = self._get_ordered_features(self._estimator, self._data_encoder, X_train,
                                                           numerical_features, categorical_features, feature_indices,
                                                           self._random_state)
-        untouched_features = self._untouched_features = []
 
+        # Prune dts based on target accuracy using test set
+        self._untouched_features = self._prune(
+            estimator=self._estimator,
+            feature_dts=self._feature_dts,
+            X_test=X_test,
+            y_test=y_test,
+            ordered_features=ordered_features,
+            numerical_features=numerical_features,
+            categorical_features=categorical_features,
+            feature_indices=feature_indices,
+            generalization_arrays=generalization_arrays,
+            depths=depths,
+            target_accuracy=self._target_accuracy
+        )
+
+    @classmethod
+    def _prune(cls, estimator, feature_dts, X_test, y_test, ordered_features, numerical_features, categorical_features,
+               feature_indices, generalization_arrays, depths, target_accuracy):
+        untouched_features = []
+        X_test_transformed = np.copy(X_test)
+        y_transformed = estimator.predict(X_test_transformed)
         for feature_name in ordered_features:
-            # TODO: Implement pruning and use here.
-            # self._transform_in_place(self._feature_dts, X_test_transformed, depths, numerical_features,
-            #                          categorical_features,
-            #                          feature_indices, generalization_arrays)
-            y_transformed = self._estimator.predict(X_test_transformed)
-            accuracy = accuracy_score(y_test, y_transformed)
-            init_depth = depths[feature_name]
-            for i in range(depths[feature_name]):
-                if accuracy < self._target_accuracy:
-                    break
-                depths[feature_name] -= 1
-                self._transform_in_place(self._feature_dts, X_test_transformed, depths,
-                                         [feature_name] if feature_name in numerical_features else [],
-                                         [feature_name] if feature_name in categorical_features else [],
-                                         feature_indices, generalization_arrays)
-                y_transformed = self._estimator.predict(X_test_transformed)
-                accuracy = accuracy_score(y_test, y_transformed)
+            indices = feature_indices[feature_name]
+            numerical_features_to_transform = [feature_name] if feature_name in numerical_features else []
+            categorical_features_to_transform = [feature_name] if feature_name in categorical_features else []
+            initial_depth = depths[feature_name]
 
-            if accuracy < self._target_accuracy:
-                depths[feature_name] += 1
-                X_test_transformed[:, feature_indices[feature_name]] = X_test.iloc[:, feature_indices[feature_name]]
-                if depths[feature_name] != init_depth:
-                    self._transform_in_place(self._feature_dts, X_test_transformed, depths,
-                                             [feature_name] if feature_name in numerical_features else [],
-                                             [feature_name] if feature_name in categorical_features else [],
-                                             feature_indices,
-                                             generalization_arrays)
-                else:
-                    untouched_features.append(feature_name)
+            for level in range(depths[feature_name]):
+                previous_X_feature_data = np.copy(X_test_transformed[:, indices])
+                previous_y_transformed = np.copy(y_transformed)
+                depths[feature_name] = initial_depth - level
+                cls._transform_in_place(
+                    dts=feature_dts,
+                    X=X_test_transformed,
+                    depths=depths,
+                    numerical_features=numerical_features_to_transform,
+                    categorical_features=categorical_features_to_transform,
+                    feature_indices=feature_indices,
+                    generalizations_arrays=generalization_arrays
+                )
+                y_transformed = estimator.predict(X_test_transformed)
+                accuracy = accuracy_score(y_test, y_transformed)
+                if accuracy < target_accuracy:
+                    # TODO: make sure level 1 actually does anything. The initial depth might be set too deep.
+                    if level == 0:
+                        untouched_features.append(feature_name)
+                    else:
+                        depths[feature_name] = initial_depth - level + 1
+                    X_test_transformed[:, indices] = previous_X_feature_data
+                    y_transformed = previous_y_transformed
+                    break
+        return untouched_features
 
     @classmethod
     def _get_ordered_features(cls, estimator, encoder, X_train, numerical_features, categorical_features,
@@ -418,35 +426,33 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
 
     def transform(self, X: pd.DataFrame):
         X_transformed = self._data_encoder.transform(X)
-        filtered_numerical_features = [feature for feature in self._numerical_features if
-                                       feature not in self._untouched_features]
-        filtered_categorical_features = [feature for feature in self._categorical_features if
-                                         feature not in self._untouched_features]
         self._transform_in_place(
-            self._feature_dts, X_transformed, self._depths, filtered_numerical_features,
-            filtered_categorical_features, self._get_feature_indices(self._numerical_features,
-                                                                     self._categorical_features,
-                                                                     self._data_encoder.named_transformers_["cat"]),
+            self._feature_dts, X_transformed,
+            self._depths,
+            self.generalizations["ranges"].keys(),
+            self.generalizations["categories"].keys(),
+            self._get_feature_indices(self._numerical_features, self._categorical_features, self._data_encoder.named_transformers_["cat"]),
             self._generalization_arrays
         )
         categorical_encoder = self._data_encoder.named_transformers_["cat"]
         X_out_cat = \
             categorical_encoder.inverse_transform(X_transformed[:, len(self._numerical_features):])
-        HAHA = pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1), columns=self._numerical_features + self._categorical_features)
-        return pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1), columns=self._numerical_features + self._categorical_features)
+        HAHA = pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1),
+                            columns=self._numerical_features + self._categorical_features)
+        return pd.DataFrame(np.concatenate([X_transformed[:, :len(self._numerical_features)], X_out_cat], axis=1),
+                            columns=self._numerical_features + self._categorical_features)
 
     @property
     def generalizations(self):
         # TODO: Implement this. Use untouched features.
-        filtered_numerical_features = [feature for feature in self._numerical_features if
-                                       feature not in self._untouched_features]
-        filtered_categorical_features = [feature for feature in self._categorical_features if
-                                         feature not in self._untouched_features]
         if self._generalizations is None:
-            return self._get_generalizations_from_dts(self._feature_dts, filtered_numerical_features,
-                                                      filtered_categorical_features, self._untouched_features,
-                                                      self._categories_dict, self._generalization_arrays,
-                                                      self._depths)
+            self._generalizations = self._get_generalizations_from_dts(
+                self._feature_dts, self._numerical_features,
+                self._categorical_features, self._untouched_features,
+                self._categories_dict, self._generalization_arrays,
+                self._depths
+            )
+        return self._generalizations
 
     def fit_transform(self, X, y=None):
         self.fit(X, y)
