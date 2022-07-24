@@ -362,7 +362,7 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         if self._ordered_features is not None:
             ordered_features = self._ordered_features
         else:
-            ordered_features = self._get_ordered_features(self._estimator, self._data_encoder, X_train,
+            ordered_features = self._get_ordered_features(self._estimator, self._data_encoder, X_train, y_train,
                                                           numerical_features, categorical_features, feature_indices,
                                                           self._random_state)
 
@@ -420,7 +420,7 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         return untouched_features
 
     @classmethod
-    def _get_ordered_features(cls, estimator, encoder, X_train, numerical_features, categorical_features,
+    def _get_ordered_features(cls, estimator, encoder, X_train, y_train, numerical_features, categorical_features,
                               feature_indices, random_state=None):
         return numerical_features + categorical_features
 
