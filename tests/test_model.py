@@ -3,7 +3,7 @@ import numpy as np
 
 from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, KerasRegressor, \
     BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes
-from apt.utils.datasets import ArrayDataset, Data
+from apt.utils.datasets import ArrayDataset, Data, DatasetWithPredictions
 from apt.utils import dataset_utils
 
 from sklearn.tree import DecisionTreeRegressor
@@ -93,6 +93,37 @@ def test_blackbox_classifier():
 
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
+    data = Data(train, test)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
+    pred = model.predict(test)
+    assert(pred.shape[0] == x_test.shape[0])
+
+    score = model.score(test)
+    assert(score == 1.0)
+
+    assert model.model_type is None
+
+
+def test_blackbox_classifier_predictions():
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    train = DatasetWithPredictions(y_train, x_train)
+    test = DatasetWithPredictions(y_test, x_test)
+    data = Data(train, test)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
+    pred = model.predict(test)
+    assert(pred.shape[0] == x_test.shape[0])
+    assert model.model_type is None
+
+    with pytest.raises(ValueError):
+        model.score(test)
+
+
+def test_blackbox_classifier_predictions_y():
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    train = DatasetWithPredictions(y_train, x_train, y_train)
+    test = DatasetWithPredictions(y_test, x_test, y_test)
     data = Data(train, test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
