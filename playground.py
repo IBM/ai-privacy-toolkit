@@ -4,13 +4,13 @@ from apt.minimization.orderedfeatureminimizer import OrderedFeatureMinimizer
 from apt.minimization import GeneralizeToRepresentative
 from data_minimization_benchmark.datapreparers import GSSDataPreparer
 from sklearn.ensemble import RandomForestClassifier
-from data_minimization_benchmark.utils.NormalizedCertaintyPenalty import calculate_normalized_certainty_penalty
+# from data_minimization_benchmark.utils.NormalizedCertaintyPenalty import calculate_normalized_certainty_penalty
 from apt.minimization import ShapMinimizer
 from sklearn.metrics import accuracy_score
 from data_minimization_benchmark.benchmark import Benchmark
 import matplotlib.pyplot as plt
 
-from data_minimization_benchmark.utils.Plotter import Plotter
+from data_minimization_benchmark.utils.plotter import Plotter
 
 if __name__ == '__main__':
     # Previously calculated order of shap values
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         return OrderedFeatureMinimizer(*args, **kwargs, ordered_features=ordered_shap_features,
                                        data_encoder=gss_data.encoder, random_state=14)
 
-    target_accuracies = np.arange(0.5
+    target_accuracies = np.arange(0
                                   , 1.0000001, 0.5)
     benchmark = Benchmark(
         # generalizer=OrderedFeatureMinimizer(random_forest, data_encoder=gss_data._encoder,
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         train_set=gss_data.unencoded_data.generalizer_train,
         test_set=gss_data.unencoded_data.generalizer_validation,
         models={"random_forest": random_forest},
-        transformer=gss_data.encoder,
+        encoder=gss_data.encoder,
         target_accuracies=target_accuracies,
         features=gss_data.all_features,
         categorical_features=gss_data.categorical_features,
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         train_set=gss_data.unencoded_data.generalizer_train,
         test_set=gss_data.unencoded_data.generalizer_validation,
         models={"random_forest": random_forest},
-        transformer=gss_data.encoder,
+        encoder=gss_data.encoder,
         target_accuracies=target_accuracies,
         features=gss_data.all_features,
         categorical_features=gss_data.categorical_features,

@@ -35,10 +35,6 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
         :param random_state:
         :param ordered_features:
         """
-        # if features_to_minimize is not None:
-        #     raise NotImplementedError
-        # if train_only_QI is not None:
-        #     raise NotImplementedError
 
         self._estimator = estimator
         self._data_encoder = data_encoder
@@ -150,8 +146,8 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
         left_id = dt.children_left[node_id]
         right_id = dt.children_right[node_id]
         if (left_id < 0 or right_id < 0) or depth == 0 or majorities[left_id] is None or majorities[right_id] is None:
-            categories.discard(majorities[node_id])
             return categories
+        categories.discard(dt.feature[node_id])
         cls._get_categorical_generalization(dt, depth - 1, majorities, left_id, categories)
         cls._get_categorical_generalization(dt, depth - 1, majorities, right_id, categories)
         return categories
@@ -366,6 +362,7 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
                                                           self._random_state)
 
         # Prune dts based on target accuracy using test set
+        # Depths is changed inplace
         self._untouched_features = self._prune(
             estimator=self._estimator,
             feature_dts=self._feature_dts,
@@ -392,7 +389,7 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
             categorical_features_to_transform = [feature_name] if feature_name in categorical_features else []
             initial_depth = depths[feature_name]
 
-            for level in range(depths[feature_name]):
+            for level in range(initial_depth + 1):
                 previous_X_feature_data = np.copy(X_test_transformed[:, indices])
                 previous_y_transformed = np.copy(y_transformed)
                 depths[feature_name] = initial_depth - level
@@ -419,8 +416,7 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
                     break
         return untouched_features
 
-    @classmethod
-    def _get_ordered_features(cls, estimator, encoder, X_train, y_train, numerical_features, categorical_features,
+    def _get_ordered_features(self, estimator, encoder, X_train, y_train, numerical_features, categorical_features,
                               feature_indices, random_state=None):
         return numerical_features + categorical_features
 
