@@ -2,7 +2,6 @@ from copy import deepcopy
 from itertools import accumulate
 
 import pandas as pd
-import sklearn.metrics
 from sklearn.base import BaseEstimator, TransformerMixin, MetaEstimatorMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -16,8 +15,8 @@ from sklearn.tree._tree import Tree
 from sklearn.metrics import accuracy_score
 
 
-class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, TransformerMixin):
-    # TODO: add type hints and fix when integrating, check if need cells
+# TODO: use mixins correctly
+class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, TransformerMixin):
     def __init__(self, estimator, data_encoder=None,
                  target_accuracy: float = 0.998, categorical_features: Union[np.ndarray, list] = None,
                  features_to_minimize: Union[np.ndarray, list] = None, train_only_QI: bool = True, random_state=None,
@@ -60,7 +59,7 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
         self.feature_indices = None
 
     @staticmethod
-    def _get_feature_indices(numerical_features, categorical_features, categorical_encoder):
+    def _get_feature_indices(numerical_features, categorical_features, categorical_encoder: OneHotEncoder):
         """
 
         :param numerical_features: numerical feature names in the order the estimator/encoder expects.
@@ -355,10 +354,10 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                                                   X_train.iloc[:, feature_indices[feature_name]].to_numpy(), 0,
                                                   generalization_arrays[feature_name])
 
-        # Order features_dts according to heuristic
         self._depths = depths = {feature_name: self._calculate_tree_depth(self._feature_dts[feature_name], 0)
                                  for feature_name in all_features}
 
+        # Order features_dts according to heuristic
         if self._ordered_features is not None:
             ordered_features = self._ordered_features
         else:
@@ -409,7 +408,8 @@ class OrderedFeatureMinimizer:  # BaseEstimator, MetaEstimatorMixin, Transformer
                 y_transformed = estimator.predict(X_test_transformed)
                 accuracy = accuracy_score(y_test, y_transformed)
                 if accuracy < target_accuracy:
-                    # TODO: make sure level 1 actually does anything. The initial depth might be set too deep.
+                    # TODO: Make sure level 1 actually does anything. The initial depth might be set too deep, although,
+                    #  it does not affect correctness.
                     if level == 0:
                         untouched_features.append(feature_name)
                     else:
