@@ -12,6 +12,8 @@ from sklearn.ensemble import RandomForestClassifier
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
+from art.utils import check_and_transform_label_format
+
 
 from art.utils import to_categorical
 
@@ -158,6 +160,10 @@ def test_blackbox_classifier_no_test():
     score = model.score(train)
     assert (score == 1.0)
 
+    predictions_x, predictions_y = model.get_predictions()
+    assert np.array_equal(predictions_x, x_train)
+    assert np.array_equal(predictions_y, check_and_transform_label_format(y_train, nb_classes=3))
+
 
 def test_blackbox_classifier_no_train():
     (_, _), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
@@ -170,6 +176,10 @@ def test_blackbox_classifier_no_train():
 
     score = model.score(test)
     assert (score == 1.0)
+
+    predictions_x, predictions_y = model.get_predictions()
+    assert np.array_equal(predictions_x, x_test)
+    assert np.array_equal(predictions_y, check_and_transform_label_format(y_test, nb_classes=3))
 
 
 def test_blackbox_classifier_no_test_y():

@@ -316,9 +316,19 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
 
         self._nb_classes = get_nb_classes(y_pred)
         self._input_shape = x_pred.shape[1:]
+        self._x_pred = x_pred
+        self._y_pred = y_pred
         predict_fn = (x_pred, y_pred)
         self._art_model = BlackBoxClassifier(predict_fn, self._input_shape, self._nb_classes, fuzzy_float_compare=True,
                                              preprocessing=None)
+
+    def get_predictions(self) -> Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]:
+        """
+        Return all the data for which the model contains predictions.
+
+        :return: Tuple containing data and predictions as numpy arrays.
+        """
+        return self._x_pred, self._y_pred
 
 
 class BlackboxClassifierPredictFunction(BlackboxClassifier):
