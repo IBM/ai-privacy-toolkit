@@ -59,12 +59,12 @@ def test_nursery_pytorch_state_dict():
                               nb_classes=4)
     model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=False, nb_epochs=10)
     model.load_latest_state_dict_checkpoint()
-    score = model.score(ArrayDataset(x_test.astype(np.float32), y_test))
+    score = model.score(PytorchData(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
     # python pytorch numpy
     model.load_best_state_dict_checkpoint()
-    score = model.score(ArrayDataset(x_test.astype(np.float32), y_test))
+    score = model.score(PytorchData(x_test.astype(np.float32), y_test))
     print('best model accuracy: ', score)
     assert (0 <= score <= 1)
 
@@ -89,10 +89,10 @@ def test_nursery_pytorch_save_entire_model():
                                   nb_classes=4)
     art_model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True, nb_epochs=10)
 
-    score = art_model.score(ArrayDataset(x_test.astype(np.float32), y_test))
+    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
     art_model.load_best_model_checkpoint()
-    score = art_model.score(ArrayDataset(x_test.astype(np.float32), y_test))
+    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test))
     print('best model accuracy: ', score)
     assert (0 <= score <= 1)

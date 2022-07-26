@@ -94,9 +94,9 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         if self._optimizer is None:  # pragma: no cover
             raise ValueError("An optimizer is needed to train the model, but none for provided.")
 
-        _y = check_and_transform_label_format(y, self.nb_classes)
+        y = check_and_transform_label_format(y, self.nb_classes)
         # Apply preprocessing
-        x_preprocessed, y_preprocessed = self._apply_preprocessing(x, _y, fit=True)
+        x_preprocessed, y_preprocessed = self._apply_preprocessing(x, y, fit=True)
         # Check label shape
         y_preprocessed = self.reduce_labels(y_preprocessed)
 
@@ -107,8 +107,8 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             val_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
             logger.info("Using train set for validation")
         else:
-            _y_val = check_and_transform_label_format(y_validation, self.nb_classes)
-            x_val_preprocessed, y_val_preprocessed = self._apply_preprocessing(x_validation, _y_val, fit=False)
+            y_val = check_and_transform_label_format(y_validation, self.nb_classes)
+            x_val_preprocessed, y_val_preprocessed = self._apply_preprocessing(x_validation, y_val, fit=False)
             # Check label shape
             y_val_preprocessed = self.reduce_labels(y_val_preprocessed)
             val_dataset = TensorDataset(torch.from_numpy(x_val_preprocessed), torch.from_numpy(y_val_preprocessed))
