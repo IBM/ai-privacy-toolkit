@@ -2,12 +2,13 @@ import pytest
 import numpy as np
 
 from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, KerasRegressor, \
-    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes
+    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes, XGBoostClassifier
 from apt.utils.datasets import ArrayDataset, Data, DatasetWithPredictions
 from apt.utils import dataset_utils
 
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
@@ -88,6 +89,22 @@ def test_keras_regressor():
     assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
+
+
+def test_xgboost_classifier():
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+    underlying_model = XGBClassifier()
+    underlying_model.fit(x_train, y_train)
+    model = XGBoostClassifier(underlying_model, ModelOutputType.CLASSIFIER_PROBABILITIES, input_shape=(4,), nb_classes=3)
+    train = ArrayDataset(x_train, y_train)
+    test = ArrayDataset(x_test, y_test)
+    pred = model.predict(test)
+    assert(pred.shape[0] == x_test.shape[0])
+
+    score = model.score(test)
+    assert(0.0 <= score <= 1.0)
+
+    model.fit(train)
 
 
 def test_blackbox_classifier():
