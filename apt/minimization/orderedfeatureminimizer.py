@@ -9,23 +9,23 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeClassifier
-from typing import Union, Dict, List, Set
+from sklearn.metrics import accuracy_score as uniform_accuracy_score
+from typing import Union, Dict, List, Set, Callable
 import numpy as np
 from sklearn.tree._tree import Tree
-from sklearn.metrics import accuracy_score
 
 
 # TODO: use mixins correctly
 class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, TransformerMixin):
-    def __init__(self, estimator, data_encoder=None,
+    def __init__(self, estimator, encoder=None,
                  target_accuracy: float = 0.998, categorical_features: Union[np.ndarray, list] = None,
                  features_to_minimize: Union[np.ndarray, list] = None, train_only_QI: bool = True, random_state=None,
-                 ordered_features: List[str] = None
+                 ordered_features: List[str] = None, accuracy_score: Callable = uniform_accuracy_score
                  ):
         """
 
         :param estimator: fitted estimator model to be used for minimization
-        :param data_encoder: fitted encoder that transforms data to match model expectation. Currently, assumes encoder
+        :param encoder: fitted encoder that transforms data to match model expectation. Currently, assumes encoder
         has 2 transformers: "num" for numerical and "cat" with respective order.
         :type ColumnTransformer
         :param target_accuracy:
@@ -37,13 +37,14 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
         """
 
         self._estimator = estimator
-        self._data_encoder = data_encoder
+        self._data_encoder = encoder
         self._target_accuracy = target_accuracy
         self._categorical_features = categorical_features
         self._features_to_minimize = features_to_minimize
         self._train_only_QI = train_only_QI
         self._random_state = random_state
         self._ordered_features = ordered_features
+        self._accuracy_score = accuracy_score
 
         self._numerical_features = None
         self._feature_dts: Union[Dict[str, Tree]]
@@ -134,7 +135,8 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
         return thresholds
 
     @classmethod
-    def _get_categorical_generalization(cls, dt: Tree, depth: int, majorities, node_id=0, categories=None):
+    def _get_categorical_generalization(cls, dt: Tree, depth: int, majorities, node_id=0,
+                                        categories: Union[None, Set] = None):
         """
         :param categories: categories of feature in the order of OHE.
         :param dt: single feature decision tree trained on categorical OHE data.
@@ -327,7 +329,8 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
             DecisionTreeClassifier(random_state=self._random_state).fit(X_train, y_train).tree_, root_id=0)
 
         self.feature_indices = feature_indices = self._get_feature_indices(numerical_features, categorical_features,
-                                                    self._data_encoder.named_transformers_["cat"])
+                                                                           self._data_encoder.named_transformers_[
+                                                                               "cat"])
 
         self._feature_dts = {
             feature_name:
@@ -374,12 +377,14 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
             feature_indices=feature_indices,
             generalization_arrays=generalization_arrays,
             depths=depths,
-            target_accuracy=self._target_accuracy
+            target_accuracy=self._target_accuracy,
+            accuracy_score=self._accuracy_score
         )
+        return self
 
     @classmethod
     def _prune(cls, estimator, feature_dts, X_test, y_test, ordered_features, numerical_features, categorical_features,
-               feature_indices, generalization_arrays, depths, target_accuracy):
+               feature_indices, generalization_arrays, depths, target_accuracy, accuracy_score):
         untouched_features = []
         X_test_transformed = np.copy(X_test)
         y_transformed = estimator.predict(X_test_transformed)
@@ -427,7 +432,8 @@ class OrderedFeatureMinimizer:  # (BaseEstimator, MetaEstimatorMixin, Transforme
             self._depths,
             self.generalizations["ranges"].keys(),
             self.generalizations["categories"].keys(),
-            self._get_feature_indices(self._numerical_features, self._categorical_features, self._data_encoder.named_transformers_["cat"]),
+            self._get_feature_indices(self._numerical_features, self._categorical_features,
+                                      self._data_encoder.named_transformers_["cat"]),
             self._generalization_arrays
         )
         categorical_encoder = self._data_encoder.named_transformers_["cat"]
