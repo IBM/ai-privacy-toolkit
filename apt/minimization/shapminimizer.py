@@ -3,7 +3,8 @@ import numpy as np
 from typing import List, Dict, Union
 from . import OrderedFeatureMinimizer
 from aix360.algorithms.shap import KernelExplainer
-from sklearn.utils import resample
+from sklearn.cluster import k_means
+from sklearn.model_selection import train_test_split
 
 
 class ShapMinimizer(OrderedFeatureMinimizer):
@@ -43,12 +44,12 @@ class ShapMinimizer(OrderedFeatureMinimizer):
         :return: dict of global shap like
         :type Dict[str, float]
         """
-        # TODO: Check kmeans instead of resample.Change that if needed.
-        background_X = resample(X, n_samples=background_size, random_state=random_state)
+        _, X_samples, _, y_samples = train_test_split(X, y, test_size=0.2, stratify=y, random_state=random_state)
+        background_X, _, _ = k_means(X, n_clusters=background_size, random_state=random_state)
         explainer = KernelExplainer(estimator.predict_proba, background_X)
         # The following line picks only the shap values for the correct label for each record.
         shap_values = \
-            np.array(explainer.explain_instance(X, nsamples=nsamples)).transpose(1, 0, 2)[np.arange(0, X.shape[0]), y]
+            np.array(explainer.explain_instance(X_samples, nsamples=nsamples))[y_samples, np.arange(0, X_samples.shape[0])]
         return {
             feature_name: np.sum(abs(shap_values[indices]))
             for feature_name, indices in feature_indices.items()

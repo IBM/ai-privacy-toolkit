@@ -21,11 +21,11 @@ if __name__ == '__main__':
     encoded_data, unencoded_data = gss_data.encoded_data, gss_data.unencoded_data
     random_forest = RandomForestClassifier(random_state=14)
     random_forest.fit(*encoded_data.model_train)
-    # minimizer = ShapMinimizer(random_forest, gss_data._encoder, categorical_features=gss_data.categorical_features, target_accuracy=0.8,
-    #                          background_size=20, n_samples=70)
-    minimizer = OrderedFeatureMinimizer(random_forest, data_encoder=gss_data._encoder,
-                                        categorical_features=gss_data.categorical_features,
-                                        target_accuracy=0.8, ordered_features=ordered_shap_features, random_state=14)
+    minimizer = ShapMinimizer(random_forest, gss_data.encoder, categorical_features=gss_data.categorical_features, target_accuracy=0.8,
+                             background_size=20, n_samples=70)
+    # minimizer = OrderedFeatureMinimizer(random_forest, data_encoder=gss_data.encoder,
+    #                                     categorical_features=gss_data.categorical_features,
+    #                                     target_accuracy=0.8, ordered_features=ordered_shap_features, random_state=14)
     minimizer.fit(unencoded_data.model_train.X)
     X_transformed = minimizer.transform(unencoded_data.model_train.X)
     # print(
@@ -35,10 +35,11 @@ if __name__ == '__main__':
 
     def shap_minimizer_maker(*args, **kwargs):
         return OrderedFeatureMinimizer(*args, **kwargs, ordered_features=ordered_shap_features,
-                                       data_encoder=gss_data.encoder, random_state=14)
+                                       encoder=gss_data.encoder, random_state=14)
 
-    target_accuracies = np.arange(0
-                                  , 1.0000001, 0.5)
+    # target_accuracies = np.arange(0
+    #                               , 1.0000001, 0.5)
+    target_accuracies = []
     benchmark = Benchmark(
         # generalizer=OrderedFeatureMinimizer(random_forest, data_encoder=gss_data._encoder,
         #                                 categorical_features=gss_data.categorical_features,
@@ -55,7 +56,7 @@ if __name__ == '__main__':
     res = benchmark.run()
 
     def ordered_deterministic_maker(*args, **kwargs):
-        return OrderedFeatureMinimizer(*args, **kwargs, data_encoder=gss_data.encoder, random_state=14)
+        return OrderedFeatureMinimizer(*args, **kwargs, encoder=gss_data.encoder, random_state=14)
     benchmark2 = Benchmark(
         # generalizer=OrderedFeatureMinimizer(random_forest, data_encoder=gss_data._encoder,
         #                                 categorical_features=gss_data.categorical_features,
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         train_set=gss_data.unencoded_data.generalizer_train,
         test_set=gss_data.unencoded_data.generalizer_validation,
         models={"random_forest": random_forest},
-        transformer=gss_data.encoder,
+        encoder=gss_data.encoder,
         target_accuracies=target_accuracies,
         features=gss_data.all_features,
         categorical_features=gss_data.categorical_features,
