@@ -273,9 +273,9 @@ class DatasetWithPredictions(Dataset):
                  y: Optional[INPUT_DATA_ARRAY_TYPE] = None, features_names: Optional[list] = None, **kwargs):
         self.is_pandas = False
         self.features_names = features_names
-        self._pred = self._array2numpy(pred)
-        self._y = self._array2numpy(y) if y is not None else None
-        self._x = self._array2numpy(x) if x is not None else None
+        self._pred = array2numpy(pred)
+        self._y = array2numpy(y) if y is not None else None
+        self._x = array2numpy(x) if x is not None else None
         if self.is_pandas and x is not None:
             if features_names and not np.array_equal(features_names, x.columns):
                 raise ValueError("The supplied features are not the same as in the data features")
