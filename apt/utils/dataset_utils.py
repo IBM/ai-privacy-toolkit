@@ -6,6 +6,17 @@ from os import path, mkdir
 from six.moves.urllib.request import urlretrieve
 
 
+def get_iris_dataset_np(test_set: float = 0.3):
+    """
+    Loads the Iris dataset from scikit-learn.
+
+    :param test_set: Proportion of the data to use as validation split (value between 0 and 1). Default is 0.3
+    :type test_set: float
+    :return: Entire dataset and labels as numpy arrays. Returned as a tuple (x_train, y_train), (x_test, y_test)
+    """
+    return _load_iris(test_set)
+
+
 def _load_iris(test_set_size: float = 0.3):
     iris = datasets.load_iris()
     data = iris.data
@@ -18,14 +29,15 @@ def _load_iris(test_set_size: float = 0.3):
     return (x_train, y_train), (x_test, y_test)
 
 
-def get_iris_dataset(test_set: float = 0.3):
+def get_diabetes_dataset_np(test_set: float = 0.3):
     """
-    Loads the Iris dataset from scikit-learn.
+    Loads the Diabetes dataset from scikit-learn.
 
-    :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
-    :return: Entire dataset and labels as numpy array.
+    :param test_set: Proportion of the data to use as validation split (value between 0 and 1). Default is 0.3
+    :type test_set: float
+    :return: Entire dataset and labels as numpy arrays. Returned as a tuple (x_train, y_train), (x_test, y_test)
     """
-    return _load_iris(test_set)
+    return _load_diabetes(test_set)
 
 
 def _load_diabetes(test_set_size: float = 0.3):
@@ -40,22 +52,14 @@ def _load_diabetes(test_set_size: float = 0.3):
     return (x_train, y_train), (x_test, y_test)
 
 
-def get_diabetes_dataset():
+def get_german_credit_dataset_pd(test_set: float = 0.3):
     """
-    Loads the Iris dataset from scikit-learn.
+    Loads the UCI German credit dataset from `tests/datasets/german` or downloads it from
+    https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/ if necessary.
 
-    :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
-    :return: Entire dataset and labels as numpy array.
-    """
-    return _load_diabetes()
-
-
-def get_german_credit_dataset(test_set: float = 0.3):
-    """
-    Loads the UCI German_credit dataset from `tests/datasets/german` or downloads it if necessary.
-
-    :param test_set: Proportion of the data to use as validation split (value between 0 and 1).
-    :return: Dataset and labels as pandas dataframes.
+    :param test_set: Proportion of the data to use as validation split (value between 0 and 1). Default is 0.3
+    :type test_set: float
+    :return: Dataset and labels as pandas dataframes. Returned as a tuple (x_train, y_train), (x_test, y_test)
     """
 
     url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data'
@@ -118,15 +122,21 @@ def _modify_german_dataset(data):
             return 1
         else:
             raise Exception('Bad value')
+
+    def modify_label(value):
+        return value - 1
+
     data['Foreign_worker'] = data['Foreign_worker'].apply(modify_Foreign_worker)
     data['Telephone'] = data['Telephone'].apply(modify_Telephone)
+    data['label'] = data['label'].apply(modify_label)
 
 
-def get_adult_dataset():
+def get_adult_dataset_pd():
     """
-    Loads the UCI Adult dataset from `tests/datasets/adult` or downloads it if necessary.
+    Loads the UCI Adult dataset from `tests/datasets/adult` or downloads it from
+    https://archive.ics.uci.edu/ml/machine-learning-databases/adult/ if necessary.
 
-    :return: Dataset and labels as pandas dataframes.
+    :return: Dataset and labels as pandas dataframes. Returned as a tuple (x_train, y_train), (x_test, y_test)
     """
     features = ['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status', 'occupation',
                 'relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 'hours-per-week', 'native-country',
@@ -223,17 +233,22 @@ def _modify_adult_dataset(data):
     return data.drop(['fnlwgt', 'education'], axis=1)
 
 
-def get_nursery_dataset(raw: bool = True, test_set: float = 0.2, transform_social: bool = False):
+def get_nursery_dataset_pd(raw: bool = True, test_set: float = 0.2, transform_social: bool = False):
     """
-    Loads the UCI Nursery dataset from `tests/datasets/nursery` or downloads it if necessary.
+    Loads the UCI Nursery dataset from `tests/datasets/nursery` or downloads it from
+    https://archive.ics.uci.edu/ml/machine-learning-databases/nursery/ if necessary.
 
     :param raw: `True` if no preprocessing should be applied to the data. Otherwise, categorical data is one-hot
                 encoded and data is scaled using sklearn's StandardScaler.
-    :param test_set: Proportion of the data to use as validation split. The value should be between 0 and 1.
+    :type raw: boolean
+    :param test_set: Proportion of the data to use as validation split. The value should be between 0 and 1. Default is
+                     0.2
+    :type test_set: float
     :param transform_social: If `True`, transforms the social feature to be binary for the purpose of attribute
                              inference. This is done by assigning the original value 'problematic' the new value 1, and
                              the other original values are assigned the new value 0.
-    :return: Dataset and labels as pandas dataframes.
+    :type transform_social: boolean
+    :return: Dataset and labels as pandas dataframes. Returned as a tuple (x_train, y_train), (x_test, y_test)
     """
     url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/nursery/nursery.data'
     data_dir = '../datasets/nursery'

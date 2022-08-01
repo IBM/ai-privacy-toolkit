@@ -18,27 +18,26 @@ class Anonymize:
     Class for performing tailored, model-guided anonymization of training datasets for ML models.
 
     Based on the implementation described in: https://arxiv.org/abs/2007.13086
-    Parameters
-    ----------
-    k : int
-        The privacy parameter that determines the number of records that will be indistinguishable from each
-        other (when looking at the quasi identifiers). Should be at least 2.
-    quasi_identifiers : np.ndarray or list
-        The features that need to be minimized in case of pandas data, and indexes of features
-        in case of numpy data.
-    categorical_features : list, optional
-        The list of categorical features (should only be supplied when passing data as a
-        pandas dataframe.
-    is_regression : Bool, optional
-        Whether the model is a regression model or not (if False, assumes
-        a classification model). Default is False.
-    train_only_QI : Bool, optional
-        The required method to train data set for anonymization. Default is
-        to train the tree on all features.
+
+    :param k: The privacy parameter that determines the number of records that will be indistinguishable from each
+              other (when looking at the quasi identifiers). Should be at least 2.
+    :type k: int
+    :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
+                              in case of numpy data.
+    :type quasi_identifiers: np.ndarray or list
+    :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot encoded
+                                 before using them to train the decision tree model).
+    :type categorical_features: list, optional
+    :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
+                          Default is False.
+    :type is_regression: list, optional
+    :param train_only_QI: The required method to train data set for anonymization. Default is
+                          to train the tree on all features.
+    :type train_only_QI: boolean, optional
     """
 
     def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
-                 is_regression=False, train_only_QI=False):
+                 is_regression: Optional[bool] = False, train_only_QI: Optional[bool] = False):
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
@@ -58,7 +57,9 @@ class Anonymize:
 
         :param dataset: Data wrapper containing the training data for the model and the predictions of the
                         original model on the training data.
-        :return: An array containing the anonymized training dataset.
+        :type dataset: `ArrayDataset`
+        :return: The anonymized training dataset as either numpy array or pandas DataFrame (depending on the type of
+                 the original data used to create the ArrayDataset).
         """
         if dataset.get_samples().shape[1] != 0:
             self.features = [i for i in range(dataset.get_samples().shape[1])]
@@ -100,11 +101,11 @@ class Anonymize:
             # build DT just on QI features
             x_anonymizer_train = x_prepared[:, self.quasi_identifiers]
         if self.is_regression:
-            self.anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+            self._anonymizer = DecisionTreeRegressor(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
         else:
-            self.anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
+            self._anonymizer = DecisionTreeClassifier(random_state=10, min_samples_split=2, min_samples_leaf=self.k)
 
-        self.anonymizer.fit(x_anonymizer_train, y)
+        self._anonymizer.fit(x_anonymizer_train, y)
         cells_by_id = self._calculate_cells(x, x_anonymizer_train)
         return self._anonymize_data(x, x_anonymizer_train, cells_by_id)
 
@@ -112,16 +113,16 @@ class Anonymize:
         # x is original data, x_anonymizer_train is only QIs + 1-hot encoded
         cells_by_id = {}
         leaves = []
-        for node, feature in enumerate(self.anonymizer.tree_.feature):
+        for node, feature in enumerate(self._anonymizer.tree_.feature):
             if feature == -2:  # leaf node
                 leaves.append(node)
-                hist = [int(i) for i in self.anonymizer.tree_.value[node][0]]
+                hist = [int(i) for i in self._anonymizer.tree_.value[node][0]]
                 # TODO we may change the method for choosing representative for cell
                 # label_hist = self.anonymizer.tree_.value[node][0]
                 # label = int(self.anonymizer.classes_[np.argmax(label_hist)])
                 cell = {'label': 1, 'hist': hist, 'id': int(node)}
                 cells_by_id[cell['id']] = cell
-        self.nodes = leaves
+        self._nodes = leaves
         self._find_representatives(x, x_anonymizer_train, cells_by_id.values())
         return cells_by_id
 
@@ -152,8 +153,8 @@ class Anonymize:
                     cell['representative'][feature] = min_value
 
     def _find_sample_nodes(self, samples):
-        paths = self.anonymizer.decision_path(samples).toarray()
-        node_set = set(self.nodes)
+        paths = self._anonymizer.decision_path(samples).toarray()
+        node_set = set(self._nodes)
         return [(list(set([i for i, v in enumerate(p) if v == 1]) & node_set))[0] for p in paths]
 
     def _find_sample_cells(self, samples, cells_by_id):
