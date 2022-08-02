@@ -19,9 +19,42 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
-INPUT_DATA_ARRAY_TYPE = Union[np.ndarray, pd.DataFrame, pd.Series, List, Tensor]
+INPUT_DATA_ARRAY_TYPE = Union[np.ndarray, pd.DataFrame, List, Tensor]
 OUTPUT_DATA_ARRAY_TYPE = np.ndarray
-DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame, pd.Series]
+DATA_PANDAS_NUMPY_TYPE = Union[np.ndarray, pd.DataFrame]
+
+
+def array2numpy(arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
+
+    """
+    converts from INPUT_DATA_ARRAY_TYPE to numpy array
+    """
+    if type(arr) == np.ndarray:
+        return arr
+    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+        return arr.to_numpy()
+    if isinstance(arr, list):
+        return np.array(arr)
+    if type(arr) == Tensor:
+        return arr.detach().cpu().numpy()
+
+    raise ValueError("Non supported type: ", type(arr).__name__)
+
+
+def array2torch_tensor(arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
+    """
+    converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
+    """
+    if type(arr) == np.ndarray:
+        return torch.from_numpy(arr)
+    if type(arr) == pd.DataFrame or type(arr) == pd.Series:
+        return torch.from_numpy(arr.to_numpy())
+    if isinstance(arr, list):
+        return torch.tensor(arr)
+    if type(arr) == Tensor:
+        return arr
+
+    raise ValueError("Non supported type: ", type(arr).__name__)
 
 
 class Dataset(metaclass=ABCMeta):
@@ -57,46 +90,6 @@ class Dataset(metaclass=ABCMeta):
         :return: predictions as numpy array
         """
         raise NotImplementedError
-
-    def _array2numpy(self, arr: INPUT_DATA_ARRAY_TYPE) -> OUTPUT_DATA_ARRAY_TYPE:
-        """
-        Converts from INPUT_DATA_ARRAY_TYPE to numpy array
-
-        :param arr: the array to transform
-        :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
-        :return: the array transformed into a numpy array
-        """
-        if type(arr) == np.ndarray:
-            return arr
-        if type(arr) == pd.DataFrame or type(arr) == pd.Series:
-            self.is_pandas = True
-            return arr.to_numpy()
-        if isinstance(arr, list):
-            return np.array(arr)
-        if type(arr) == Tensor:
-            return arr.detach().cpu().numpy()
-
-        raise ValueError('Non supported type: ', type(arr).__name__)
-
-    def _array2torch_tensor(self, arr: INPUT_DATA_ARRAY_TYPE) -> Tensor:
-        """
-        Converts from INPUT_DATA_ARRAY_TYPE to torch tensor array
-
-        :param arr: the array to transform
-        :type arr: numpy array or pandas DataFrame or list or pytorch Tensor
-        :return: the array transformed into a pytorch Tensor
-        """
-        if type(arr) == np.ndarray:
-            return torch.from_numpy(arr)
-        if type(arr) == pd.DataFrame or type(arr) == pd.Series:
-            self.is_pandas = True
-            return torch.from_numpy(arr.to_numpy())
-        if isinstance(arr, list):
-            return torch.tensor(arr)
-        if type(arr) == Tensor:
-            return arr
-
-        raise ValueError('Non supported type: ', type(arr).__name__)
 
 
 class StoredDataset(Dataset):
@@ -146,7 +139,7 @@ class StoredDataset(Dataset):
             os.makedirs(dest_path, exist_ok=True)
             logger.info("Downloading the dataset...")
             urllib.request.urlretrieve(url, file_path)
-            logger.info('Dataset Downloaded')
+            logger.info("Dataset Downloaded")
 
         if unzip:
             StoredDataset.extract_archive(zip_path=file_path, dest_path=dest_path, remove_archive=False)
@@ -205,7 +198,7 @@ class StoredDataset(Dataset):
             logger.info("Shuffling data")
             np.random.shuffle(data)
 
-        debug_data = data[:int(len(data) * ratio)]
+        debug_data = data[: int(len(data) * ratio)]
         logger.info(f"Saving {ratio} of the data to {dest_datafile}")
         np.savetxt(dest_datafile, debug_data, delimiter=delimiter, fmt=fmt)
 
@@ -224,17 +217,19 @@ class ArrayDataset(Dataset):
 
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None,
                  features_names: Optional[list] = None, **kwargs):
-        self.is_pandas = False
+        self.is_pandas = self.is_pandas = type(x) == pd.DataFrame or type(x) == pd.Series
+
         self.features_names = features_names
-        self._y = self._array2numpy(y) if y is not None else None
-        self._x = self._array2numpy(x)
+        self._y = array2numpy(y) if y is not None else None
+        self._x = array2numpy(x)
+
         if self.is_pandas:
             if features_names and not np.array_equal(features_names, x.columns):
                 raise ValueError("The supplied features are not the same as in the data features")
             self.features_names = x.columns.to_list()
 
         if self._y is not None and len(self._x) != len(self._y):
-            raise ValueError('Non equivalent lengths of x and y')
+            raise ValueError("Non equivalent lengths of x and y")
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """
@@ -278,9 +273,9 @@ class DatasetWithPredictions(Dataset):
                  y: Optional[INPUT_DATA_ARRAY_TYPE] = None, features_names: Optional[list] = None, **kwargs):
         self.is_pandas = False
         self.features_names = features_names
-        self._pred = self._array2numpy(pred)
-        self._y = self._array2numpy(y) if y is not None else None
-        self._x = self._array2numpy(x) if x is not None else None
+        self._pred = array2numpy(pred)
+        self._y = array2numpy(y) if y is not None else None
+        self._x = array2numpy(x) if x is not None else None
         if self.is_pandas and x is not None:
             if features_names and not np.array_equal(features_names, x.columns):
                 raise ValueError("The supplied features are not the same as in the data features")
@@ -327,14 +322,16 @@ class PytorchData(Dataset):
     :type y: numpy array or pandas DataFrame or list or pytorch Tensor, optional
     """
     def __init__(self, x: INPUT_DATA_ARRAY_TYPE, y: Optional[INPUT_DATA_ARRAY_TYPE] = None, **kwargs):
-        self.is_pandas = False
-        self._y = self._array2torch_tensor(y) if y is not None else None
-        self._x = self._array2torch_tensor(x)
+        self._y = array2torch_tensor(y) if y is not None else None
+        self._x = array2torch_tensor(x)
+
+        self.is_pandas = type(x) == pd.DataFrame or type(x) == pd.Series
+
         if self.is_pandas:
             self.features_names = x.columns
 
         if self._y is not None and len(self._x) != len(self._y):
-            raise ValueError('Non equivalent lengths of x and y')
+            raise ValueError("Non equivalent lengths of x and y")
 
         if self._y is not None:
             self.__getitem__ = self.get_item
@@ -347,7 +344,7 @@ class PytorchData(Dataset):
 
         :return: samples as numpy array
         """
-        return self._array2numpy(self._x)
+        return array2numpy(self._x)
 
     def get_labels(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """
@@ -355,7 +352,7 @@ class PytorchData(Dataset):
 
         :return: labels as numpy array
         """
-        return self._array2numpy(self._y) if self._y is not None else None
+        return array2numpy(self._y) if self._y is not None else None
 
     def get_predictions(self) -> OUTPUT_DATA_ARRAY_TYPE:
         """
@@ -392,6 +389,7 @@ class PytorchData(Dataset):
 
 class DatasetFactory:
     """Factory class for dataset creation"""
+
     registry = {}
 
     @classmethod
@@ -406,7 +404,7 @@ class DatasetFactory:
 
         def inner_wrapper(wrapped_class: Type[Dataset]) -> Any:
             if name in cls.registry:
-                logger.warning('Dataset %s already exists. Will replace it', name)
+                logger.warning("Dataset %s already exists. Will replace it", name)
             cls.registry[name] = wrapped_class
             return wrapped_class
 
@@ -428,7 +426,7 @@ class DatasetFactory:
         :return: An instance of the dataset that is created.
         """
         if name not in cls.registry:
-            msg = f'Dataset {name} does not exist in the registry'
+            msg = f"Dataset {name} does not exist in the registry"
             logger.error(msg)
             raise ValueError(msg)
 
