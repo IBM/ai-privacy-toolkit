@@ -304,7 +304,27 @@ class PyTorchClassifier(PyTorchModel):
                                   queries that can be submitted. Optional, Default is True.
         """
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
+        self._loss = loss
+        self._optimizer = optimizer
         self._art_model = PyTorchClassifierWrapper(model, loss, input_shape, nb_classes, optimizer)
+
+    @property
+    def loss(self):
+        """
+        The pytorch model's loss function
+
+        :return: The pytorch model's loss function
+        """
+        return self._loss
+
+    @property
+    def optimizer(self):
+        """
+        The pytorch model's optimizer
+
+        :return: The pytorch model's optimizer
+        """
+        return self._optimizer
 
     def fit(
         self,
