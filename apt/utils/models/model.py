@@ -121,7 +121,7 @@ class Model(metaclass=ABCMeta):
         :type train_data: `Dataset`
         :return: the score as float (for classifiers, between 0 and 1)
         """
-        return NotImplementedError
+        raise NotImplementedError
 
     @property
     def model(self) -> Any:
@@ -180,14 +180,23 @@ class BlackboxClassifier(Model):
                        similar dummy/shadow models.
     :type model_type: Either a (unfitted) model object of the underlying framework, or a ModelType representing the
                       type of the model, optional.
+    :param loss: For pytorch models, the loss function used for training. Needed in order to build and/or fit
+                 similar dummy/shadow models.
+    :type loss: torch.nn.modules.loss._Loss, optional
+    :param optimizer: For pytorch models, the optimizer used for training. Needed in order to build and/or fit
+                      similar dummy/shadow models.
+    :type optimizer: torch.optim.Optimizer, optional
     """
     def __init__(self, model: Any, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, model_type: Optional[Union[Any, ModelType]] = None,
+                 loss: "torch.nn.modules.loss._Loss" = None, optimizer: "torch.optim.Optimizer" = None,
                  **kwargs):
         super().__init__(model, output_type, black_box_access=True, unlimited_queries=unlimited_queries, **kwargs)
         self._nb_classes = None
         self._input_shape = None
         self._model_type = model_type
+        self._loss = loss
+        self._optimizer = optimizer
 
     @property
     def nb_classes(self) -> int:
@@ -216,6 +225,24 @@ class BlackboxClassifier(Model):
                  the model, or None (of none provided at init).
         """
         return self._model_type
+
+    @property
+    def loss(self):
+        """
+        The pytorch model's loss function.
+
+        :return: The pytorch model's loss function.
+        """
+        return self._loss
+
+    @property
+    def optimizer(self):
+        """
+        The pytorch model's optimizer.
+
+        :return: The pytorch model's optimizer.
+        """
+        return self._optimizer
 
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """
@@ -254,6 +281,15 @@ class BlackboxClassifier(Model):
             return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
         else:
             raise NotImplementedError
+
+    @abstractmethod
+    def get_predictions(self) -> Union[Callable, Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]]:
+        """
+        Return all the data for which the model contains predictions, or the predict function of the model.
+
+        :return: Tuple containing data and predictions as numpy arrays or callable.
+        """
+        raise NotImplementedError
 
 
 class BlackboxClassifierPredictions(BlackboxClassifier):
@@ -322,7 +358,7 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
         self._art_model = BlackBoxClassifier(predict_fn, self._input_shape, self._nb_classes, fuzzy_float_compare=True,
                                              preprocessing=None)
 
-    def get_predictions(self) -> Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]:
+    def get_predictions(self) -> Union[Callable, Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]]:
         """
         Return all the data for which the model contains predictions.
 
@@ -363,4 +399,15 @@ class BlackboxClassifierPredictFunction(BlackboxClassifier):
                 predictions = check_and_transform_label_format(predictions, nb_classes=nb_classes, return_one_hot=True)
             return predictions
 
+        self._predict_fn = predict_wrapper
         self._art_model = BlackBoxClassifier(predict_wrapper, self._input_shape, self._nb_classes, preprocessing=None)
+
+    def get_predictions(self) -> Union[Callable, Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]]:
+        """
+        Return the predict function of the model.
+
+        :return: Callable representing a function that takes in an `np.ndarray` of input data and returns predictions
+                 either as class probabilities (multi-column) or a 1D-array of categorical labels (consecutive
+                 integers starting at 0).
+        """
+        return self._predict_fn
