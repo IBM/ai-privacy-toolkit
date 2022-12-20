@@ -1,9 +1,13 @@
-numpy~=1.22
+numpy==1.22.0
 pandas~=1.1.0
-scipy>=1.4.1
+scipy==1.4.1
 scikit-learn>=0.22.2
 torch>=1.8.0
 adversarial-robustness-toolbox>=1.11.0
 
 # testing
-pytest>=5.4.2
+pytest==5.4.2
+tensorflow==2.8.3
+xgboost==1.7.2
+Pillow==9.3.0
+sortedcontainers==2.4.0
