@@ -54,7 +54,7 @@ def _load_diabetes(test_set_size: float = 0.3):
 
 def get_german_credit_dataset_pd(test_set: float = 0.3):
     """
-    Loads the UCI German credit dataset from `tests/datasets/german` or downloads it from
+    Loads the UCI German credit dataset from `datasets/german` or downloads it from
     https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/ if necessary.
 
     :param test_set: Proportion of the data to use as validation split (value between 0 and 1). Default is 0.3
@@ -63,8 +63,8 @@ def get_german_credit_dataset_pd(test_set: float = 0.3):
     """
 
     url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data'
-    data_dir = '../datasets/german'
-    data_file = '../datasets/german/data'
+    data_dir = 'datasets/german'
+    data_file = 'datasets/german/data'
 
     if not path.exists(data_dir):
         mkdir(data_dir)
@@ -133,7 +133,7 @@ def _modify_german_dataset(data):
 
 def get_adult_dataset_pd():
     """
-    Loads the UCI Adult dataset from `tests/datasets/adult` or downloads it from
+    Loads the UCI Adult dataset from `datasets/adult` or downloads it from
     https://archive.ics.uci.edu/ml/machine-learning-databases/adult/ if necessary.
 
     :return: Dataset and labels as pandas dataframes. Returned as a tuple (x_train, y_train), (x_test, y_test)
@@ -143,9 +143,9 @@ def get_adult_dataset_pd():
                 'label']
     train_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data'
     test_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.test'
-    data_dir = '../datasets/adult'
-    train_file = '../datasets/adult/train'
-    test_file = '../datasets/adult/test'
+    data_dir = 'datasets/adult'
+    train_file = 'datasets/adult/train'
+    test_file = 'datasets/adult/test'
 
     if not path.exists(data_dir):
         mkdir(data_dir)
@@ -235,7 +235,7 @@ def _modify_adult_dataset(data):
 
 def get_nursery_dataset_pd(raw: bool = True, test_set: float = 0.2, transform_social: bool = False):
     """
-    Loads the UCI Nursery dataset from `tests/datasets/nursery` or downloads it from
+    Loads the UCI Nursery dataset from `datasets/nursery` or downloads it from
     https://archive.ics.uci.edu/ml/machine-learning-databases/nursery/ if necessary.
 
     :param raw: `True` if no preprocessing should be applied to the data. Otherwise, categorical data is one-hot
@@ -251,8 +251,8 @@ def get_nursery_dataset_pd(raw: bool = True, test_set: float = 0.2, transform_so
     :return: Dataset and labels as pandas dataframes. Returned as a tuple (x_train, y_train), (x_test, y_test)
     """
     url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/nursery/nursery.data'
-    data_dir = '../datasets/nursery'
-    data_file = '../datasets/nursery/data'
+    data_dir = 'datasets/nursery'
+    data_file = 'datasets/nursery/data'
 
     if not path.exists(data_dir):
         mkdir(data_dir)

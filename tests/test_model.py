@@ -219,7 +219,7 @@ def test_blackbox_classifier_no_test_y():
     except  BaseException:
         unable_to_predict_test = True
 
-    assert (unable_to_predict_test, True)
+    assert unable_to_predict_test
 
 def test_blackbox_classifier_no_train_y():
     (x_train, _), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
@@ -241,7 +241,7 @@ def test_blackbox_classifier_no_train_y():
     except BaseException:
         unable_to_predict_train = True
 
-    assert(unable_to_predict_train,True)
+    assert unable_to_predict_train
 
 def test_blackbox_classifier_probabilities():
     (x_train, _), (_, _) = dataset_utils.get_iris_dataset_np()
