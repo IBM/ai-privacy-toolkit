@@ -24,7 +24,7 @@ def _load_iris(test_set_size: float = 0.3):
 
     # Split training and test sets
     x_train, x_test, y_train, y_test = model_selection.train_test_split(data, labels, test_size=test_set_size,
-                                                                                random_state=18, stratify=labels)
+                                                                        random_state=18, stratify=labels)
 
     return (x_train, y_train), (x_test, y_test)
 
@@ -94,9 +94,6 @@ def get_german_credit_dataset_pd(test_set: float = 0.3):
     x_test = test.drop(["label"], axis=1)
     y_test = test.loc[:, "label"]
 
-    categorical_features = ["Existing_checking_account", "Credit_history", "Purpose", "Savings_account",
-                            "Present_employment_since", "Personal_status_sex", "debtors", "Property",
-                            "Other_installment_plans", "Housing", "Job"]
     x_train.reset_index(drop=True, inplace=True)
     y_train.reset_index(drop=True, inplace=True)
     x_test.reset_index(drop=True, inplace=True)

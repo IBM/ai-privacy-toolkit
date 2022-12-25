@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_almost_equal
 
 from sklearn.compose import ColumnTransformer
 
@@ -17,9 +16,8 @@ from tensorflow.keras.layers import Dense, Input
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_german_credit_dataset_pd
-from apt.utils.datasets import ArrayDataset, Data
-from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier, \
-    BlackboxClassifierPredictions
+from apt.utils.datasets import ArrayDataset
+from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier
 
 
 @pytest.fixture
@@ -50,7 +48,7 @@ def test_minimizer_params(data):
 
     gen = GeneralizeToRepresentative(model, cells=cells)
     gen.fit()
-    transformed = gen.transform(dataset=ArrayDataset(X, features_names=features))
+    gen.transform(dataset=ArrayDataset(X, features_names=features))
 
 
 def test_minimizer_fit(data):
@@ -87,8 +85,8 @@ def test_minimizer_fit(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     modified_features = [f for f in features if
                          f in expected_generalizations['categories'].keys() or f in expected_generalizations[
@@ -162,8 +160,8 @@ def test_minimizer_fit_pandas(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     modified_features = [f for f in features if
                          f in expected_generalizations['categories'].keys() or f in expected_generalizations[
@@ -172,7 +170,7 @@ def test_minimizer_fit_pandas(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -279,8 +277,8 @@ def test_minimizer_fit_QI(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2], axis=1) == np.delete(X, [0, 2], axis=1)).all())
     modified_features = [f for f in features if
@@ -357,8 +355,8 @@ def test_minimizer_fit_pandas_QI(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     # assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
     np.testing.assert_array_equal(transformed.drop(QI, axis=1), X.drop(QI, axis=1))
@@ -370,7 +368,7 @@ def test_minimizer_fit_pandas_QI(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -398,8 +396,8 @@ def test_minimize_ndarray_iris():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2], axis=1) == np.delete(x_train, [0, 2], axis=1)).all())
 
@@ -478,8 +476,8 @@ def test_minimize_pandas_adult():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     # assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
     np.testing.assert_array_equal(transformed.drop(QI, axis=1), x_train.drop(QI, axis=1))
@@ -492,7 +490,7 @@ def test_minimize_pandas_adult():
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -538,8 +536,10 @@ def test_german_credit_pandas():
     transformed = gen.transform(dataset=ArrayDataset(x_train))
     gener = gen.generalizations
     expected_generalizations = {'ranges': {'Duration_in_month': [31.5]},
-                                'categories': {'Credit_history': [['A30', 'A32', 'A31', 'A34', 'A33']], 'Purpose': [
-                                    ['A41', 'A46', 'A43', 'A40', 'A44', 'A410', 'A49', 'A45', 'A48', 'A42']],
+                                'categories': {'Credit_history': [['A30', 'A32', 'A31', 'A34', 'A33']],
+                                               'Purpose': [
+                                                   ['A41', 'A46', 'A43', 'A40', 'A44', 'A410', 'A49', 'A45', 'A48',
+                                                    'A42']],
                                                'debtors': [['A101', 'A102', 'A103']],
                                                'Property': [['A124', 'A121', 'A122', 'A123']],
                                                'Other_installment_plans': [['A142', 'A141', 'A143']],
@@ -554,8 +554,8 @@ def test_german_credit_pandas():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     # assert (transformed.drop(QI, axis=1).equals(x_train.drop(QI, axis=1)))
     np.testing.assert_array_equal(transformed.drop(QI, axis=1), x_train.drop(QI, axis=1))
@@ -568,7 +568,7 @@ def test_german_credit_pandas():
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -626,8 +626,8 @@ def test_regression():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2, 5, 8], axis=1) == np.delete(x_train, [0, 2, 5, 8], axis=1)).all())
 
@@ -681,8 +681,8 @@ def test_X_y(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2], axis=1) == np.delete(X, [0, 2], axis=1)).all())
     modified_features = [f for f in features if
@@ -735,8 +735,8 @@ def test_X_y_features_names(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2], axis=1) == np.delete(X, [0, 2], axis=1)).all())
     modified_features = [f for f in features if
@@ -811,8 +811,8 @@ def test_BaseEstimator_classification(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     # assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
     np.testing.assert_array_equal(transformed.drop(QI, axis=1), X.drop(QI, axis=1))
@@ -824,7 +824,7 @@ def test_BaseEstimator_classification(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(preprocessor.transform(transformed), predictions)
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -881,8 +881,8 @@ def test_BaseEstimator_regression():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     assert ((np.delete(transformed, [0, 2, 5, 8], axis=1) == np.delete(x_train, [0, 2, 5, 8], axis=1)).all())
 
@@ -961,6 +961,6 @@ def test_untouched():
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))

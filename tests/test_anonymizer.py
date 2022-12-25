@@ -24,7 +24,7 @@ def test_anonymize_ndarray_iris():
     QI = [0, 2]
     anonymizer = Anonymize(k, QI, train_only_QI=True)
     anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
-    assert(len(np.unique(anon[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
+    assert (len(np.unique(anon[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
     _, counts_elements = np.unique(anon[:, QI], return_counts=True)
     assert (np.min(counts_elements) >= k)
     assert ((np.delete(anon, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
@@ -60,7 +60,7 @@ def test_anonymize_pandas_adult():
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features)
     anon = anonymizer.anonymize(ArrayDataset(x_train, pred, features))
 
-    assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
+    assert (anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
     np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
 
@@ -93,7 +93,7 @@ def test_anonymize_pandas_nursery():
     anonymizer = Anonymize(k, QI, categorical_features=categorical_features, train_only_QI=True)
     anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
 
-    assert(anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
+    assert (anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
     np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
 
@@ -112,7 +112,7 @@ def test_regression():
     print('Base model accuracy (R2 score): ', model.score(x_test, y_test))
     model.fit(anon, y_train)
     print('Base model accuracy (R2 score) after anonymization: ', model.score(x_test, y_test))
-    assert(len(np.unique(anon[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
+    assert (len(np.unique(anon[:, QI], axis=0)) < len(np.unique(x_train[:, QI], axis=0)))
     _, counts_elements = np.unique(anon[:, QI], return_counts=True)
     assert (np.min(counts_elements) >= k)
     assert ((np.delete(anon, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())

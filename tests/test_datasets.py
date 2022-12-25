@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 
 from apt.utils.datasets import Data, DatasetWithPredictions

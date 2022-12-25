@@ -1,11 +1,14 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional, Callable, Tuple, Union
+from typing import Any, Optional, Callable, Tuple, Union, TYPE_CHECKING
 from enum import Enum, auto
 import numpy as np
 
 from apt.utils.datasets import Dataset, Data, OUTPUT_DATA_ARRAY_TYPE
 from art.estimators.classification import BlackBoxClassifier
 from art.utils import check_and_transform_label_format
+
+if TYPE_CHECKING:
+    import torch
 
 
 class ModelOutputType(Enum):

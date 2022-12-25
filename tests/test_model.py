@@ -27,10 +27,10 @@ def test_sklearn_classifier():
     test = ArrayDataset(x_test, y_test)
     model.fit(train)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(0.0 <= score <= 1.0)
+    assert (0.0 <= score <= 1.0)
 
 
 def test_sklearn_regressor():
@@ -43,7 +43,7 @@ def test_sklearn_regressor():
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
-    score = model.score(test)
+    model.score(test)
 
 
 def test_keras_classifier():
@@ -63,10 +63,10 @@ def test_keras_classifier():
     test = ArrayDataset(x_test, y_test)
     model.fit(train)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(0.0 <= score <= 1.0)
+    assert (0.0 <= score <= 1.0)
 
 
 def test_keras_regressor():
@@ -88,7 +88,7 @@ def test_keras_regressor():
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
-    score = model.score(test)
+    model.score(test)
 
 
 def test_xgboost_classifier():
@@ -99,10 +99,10 @@ def test_xgboost_classifier():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(0.0 <= score <= 1.0)
+    assert (0.0 <= score <= 1.0)
 
     model.fit(train)
 
@@ -115,10 +115,10 @@ def test_blackbox_classifier():
     data = Data(train, test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(score == 1.0)
+    assert (score == 1.0)
 
     assert model.model_type is None
 
@@ -131,7 +131,7 @@ def test_blackbox_classifier_predictions():
     data = Data(train, test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
     assert model.model_type is None
 
     with pytest.raises(ValueError):
@@ -146,10 +146,10 @@ def test_blackbox_classifier_predictions_y():
     data = Data(train, test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
-    assert(score == 1.0)
+    assert (score == 1.0)
 
     assert model.model_type is None
 
@@ -161,7 +161,7 @@ def test_blackbox_classifier_mismatch():
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
     with pytest.raises(ValueError):
-        model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
+        BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_PROBABILITIES)
 
 
 def test_blackbox_classifier_no_test():
@@ -172,7 +172,7 @@ def test_blackbox_classifier_no_test():
     data = Data(train)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(train)
-    assert(pred.shape[0] == x_train.shape[0])
+    assert (pred.shape[0] == x_train.shape[0])
 
     score = model.score(train)
     assert (score == 1.0)
@@ -189,7 +189,7 @@ def test_blackbox_classifier_no_train():
     data = Data(test=test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(test)
-    assert(pred.shape[0] == x_test.shape[0])
+    assert (pred.shape[0] == x_test.shape[0])
 
     score = model.score(test)
     assert (score == 1.0)
@@ -207,7 +207,7 @@ def test_blackbox_classifier_no_test_y():
     data = Data(train, test)
     model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SCALAR)
     pred = model.predict(train)
-    assert(pred.shape[0] == x_train.shape[0])
+    assert (pred.shape[0] == x_train.shape[0])
 
     score = model.score(train)
     assert (score == 1.0)
@@ -216,10 +216,11 @@ def test_blackbox_classifier_no_test_y():
     unable_to_predict_test = False
     try:
         model.predict(test)
-    except  BaseException:
+    except BaseException:
         unable_to_predict_test = True
 
     assert unable_to_predict_test
+
 
 def test_blackbox_classifier_no_train_y():
     (x_train, _), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
@@ -242,6 +243,7 @@ def test_blackbox_classifier_no_train_y():
         unable_to_predict_train = True
 
     assert unable_to_predict_train
+
 
 def test_blackbox_classifier_probabilities():
     (x_train, _), (_, _) = dataset_utils.get_iris_dataset_np()
@@ -300,7 +302,7 @@ def test_is_one_hot():
     (_, y_train), (_, _) = dataset_utils.get_iris_dataset_np()
 
     assert (not is_one_hot(y_train))
-    assert (not is_one_hot(y_train.reshape(-1,1)))
+    assert (not is_one_hot(y_train.reshape(-1, 1)))
     assert (is_one_hot(to_categorical(y_train)))
 
 
@@ -314,7 +316,7 @@ def test_get_nb_classes():
     assert (nb_classes_test == 3)
 
     # shape: (x,1) - not 1-hot
-    nb_classes_test = get_nb_classes(y_test.reshape(-1,1))
+    nb_classes_test = get_nb_classes(y_test.reshape(-1, 1))
     assert (nb_classes_test == 3)
 
     # shape: (x,3) - 1-hot
@@ -326,4 +328,3 @@ def test_get_nb_classes():
     y_test[y_test == 0] = 4
     nb_classes = get_nb_classes(y_test)
     assert (nb_classes == 5)
-

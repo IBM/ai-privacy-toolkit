@@ -1,8 +1,6 @@
 import numpy as np
-import torch
 from torch import nn, optim
 
-from apt.utils.datasets import ArrayDataset
 from apt.utils.datasets.datasets import PytorchData
 from apt.utils.models import ModelOutputType
 from apt.utils.models.pytorch_model import PyTorchClassifier

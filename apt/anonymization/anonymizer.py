@@ -68,7 +68,7 @@ class Anonymize:
 
         if dataset.features_names is not None:
             self.features_names = dataset.features_names
-        else: # if no names provided, use numbers instead
+        else:  # if no names provided, use numbers instead
             self.features_names = self.features
 
         if not set(self.quasi_identifiers).issubset(set(self.features_names)):

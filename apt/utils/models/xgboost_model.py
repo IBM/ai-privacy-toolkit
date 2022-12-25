@@ -38,7 +38,7 @@ class XGBoostClassifier(XGBoostModel):
     :type unlimited_queries: boolean, optional
     """
     def __init__(self, model: XGBClassifier, output_type: ModelOutputType, input_shape: Tuple[int, ...],
-                 nb_classes: int,black_box_access: Optional[bool] = True,
+                 nb_classes: int, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
         self._art_model = ArtXGBoostClassifier(model, nb_features=input_shape[0], nb_classes=nb_classes)

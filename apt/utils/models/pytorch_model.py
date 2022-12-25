@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from art.utils import check_and_transform_label_format, logger
+from art.utils import check_and_transform_label_format
 from apt.utils.datasets.datasets import PytorchData
 from apt.utils.models import Model, ModelOutputType
 from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE
