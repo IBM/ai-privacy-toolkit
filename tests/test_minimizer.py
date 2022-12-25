@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import pandas as pd
-from numpy.testing import assert_almost_equal
 
 from sklearn.compose import ColumnTransformer
 
@@ -17,9 +16,8 @@ from tensorflow.keras.layers import Dense, Input
 from apt.minimization import GeneralizeToRepresentative
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_german_credit_dataset_pd
-from apt.utils.datasets import ArrayDataset, Data
-from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier, \
-    BlackboxClassifierPredictions
+from apt.utils.datasets import ArrayDataset
+from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier
 
 
 @pytest.fixture
@@ -50,7 +48,7 @@ def test_minimizer_params(data):
 
     gen = GeneralizeToRepresentative(model, cells=cells)
     gen.fit()
-    transformed = gen.transform(dataset=ArrayDataset(X, features_names=features))
+    gen.transform(dataset=ArrayDataset(X, features_names=features))
 
 
 def test_minimizer_fit(data):
@@ -172,7 +170,7 @@ def test_minimizer_fit_pandas(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -370,7 +368,7 @@ def test_minimizer_fit_pandas_QI(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -492,7 +490,7 @@ def test_minimize_pandas_adult():
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -568,7 +566,7 @@ def test_german_credit_pandas():
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(x_train[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
@@ -824,7 +822,7 @@ def test_BaseEstimator_classification(data):
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
         assert (ncp > 0)
-        assert (((transformed[modified_features]).equals(X[modified_features])) == False)
+        assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(preprocessor.transform(transformed), predictions)
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)

@@ -16,7 +16,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
-from apt.utils.datasets import ArrayDataset, Data, DATA_PANDAS_NUMPY_TYPE
+from apt.utils.datasets import ArrayDataset, DATA_PANDAS_NUMPY_TYPE
 from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnClassifier
 
 
@@ -344,7 +344,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     else:
                         print('Pruned tree to level: %d, new relative accuracy: %f' % (level, accuracy))
                         level += 1
-
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
             elif accuracy < self.target_accuracy:

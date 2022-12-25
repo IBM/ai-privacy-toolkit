@@ -1,11 +1,9 @@
 from typing import Optional
 
 import numpy as np
-from sklearn.preprocessing import OneHotEncoder
 
 import tensorflow as tf
 from tensorflow import keras
-tf.compat.v1.disable_eager_execution()
 
 from sklearn.metrics import mean_squared_error
 
@@ -16,12 +14,12 @@ from art.utils import check_and_transform_label_format
 from art.estimators.classification.keras import KerasClassifier as ArtKerasClassifier
 from art.estimators.regression.keras import KerasRegressor as ArtKerasRegressor
 
+tf.compat.v1.disable_eager_execution()
 
 class KerasModel(Model):
     """
     Wrapper class for keras models.
     """
-
 
 
 class KerasClassifier(KerasModel):
