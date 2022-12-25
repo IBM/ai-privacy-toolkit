@@ -355,8 +355,8 @@ def test_minimizer_fit_pandas_QI(data):
     for key in expected_generalizations['ranges']:
         assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
     for key in expected_generalizations['categories']:
-        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]]) ==
-                set([frozenset(sl) for sl in gener['categories'][key]]))
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
     assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
     # assert (transformed.drop(QI, axis=1).equals(X.drop(QI, axis=1)))
     np.testing.assert_array_equal(transformed.drop(QI, axis=1), X.drop(QI, axis=1))
