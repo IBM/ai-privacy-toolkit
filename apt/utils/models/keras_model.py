@@ -16,6 +16,7 @@ from art.estimators.regression.keras import KerasRegressor as ArtKerasRegressor
 
 tf.compat.v1.disable_eager_execution()
 
+
 class KerasModel(Model):
     """
     Wrapper class for keras models.

@@ -268,14 +268,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if self.encoder is None:
                 numeric_features = [f for f in self._features if f not in self.categorical_features]
                 numeric_transformer = Pipeline(
-                        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+                    steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
                 )
                 categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
                 self.encoder = ColumnTransformer(
-                        transformers=[
-                            ("num", numeric_transformer, numeric_features),
-                            ("cat", categorical_transformer, self.categorical_features),
-                        ]
+                    transformers=[
+                        ("num", numeric_transformer, numeric_features),
+                        ("cat", categorical_transformer, self.categorical_features),
+                    ]
                 )
                 self.encoder.fit(x)
 
@@ -598,8 +598,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                             new_cell['ranges'][feature]['end'] = right_cell['ranges'][feature]['start']
                         for feature in left_cell['categories'].keys():
                             new_cell['categories'][feature] = \
-                                list(set(left_cell['categories'][feature]) |
-                                     set(right_cell['categories'][feature]))
+                                list(set(left_cell['categories'][feature])
+                                     | set(right_cell['categories'][feature]))
                         for feature in left_cell['untouched']:
                             if feature in right_cell['untouched']:
                                 new_cell['untouched'].append(feature)
@@ -706,8 +706,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             for feature in self._features:
                 # if feature has a representative value in the cell and should not be left untouched,
                 # take the representative value
-                if feature in cells[i]['representative'] and ('untouched' not in cells[i] or
-                                                              feature not in cells[i]['untouched']):
+                if feature in cells[i]['representative'] \
+                        and ('untouched' not in cells[i] or feature not in cells[i]['untouched']):
                     representatives.loc[i, feature] = cells[i]['representative'][feature]
                 # else, drop the feature (removes from representatives columns that do not have a
                 # representative value or should remain untouched)
