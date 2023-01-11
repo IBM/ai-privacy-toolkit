@@ -23,6 +23,8 @@ Installation: pip install ai-privacy-toolkit
 For more information or help using or improving the toolkit, please contact Abigail Goldsteen at abigailt@il.ibm.com, 
 or join our Slack channel: https://aip360.mybluemix.net/community.
 
+We welcome new contributors! If you're interested, take a look at our [**contribution guidelines**](https://github.com/IBM/ai-privacy-toolkit/wiki/Contributing).
+
 **Related toolkits:**
 
 ai-minimization-toolkit - has been migrated into this toolkit.
