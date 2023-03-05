@@ -3,6 +3,7 @@ pandas~=1.1.0
 scipy==1.4.1
 scikit-learn>=0.22.2
 torch>=1.8.0
+tqdm>=4.64.1
 adversarial-robustness-toolbox>=1.11.0
 
 # testing
