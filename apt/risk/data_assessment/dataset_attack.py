@@ -15,25 +15,29 @@ from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, D
 from apt.utils.datasets import ArrayDataset
 
 
-class Config:
+class Config(abc.ABC):
     """
         The base class for dataset attack configurations
     """
-    ...
+    pass
 
 
 class DatasetAttack(abc.ABC):
     """
-         The interface for performing privacy risk assessment for synthetic datasets.
+         The interface for performing privacy attack for risk assessment for synthetic datasets to be used in AI models.
+         The original data members (training data) and non-members (the holdout data) should be available.
+         For reliability, all the datasets should be preprocessed and normalized.
     """
 
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                  synthetic_data: ArrayDataset, dataset_name: str, attack_strategy_utils: AttackStrategyUtils,
                  config: Optional[Config] = Config()) -> None:
         """
-        :param original_data_members: A container for the training original samples and labels
-        :param original_data_non_members: A container for the holdout original samples and labels
-        :param synthetic_data: A container for the synthetic samples and labels
+        :param original_data_members: A container for the training original samples and labels,
+            only samples are used in the assessment
+        :param original_data_non_members: A container for the holdout original samples and labels,
+            only samples are used in the assessment
+        :param synthetic_data: A container for the synthetic samples and labels, only samples are used in the assessment
         :param dataset_name: A name to identify the dataset under attack
         :param attack_strategy_utils: Utils for use with the attack strategy
         :param config: Configuration parameters to guide the assessment process such as which attack
@@ -52,10 +56,10 @@ class DatasetAttack(abc.ABC):
         """
         Assess the privacy of the dataset
         :return:
-            result: Union[DatasetAttackScore, DatasetAssessmentResult] can be either the final privacy attack score,
+            result: Union[DatasetAttackScore, DatasetAttackResult] can be either the final privacy attack score,
             or an intermediate attack result, which can be translated into a privacy score if needed
         """
-        ...
+        pass
 
 
 class DatasetAttackPerRecord(DatasetAttack):
@@ -68,9 +72,9 @@ class DatasetAttackPerRecord(DatasetAttack):
         """
         Assess the privacy of the dataset
         :return:
-            result: DatasetAssessmentResult
+            result: DatasetAttackResultPerRecord
         """
-        ...
+        pass
 
     @abc.abstractmethod
     def calculate_privacy_score(self, dataset_attack_result: DatasetAttackResultPerRecord,
@@ -80,13 +84,13 @@ class DatasetAttackPerRecord(DatasetAttack):
         :return:
             result: DatasetAttackScore
         """
-        ...
+        pass
 
     def plot_roc_curve(self, pos_probabilities, neg_probabilities, name_prefix=""):
         """
         Plot ROC curve
-        :param pos_probabilities: loss of the positive samples, the training data
-        :param neg_probabilities: loss of the negative samples, the hold-out data
+        :param pos_probabilities: probability estimates of the positive samples, the training data
+        :param neg_probabilities: probability estimates of the negative samples, the hold-out data
         :param name_prefix: name prefix for the ROC curve plot
         """
         labels = np.concatenate((np.zeros((len(neg_probabilities),)), np.ones((len(pos_probabilities),))))
@@ -98,9 +102,9 @@ class DatasetAttackPerRecord(DatasetAttack):
         plt.savefig(f'{name_prefix}{self.dataset_name}_roc_curve.png')
 
     @staticmethod
-    def calculate_roc_score(pos_probabilities, neg_probabilities):
+    def calculate_metrics(pos_probabilities, neg_probabilities):
         """
-        Plot ROC curve
+        Calculate attack performance metrics
         :param pos_probabilities: probability estimates of the positive samples, the training data
         :param neg_probabilities: probability estimates of the negative samples, the hold-out data
         :return:
@@ -110,7 +114,7 @@ class DatasetAttackPerRecord(DatasetAttack):
             auc: area under the Receiver Operating Characteristic Curve
             ap: average precision score
         """
-        labels = np.concatenate((np.zeros((len(neg_probabilities),)), np.ones((len(pos_probabilities),))))
+        labels = np.concatenate((np.zeros((len(neg_probabilities),)), np.ones((len(pos_probabilities)))))
         results = np.concatenate((neg_probabilities, pos_probabilities))
         fpr, tpr, threshold = metrics.roc_curve(labels, results, pos_label=1)
         auc = metrics.roc_auc_score(labels, results)
@@ -128,6 +132,6 @@ class DatasetAttackWhole(DatasetAttack):
         """
         Assess the privacy of the dataset
         :return:
-            result: DatasetAssessmentResult
+            result: DatasetAttackScore
         """
-        ...
+        pass

@@ -3,7 +3,6 @@ This module implements privacy risk assessment of synthetic datasets based on th
 "Holdout-Based Fidelity and Privacy Assessment of Mixed-Type Synthetic Data" by M. Platzer and T. Reutterer.
 and on a variation of its reference implementation in https://github.com/mostly-ai/paper-fidelity-accuracy.
 """
-import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -14,8 +13,6 @@ from apt.risk.data_assessment.attack_strategy_utils import KNNAttackStrategyUtil
 from apt.risk.data_assessment.dataset_attack import DatasetAttackWhole, Config
 from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore
 from apt.utils.datasets import ArrayDataset
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,7 +25,9 @@ class DatasetAttackHoldoutConfig(Config):
         batch_size:   Query sample batch size.
         compute_distance: A callable function, which takes two arrays representing 1D vectors as inputs and must return
             one value indicating the distance between those vectors.
-        batch_size:   Additional keyword arguments for the distance computation function.
+            See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
+        distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
+            sklearn.neighbors.NearestNeighbors documentation.
     """
     k: int = 1
     use_batches: bool = False
@@ -90,8 +89,10 @@ class DatasetAttackHoldout(DatasetAttackWhole):
         member_distances, non_member_distances = self.calculate_distances()
         n_members = len(member_distances)
         n_non_members = len(non_member_distances)
-        assert (n_members == n_non_members)
-        share = np.mean(member_distances < non_member_distances) + (n_members / (n_members + n_non_members)) * np.mean(
+        assert (n_members == n_non_members)  # distance of the synth. records to members and to non-members
+        # percent of synth. records closer to members,
+        # and half those whose distance is similar to members and non-members
+        share = np.mean(member_distances < non_member_distances) + 0.5 * np.mean(
             member_distances == non_member_distances)
         score = DatasetAttackScoreHoldout(self.dataset_name, share=share)
         return score

@@ -12,7 +12,7 @@ from apt.utils.datasets import ArrayDataset
 
 @dataclass
 class DatasetAssessmentManagerConfig:
-    persist_reports: bool = True
+    persist_reports: bool = False
     generate_plots: bool = False
 
 
@@ -25,15 +25,14 @@ class DatasetAssessmentManager:
 
     def __init__(self, config: Optional[DatasetAssessmentManagerConfig] = DatasetAssessmentManagerConfig) -> None:
         """
-        :param config: Configuration parameters to guide the assessment process such as which attack
-               frameworks to use, optional
+        :param config: Configuration parameters to guide the dataset assessment process
         """
         self.config = config
 
     def assess(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
-               synthetic_data: ArrayDataset, dataset_name: str) -> (
+               synthetic_data: ArrayDataset, dataset_name: str = "dataset") -> (
             DatasetAttackScoreGanLeaks, DatasetAttackScoreHoldout):
-        config_gl = DatasetAttackGanLeaksConfig(use_batches=False)
+        config_gl = DatasetAttackGanLeaksConfig(use_batches=False, k=5)
         mgr = DatasetAttackGanLeaks(original_data_members,
                                     original_data_non_members,
                                     synthetic_data,
@@ -44,7 +43,7 @@ class DatasetAssessmentManager:
         score_g = mgr.calculate_privacy_score(result, generate_plot=self.config.generate_plots)
         self.gan_leaks_attack_scores.append(score_g)
 
-        config_h = DatasetAttackHoldoutConfig(use_batches=False)
+        config_h = DatasetAttackHoldoutConfig(use_batches=False, k=5)
         mgr_h = DatasetAttackHoldout(original_data_members, original_data_non_members, synthetic_data,
                                      dataset_name,
                                      config_h)
@@ -54,7 +53,7 @@ class DatasetAssessmentManager:
         return score_g, score_h
 
     def dump_all_scores_to_files(self):
-        if self.config.generate_plots:
+        if self.config.persist_reports:
             results_log_file = "_results.log.csv"
             self.dump_scores_to_file(self.gan_leaks_attack_scores, "gan_leaks" + results_log_file, True)
             self.dump_scores_to_file(self.holdout_attack_scores, "holdout" + results_log_file, True)

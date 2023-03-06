@@ -22,7 +22,7 @@ diabetes_dataset_np = get_diabetes_dataset_np()
 nursery_dataset_pd = get_nursery_dataset_pd()
 adult_dataset_pd = get_adult_dataset_pd()
 
-mgr = DatasetAssessmentManager(DatasetAssessmentManagerConfig(persist_reports=True, generate_plots=False))
+mgr = DatasetAssessmentManager(DatasetAssessmentManagerConfig(persist_reports=False, generate_plots=False))
 
 
 def teardown_function():
@@ -40,27 +40,25 @@ def test_risk_anonymization(name, data, dataset_type, k, mgr):
     (x_train, y_train), (x_test, y_test) = data
 
     if dataset_type == 'np':
-        original_data_members = ArrayDataset(x_train, y_train)
+        # no need to preprocess
+        preprocessed_x_train = x_train
+        preprocessed_x_test = x_test
         QI = [0, 2]
         anonymizer = Anonymize(k, QI, train_only_QI=True)
-        anonymized_data = ArrayDataset(anonymizer.anonymize(original_data_members))
-        original_data_non_members = ArrayDataset(x_test, y_test)
     elif "adult" in name:
-        encoded, encoded_test = preprocess_adult_x_data(x_train, x_test)
+        preprocessed_x_train, preprocessed_x_test = preprocess_adult_x_data(x_train, x_test)
         QI = list(range(15, 27))
         anonymizer = Anonymize(k, QI)
-        anonymized_data = ArrayDataset(anonymizer.anonymize(ArrayDataset(encoded, y_train)))
-        original_data_members = ArrayDataset(encoded, y_train)
-        original_data_non_members = ArrayDataset(encoded_test, y_test)
     elif "nursery" in name:
-        encoded, encoded_test = preprocess_nursery_x_data(x_train, x_test)
+        preprocessed_x_train, preprocessed_x_test = preprocess_nursery_x_data(x_train, x_test)
         QI = list(range(15, 27))
         anonymizer = Anonymize(k, QI, train_only_QI=True)
-        anonymized_data = ArrayDataset(anonymizer.anonymize(ArrayDataset(encoded, y_train)))
-        original_data_members = ArrayDataset(encoded, y_train)
-        original_data_non_members = ArrayDataset(encoded_test, y_test)
     else:
         raise ValueError('Pandas dataset missing a preprocessing step')
+
+    anonymized_data = ArrayDataset(anonymizer.anonymize(ArrayDataset(preprocessed_x_train, y_train)))
+    original_data_members = ArrayDataset(preprocessed_x_train, y_train)
+    original_data_non_members = ArrayDataset(preprocessed_x_test, y_test)
 
     score_g, score_h = mgr.assess(original_data_members, original_data_non_members, anonymized_data,
                                   f'anon_k{k}_{name}')
@@ -80,28 +78,23 @@ testdata = [('iris_np', iris_dataset_np, 'np', mgr),
 def test_risk_kde(name, data, dataset_type, mgr):
     (x_train, y_train), (x_test, y_test) = data
 
-    original_data_members = ArrayDataset(x_train, y_train)
-    original_data_non_members = ArrayDataset(x_test, y_test)
-
     if dataset_type == 'np':
-        synth_data = ArrayDataset(kde(NUM_SYNTH_SAMPLES, n_components=NUM_SYNTH_COMPONENTS,
-                                      original_data=original_data_members.get_samples()))
+        encoded = x_train
+        encoded_test = x_test
+        num_synth_components = NUM_SYNTH_COMPONENTS
     elif "adult" in name:
         encoded, encoded_test = preprocess_adult_x_data(x_train, x_test)
         num_synth_components = 10
-        synth_data = ArrayDataset(
-            kde(NUM_SYNTH_SAMPLES, n_components=num_synth_components, original_data=encoded))
-        original_data_members = ArrayDataset(encoded, y_train)
-        original_data_non_members = ArrayDataset(encoded_test, y_test)
     elif "nursery" in name:
         encoded, encoded_test = preprocess_nursery_x_data(x_train, x_test)
         num_synth_components = 10
-        synth_data = ArrayDataset(
-            kde(NUM_SYNTH_SAMPLES, n_components=num_synth_components, original_data=encoded))
-        original_data_members = ArrayDataset(encoded, y_train)
-        original_data_non_members = ArrayDataset(encoded_test, y_test)
     else:
         raise ValueError('Pandas dataset missing a preprocessing step')
+
+    synth_data = ArrayDataset(
+        kde(NUM_SYNTH_SAMPLES, n_components=num_synth_components, original_data=encoded))
+    original_data_members = ArrayDataset(encoded, y_train)
+    original_data_non_members = ArrayDataset(encoded_test, y_test)
 
     score_g, score_h = mgr.assess(original_data_members, original_data_non_members, synth_data,
                                   'kde' + str(NUM_SYNTH_SAMPLES) + name)
