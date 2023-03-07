@@ -17,8 +17,8 @@ from apt.utils.datasets import ArrayDataset
 
 
 @dataclass
-class DatasetAttackGanLeaksConfig(Config):
-    """Configuration for DatasetAttackGanLeaks.
+class DatasetAttackConfigPerRecordKnnProbabilities(Config):
+    """Configuration for DatasetAttackPerRecordKnnProbabilities.
 
     Attributes:
         k: Number of nearest neighbors to search
@@ -38,20 +38,21 @@ class DatasetAttackGanLeaksConfig(Config):
 
 
 @dataclass
-class DatasetAttackScoreGanLeaks(DatasetAttackScore):
-    """DatasetAttackGanLeaks privacy score.
+class DatasetAttackScorePerRecordKnnProbabilities(DatasetAttackScore):
+    """DatasetAttackPerRecordKnnProbabilities privacy score.
     Attributes
     ----------
-    roc_auc_score : the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack performance.
+    roc_auc_score :    the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
+                        performance.
     average_precision_score: the proportion of Predicted Positive cases that are correctly Real Positives (members)
-    assessment_type : assessment type is 'GANLeaks', to be used in reports
+    assessment_type : assessment type is 'PerRecordKnnProbabilities', to be used in reports
     """
     roc_auc_score: float
     average_precision_score: float
-    assessment_type: str = 'GANLeaks'
+    assessment_type: str = 'PerRecordKnnProbabilities'
 
 
-class DatasetAttackGanLeaks(DatasetAttackPerRecord):
+class DatasetAttackPerRecordKnnProbabilities(DatasetAttackPerRecord):
     """
          Privacy risk assessment for synthetic datasets based on Black-Box MIA attack using distances of
          members (training set) and non-members (holdout set) from their nearest neighbors in the synthetic dataset.
@@ -60,7 +61,8 @@ class DatasetAttackGanLeaks(DatasetAttackPerRecord):
 
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                  synthetic_data: ArrayDataset, dataset_name: str,
-                 config: Optional[DatasetAttackGanLeaksConfig] = DatasetAttackGanLeaksConfig()):
+                 config: Optional[
+                     DatasetAttackConfigPerRecordKnnProbabilities] = DatasetAttackConfigPerRecordKnnProbabilities()):
         """
         :param original_data_members: A container for the training original samples and labels
         :param original_data_non_members: A container for the holdout original samples and labels
@@ -122,7 +124,8 @@ class DatasetAttackGanLeaks(DatasetAttackPerRecord):
         pos_proba, neg_proba = \
             dataset_attack_result.positive_probabilities, dataset_attack_result.negative_probabilities
         fpr, tpr, threshold, auc, ap = self.calculate_metrics(pos_proba, neg_proba)
-        score = DatasetAttackScoreGanLeaks(self.dataset_name, roc_auc_score=auc, average_precision_score=ap)
+        score = DatasetAttackScorePerRecordKnnProbabilities(self.dataset_name, roc_auc_score=auc,
+                                                            average_precision_score=ap)
         if generate_plot:
             self.plot_roc_curve(pos_proba, neg_proba)
         return score
