@@ -30,7 +30,7 @@ class DatasetAttackConfigPerRecordKnnProbabilities(Config):
         distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
             sklearn.neighbors.NearestNeighbors documentation.
     """
-    k: int = 1
+    k: int = 5
     use_batches: bool = False
     batch_size: int = 10
     compute_distance: Callable = None
@@ -42,8 +42,8 @@ class DatasetAttackScorePerRecordKnnProbabilities(DatasetAttackScore):
     """DatasetAttackPerRecordKnnProbabilities privacy score.
     Attributes
     ----------
-    roc_auc_score :    the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
-                        performance.
+    roc_auc_score :   the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
+                      performance.
     average_precision_score: the proportion of Predicted Positive cases that are correctly Real Positives (members)
     assessment_type : assessment type is 'PerRecordKnnProbabilities', to be used in reports
     """
@@ -56,6 +56,8 @@ class DatasetAttackPerRecordKnnProbabilities(DatasetAttackPerRecord):
     """
          Privacy risk assessment for synthetic datasets based on Black-Box MIA attack using distances of
          members (training set) and non-members (holdout set) from their nearest neighbors in the synthetic dataset.
+         By default, the Euclidean distance is used (L2 norm), but another compute_distance() method can be provided in
+         configuration instead.
          The area under the receiver operating characteristic curve (AUC ROC) gives the privacy risk measure.
     """
 
@@ -70,7 +72,7 @@ class DatasetAttackPerRecordKnnProbabilities(DatasetAttackPerRecord):
         :param dataset_name: A name to identify this dataset
         :param config: Configuration parameters to guide the attack, optional
         """
-        attack_strategy_utils = KNNAttackStrategyUtils(config.k, config.use_batches, config.batch_size)
+        attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size)
         super().__init__(original_data_members, original_data_non_members, synthetic_data, dataset_name,
                          attack_strategy_utils, config)
         if config.compute_distance:

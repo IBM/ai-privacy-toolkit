@@ -3,10 +3,12 @@ from typing import Optional
 
 import pandas as pd
 
-from apt.risk.data_assessment.per_record_knn_probabilities_dataset_attack_ import DatasetAttackConfigPerRecordKnnProbabilities, \
-    DatasetAttackPerRecordKnnProbabilities, DatasetAttackScorePerRecordKnnProbabilities
-from apt.risk.data_assessment.dataset_attack_whole_dataset_knn_distance import DatasetAttackConfigWholeDatasetKnnDistance, \
-    DatasetAttackWholeDatasetKnnDistance, DatasetAttackScoreWholeDatasetKnnDistance
+from apt.risk.data_assessment.dataset_attack_whole_dataset_knn_distance import \
+    DatasetAttackConfigWholeDatasetKnnDistance, DatasetAttackWholeDatasetKnnDistance, \
+    DatasetAttackScoreWholeDatasetKnnDistance
+from apt.risk.data_assessment.per_record_knn_probabilities_dataset_attack_ import \
+    DatasetAttackConfigPerRecordKnnProbabilities, DatasetAttackPerRecordKnnProbabilities, \
+    DatasetAttackScorePerRecordKnnProbabilities
 from apt.utils.datasets import ArrayDataset
 
 
@@ -32,7 +34,7 @@ class DatasetAssessmentManager:
     def assess(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                synthetic_data: ArrayDataset, dataset_name: str = "dataset") -> (
             DatasetAttackScorePerRecordKnnProbabilities, DatasetAttackScoreWholeDatasetKnnDistance):
-        config_gl = DatasetAttackConfigPerRecordKnnProbabilities(use_batches=False, k=5)
+        config_gl = DatasetAttackConfigPerRecordKnnProbabilities(use_batches=False)
         mgr = DatasetAttackPerRecordKnnProbabilities(original_data_members,
                                                      original_data_non_members,
                                                      synthetic_data,
@@ -43,7 +45,7 @@ class DatasetAssessmentManager:
         score_g = mgr.calculate_privacy_score(result, generate_plot=self.config.generate_plots)
         self.attack_scores_per_record_knn_probabilities.append(score_g)
 
-        config_h = DatasetAttackConfigWholeDatasetKnnDistance(use_batches=False, k=5)
+        config_h = DatasetAttackConfigWholeDatasetKnnDistance(use_batches=False)
         mgr_h = DatasetAttackWholeDatasetKnnDistance(original_data_members, original_data_non_members, synthetic_data,
                                                      dataset_name,
                                                      config_h)

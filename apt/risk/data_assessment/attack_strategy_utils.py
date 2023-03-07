@@ -19,13 +19,11 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
          Common utilities for attack strategy based on KNN distances.
     """
 
-    def __init__(self, k: int, use_batches: bool = False, batch_size: int = 10) -> None:
+    def __init__(self, use_batches: bool = False, batch_size: int = 10) -> None:
         """
-        :param k: How many nearest neighbors to search
         :param use_batches: Use batches with a progress meter or not when finding KNNs for query set
         :param batch_size: if use_batches=True, the size of batch_size should be > 0
         """
-        self.k = k
         self.use_batches = use_batches
         self.batch_size = batch_size
         if use_batches:
@@ -49,7 +47,7 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
         """
         samples = query_samples.get_samples()
         if not self.use_batches:
-            distances, _ = knn_learner.kneighbors(samples, self.k, return_distance=True)
+            distances, _ = knn_learner.kneighbors(samples, return_distance=True)
             if distance_processor:
                 return distance_processor(distances)
             else:
@@ -61,7 +59,7 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
             x_batch = np.reshape(x_batch, [self.batch_size, -1])
 
             # dist_batch: distance between every query sample in batch to its KNNs among training samples
-            dist_batch, _ = knn_learner.kneighbors(x_batch, self.k, return_distance=True)
+            dist_batch, _ = knn_learner.kneighbors(x_batch, return_distance=True)
 
             # The probability of each sample to be generated
             if distance_processor:
