@@ -76,10 +76,10 @@ class DatasetAttackPerRecordKnnProbabilities(DatasetAttackPerRecord):
         super().__init__(original_data_members, original_data_non_members, synthetic_data, dataset_name,
                          attack_strategy_utils, config)
         if config.compute_distance:
-            self.nn_obj = NearestNeighbors(n_neighbors=config.k, algorithm='auto', metric=config.compute_distance,
-                                           metric_params=config.distance_params)
+            self.knn_learner = NearestNeighbors(n_neighbors=config.k, algorithm='auto', metric=config.compute_distance,
+                                                metric_params=config.distance_params)
         else:
-            self.nn_obj = NearestNeighbors(n_neighbors=config.k, algorithm='auto')
+            self.knn_learner = NearestNeighbors(n_neighbors=config.k, algorithm='auto')
 
     def assess_privacy(self) -> DatasetAttackResultPerRecord:
         """
@@ -98,14 +98,14 @@ class DatasetAttackPerRecordKnnProbabilities(DatasetAttackPerRecord):
                 synthetic data generator based on the NN distances from the query samples to the synthetic data samples
         """
         # nearest neighbor search
-        self.attack_strategy_utils.fit(self.synthetic_data, self.nn_obj)
+        self.attack_strategy_utils.fit(self.knn_learner, self.synthetic_data)
 
         # positive query
-        pos_proba = self.attack_strategy_utils.find_knn(self.original_data_members, self.nn_obj,
+        pos_proba = self.attack_strategy_utils.find_knn(self.knn_learner, self.original_data_members,
                                                         self.probability_per_sample)
 
         # negative query
-        neg_proba = self.attack_strategy_utils.find_knn(self.original_data_non_members, self.nn_obj,
+        neg_proba = self.attack_strategy_utils.find_knn(self.knn_learner, self.original_data_non_members,
                                                         self.probability_per_sample)
 
         result = DatasetAttackResultPerRecord(self.dataset_name, positive_probabilities=pos_proba,

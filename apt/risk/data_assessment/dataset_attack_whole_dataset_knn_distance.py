@@ -76,13 +76,13 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttackWhole):
         super().__init__(original_data_members, original_data_non_members, synthetic_data, dataset_name,
                          attack_strategy_utils, config)
         if config.compute_distance:
-            self.nn_obj_members = NearestNeighbors(n_neighbors=K, metric=config.compute_distance,
-                                                   metric_params=config.distance_params)
-            self.nn_obj_non_members = NearestNeighbors(n_neighbors=K, metric=config.compute_distance,
-                                                       metric_params=config.distance_params)
+            self.knn_learner_members = NearestNeighbors(n_neighbors=K, metric=config.compute_distance,
+                                                        metric_params=config.distance_params)
+            self.knn_learner_non_members = NearestNeighbors(n_neighbors=K, metric=config.compute_distance,
+                                                            metric_params=config.distance_params)
         else:
-            self.nn_obj_members = NearestNeighbors(n_neighbors=K)
-            self.nn_obj_non_members = NearestNeighbors(n_neighbors=K)
+            self.knn_learner_members = NearestNeighbors(n_neighbors=K)
+            self.knn_learner_non_members = NearestNeighbors(n_neighbors=K)
 
     def assess_privacy(self) -> DatasetAttackScoreWholeDatasetKnnDistance:
         """
@@ -98,7 +98,7 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttackWhole):
         n_non_members = len(self.original_data_non_members.get_samples())
 
         # percent of synth. records closer to members,
-        # and half those whose distance is similar to members and non-members
+        # and distance ties are divided equally between members and non-members
         share = np.mean(member_distances < non_member_distances) + (n_members / (n_members + n_non_members)) * np.mean(
             member_distances == non_member_distances)
         score = DatasetAttackScoreWholeDatasetKnnDistance(self.dataset_name, share=share)
@@ -115,11 +115,11 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttackWhole):
             neg_distances: distances of each synthetic data member from its nearest validation sample
         """
         # nearest neighbor search
-        self.attack_strategy_utils.fit(self.original_data_members, self.nn_obj_members)
-        self.attack_strategy_utils.fit(self.original_data_non_members, self.nn_obj_non_members)
+        self.attack_strategy_utils.fit(self.knn_learner_members, self.original_data_members)
+        self.attack_strategy_utils.fit(self.knn_learner_non_members, self.original_data_non_members)
 
         # distances of the synthetic data from the positive and negative samples (members and non-members)
-        pos_distances = self.attack_strategy_utils.find_knn(self.synthetic_data, self.nn_obj_members)
-        neg_distances = self.attack_strategy_utils.find_knn(self.synthetic_data, self.nn_obj_non_members)
+        pos_distances = self.attack_strategy_utils.find_knn(self.knn_learner_members, self.synthetic_data)
+        neg_distances = self.attack_strategy_utils.find_knn(self.knn_learner_non_members, self.synthetic_data)
 
         return pos_distances, neg_distances

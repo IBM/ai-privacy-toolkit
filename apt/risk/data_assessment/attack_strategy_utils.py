@@ -30,10 +30,10 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
             if batch_size < 1:
                 raise ValueError(f"When using batching batch_size should be > 0, and not {batch_size}")
 
-    def fit(self, dataset: ArrayDataset, knn_learner: NearestNeighbors):
+    def fit(self, knn_learner: NearestNeighbors, dataset: ArrayDataset):
         knn_learner.fit(dataset.get_samples())
 
-    def find_knn(self, query_samples: ArrayDataset, knn_learner: NearestNeighbors, distance_processor=None):
+    def find_knn(self, knn_learner: NearestNeighbors, query_samples: ArrayDataset, distance_processor=None):
         """
         Nearest neighbor search function.
         :param query_samples: query samples, to which nearest neighbors are to be found
