@@ -1,6 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+
+
+@dataclass
+class DatasetAttackScore:
+    dataset_name: str
 
 
 @dataclass
@@ -9,11 +14,11 @@ class DatasetAttackResult:
 
 
 @dataclass
-class DatasetAttackResultPerRecord(DatasetAttackResult):
-    positive_probabilities: np.ndarray
-    negative_probabilities: np.ndarray
+class DatasetAttackScoreWithResult(DatasetAttackScore):
+    result: DatasetAttackResult = field(repr=False)
 
 
 @dataclass
-class DatasetAttackScore:
-    dataset_name: str
+class DatasetAttackResultPerRecord(DatasetAttackResult):
+    positive_probabilities: np.ndarray
+    negative_probabilities: np.ndarray

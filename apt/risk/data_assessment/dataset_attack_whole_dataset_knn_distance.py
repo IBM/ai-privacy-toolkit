@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 from apt.risk.data_assessment.attack_strategy_utils import KNNAttackStrategyUtils
-from apt.risk.data_assessment.dataset_attack import DatasetAttackWhole, Config
+from apt.risk.data_assessment.dataset_attack import Config, DatasetAttack
 from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore
 from apt.utils.datasets import ArrayDataset
 
@@ -51,7 +51,7 @@ class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
     assessment_type: str = 'WholeDatasetKnnDistance'
 
 
-class DatasetAttackWholeDatasetKnnDistance(DatasetAttackWhole):
+class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
     """
          Privacy risk assessment for synthetic datasets based on distances of synthetic data records from
          members (training set) and non-members (holdout set). The privacy risk measure is the share of synthetic
@@ -89,7 +89,7 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttackWhole):
         Calculate the share of synthetic records closer to the training than the holdout dataset, based on the
         DCR computed by 'calculate_distances()'.
         :return:
-            :result of the attack, based on the NN distances from the query samples to the synthetic data samples
+            :score of the attack, based on the NN distances from the query samples to the synthetic data samples
         """
         member_distances, non_member_distances = self.calculate_distances()
         # distance of the synth. records to members and to non-members

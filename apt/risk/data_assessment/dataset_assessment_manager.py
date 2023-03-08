@@ -34,15 +34,15 @@ class DatasetAssessmentManager:
     def assess(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                synthetic_data: ArrayDataset, dataset_name: str = "dataset") -> (
             DatasetAttackScorePerRecordKnnProbabilities, DatasetAttackScoreWholeDatasetKnnDistance):
-        config_gl = DatasetAttackConfigPerRecordKnnProbabilities(use_batches=False)
+        config_gl = DatasetAttackConfigPerRecordKnnProbabilities(use_batches=False,
+                                                                 generate_plot=self.config.generate_plots)
         mgr = DatasetAttackPerRecordKnnProbabilities(original_data_members,
                                                      original_data_non_members,
                                                      synthetic_data,
                                                      dataset_name,
                                                      config_gl)
 
-        result = mgr.assess_privacy()
-        score_g = mgr.calculate_privacy_score(result, generate_plot=self.config.generate_plots)
+        score_g = mgr.assess_privacy()
         self.attack_scores_per_record_knn_probabilities.append(score_g)
 
         config_h = DatasetAttackConfigWholeDatasetKnnDistance(use_batches=False)

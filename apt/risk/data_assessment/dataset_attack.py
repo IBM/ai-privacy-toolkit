@@ -2,7 +2,7 @@
 This module defines the interface for privacy risk assessment of synthetic datasets.
 """
 import abc
-from typing import Optional, Union
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,8 +10,7 @@ from sklearn import metrics
 from sklearn.metrics import RocCurveDisplay
 
 from apt.risk.data_assessment.attack_strategy_utils import AttackStrategyUtils
-from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DatasetAttackResultPerRecord, \
-    DatasetAttackResult
+from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DatasetAttackResultPerRecord
 from apt.utils.datasets import ArrayDataset
 
 
@@ -52,12 +51,11 @@ class DatasetAttack(abc.ABC):
         self.config = config
 
     @abc.abstractmethod
-    def assess_privacy(self) -> Union[DatasetAttackScore, DatasetAttackResult]:
+    def assess_privacy(self) -> DatasetAttackScore:
         """
         Assess the privacy of the dataset
         :return:
-            result: Union[DatasetAttackScore, DatasetAttackResult] can be either the final privacy attack score,
-            or an intermediate attack result, which can be translated into a privacy score if needed
+            score: DatasetAttackScore the privacy attack score
         """
         pass
 
@@ -68,21 +66,12 @@ class DatasetAttackPerRecord(DatasetAttack):
     """
 
     @abc.abstractmethod
-    def assess_privacy(self) -> DatasetAttackResultPerRecord:
-        """
-        Assess the privacy of the dataset
-        :return:
-            result: DatasetAttackResultPerRecord
-        """
-        pass
-
-    @abc.abstractmethod
     def calculate_privacy_score(self, dataset_attack_result: DatasetAttackResultPerRecord,
                                 generate_plot=False) -> DatasetAttackScore:
         """
-        Calculate dataset privacy score based on the result of the privacy assessment
+        Calculate dataset privacy score based on the result of the privacy attack
         :return:
-            result: DatasetAttackScore
+            score: DatasetAttackScore
         """
         pass
 
@@ -120,18 +109,3 @@ class DatasetAttackPerRecord(DatasetAttack):
         auc = metrics.roc_auc_score(labels, results)
         ap = metrics.average_precision_score(labels, results)
         return fpr, tpr, threshold, auc, ap
-
-
-class DatasetAttackWhole(DatasetAttack):
-    """
-         An abstract base class for performing privacy risk assessment for synthetic datasets on a whole-dataset level.
-    """
-
-    @abc.abstractmethod
-    def assess_privacy(self) -> DatasetAttackScore:
-        """
-        Assess the privacy of the dataset
-        :return:
-            result: DatasetAttackScore
-        """
-        pass
