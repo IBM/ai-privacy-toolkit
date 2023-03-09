@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 import numpy as np
 
 
+DEFAULT_DATASET_NAME = "dataset"
+
 @dataclass
 class DatasetAttackScore:
     dataset_name: str
@@ -10,10 +12,10 @@ class DatasetAttackScore:
 
 @dataclass
 class DatasetAttackResult:
-    dataset_name: str
+    pass
 
 
-@dataclass
+@dataclass(repr=False)
 class DatasetAttackScoreWithResult(DatasetAttackScore):
     result: DatasetAttackResult = field(repr=False)
 

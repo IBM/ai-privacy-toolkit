@@ -6,14 +6,13 @@ and "Holdout-Based Fidelity and Privacy Assessment of Mixed-Type Synthetic Data"
 and on a variation of its reference implementation in https://github.com/mostly-ai/paper-fidelity-accuracy.
 """
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 from apt.risk.data_assessment.attack_strategy_utils import KNNAttackStrategyUtils
 from apt.risk.data_assessment.dataset_attack import Config, DatasetAttack
-from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore
+from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DEFAULT_DATASET_NAME
 from apt.utils.datasets import ArrayDataset
 
 K = 1  # Number of nearest neighbors to search. For DCR we need only the nearest neighbor.
@@ -40,7 +39,7 @@ class DatasetAttackConfigWholeDatasetKnnDistance(Config):
 
 @dataclass
 class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
-    """Configuration for DatasetAttackWholeDatasetKnnDistance.
+    """DatasetAttackWholeDatasetKnnDistance privacy score.
     Attributes
     ----------
     share : the share of synthetic records closer to the training than the holdout dataset.
@@ -61,20 +60,19 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
     """
 
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
-                 synthetic_data: ArrayDataset, dataset_name: str,
-                 config: Optional[
-                     DatasetAttackConfigWholeDatasetKnnDistance] = DatasetAttackConfigWholeDatasetKnnDistance()):
+                 synthetic_data: ArrayDataset,
+                 config: DatasetAttackConfigWholeDatasetKnnDistance = DatasetAttackConfigWholeDatasetKnnDistance(),
+                 dataset_name: str = DEFAULT_DATASET_NAME):
         """
         :param original_data_members: A container for the training original samples and labels
         :param original_data_non_members: A container for the holdout original samples and labels
         :param synthetic_data: A container for the synthetic samples and labels
-        :param dataset_name: A name to identify this dataset
-        :param config: Configuration parameters to guide the assessment process such as which attack
-               frameworks to use, optional
+        :param config: Configuration parameters to guide the assessment process, optional
+        :param dataset_name: A name to identify this dataset, optional
         """
         attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size)
-        super().__init__(original_data_members, original_data_non_members, synthetic_data, dataset_name,
-                         attack_strategy_utils, config)
+        super().__init__(original_data_members, original_data_non_members, synthetic_data, config, dataset_name,
+                         attack_strategy_utils)
         if config.compute_distance:
             self.knn_learner_members = NearestNeighbors(n_neighbors=K, metric=config.compute_distance,
                                                         metric_params=config.distance_params)
@@ -89,7 +87,7 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
         Calculate the share of synthetic records closer to the training than the holdout dataset, based on the
         DCR computed by 'calculate_distances()'.
         :return:
-            :score of the attack, based on the NN distances from the query samples to the synthetic data samples
+            score of the attack, based on the NN distances from the query samples to the synthetic data samples
         """
         member_distances, non_member_distances = self.calculate_distances()
         # distance of the synth. records to members and to non-members
@@ -111,8 +109,8 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
         N. Park et. al. in "Data Synthesis based on Generative Adversarial Networks."
 
         :return:
-            pos_distances: distances of each synthetic data member from its nearest training sample
-            neg_distances: distances of each synthetic data member from its nearest validation sample
+            pos_distances - distances of each synthetic data member from its nearest training sample
+            neg_distances - distances of each synthetic data member from its nearest validation sample
         """
         # nearest neighbor search
         self.attack_strategy_utils.fit(self.knn_learner_members, self.original_data_members)
