@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-
 DEFAULT_DATASET_NAME = "dataset"
+
 
 @dataclass
 class DatasetAttackScore:
@@ -21,6 +21,6 @@ class DatasetAttackScoreWithResult(DatasetAttackScore):
 
 
 @dataclass
-class DatasetAttackResultPerRecord(DatasetAttackResult):
-    positive_probabilities: np.ndarray
-    negative_probabilities: np.ndarray
+class DatasetAttackResultMembership(DatasetAttackResult):
+    member_probabilities: np.ndarray
+    non_member_probabilities: np.ndarray

@@ -7,11 +7,9 @@ import pandas as pd
 
 from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DEFAULT_DATASET_NAME
 from apt.risk.data_assessment.dataset_attack_whole_dataset_knn_distance import \
-    DatasetAttackConfigWholeDatasetKnnDistance, DatasetAttackWholeDatasetKnnDistance, \
-    DatasetAttackScoreWholeDatasetKnnDistance
-from apt.risk.data_assessment.dataset_attack_per_record_knn_probabilities import \
-    DatasetAttackConfigPerRecordKnnProbabilities, DatasetAttackPerRecordKnnProbabilities, \
-    DatasetAttackScorePerRecordKnnProbabilities
+    DatasetAttackConfigWholeDatasetKnnDistance, DatasetAttackWholeDatasetKnnDistance
+from apt.risk.data_assessment.dataset_attack_membership_knn_probabilities import \
+    DatasetAttackConfigMembershipKnnProbabilities, DatasetAttackMembershipKnnProbabilities
 from apt.utils.datasets import ArrayDataset
 
 
@@ -49,13 +47,13 @@ class DatasetAssessmentManager:
         :return:
             a list of dataset attack scores
         """
-        config_gl = DatasetAttackConfigPerRecordKnnProbabilities(use_batches=False,
-                                                                 generate_plot=self.config.generate_plots)
-        mgr = DatasetAttackPerRecordKnnProbabilities(original_data_members,
-                                                     original_data_non_members,
-                                                     synthetic_data,
-                                                     config_gl,
-                                                     dataset_name)
+        config_gl = DatasetAttackConfigMembershipKnnProbabilities(use_batches=False,
+                                                                  generate_plot=self.config.generate_plots)
+        mgr = DatasetAttackMembershipKnnProbabilities(original_data_members,
+                                                      original_data_non_members,
+                                                      synthetic_data,
+                                                      config_gl,
+                                                      dataset_name)
 
         score_g = mgr.assess_privacy()
         self.attack_scores_per_record_knn_probabilities.append(score_g)

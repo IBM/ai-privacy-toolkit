@@ -10,7 +10,7 @@ from sklearn import metrics
 from sklearn.metrics import RocCurveDisplay
 
 from apt.risk.data_assessment.attack_strategy_utils import AttackStrategyUtils
-from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DatasetAttackResultPerRecord
+from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DatasetAttackResultMembership
 from apt.utils.datasets import ArrayDataset
 
 
@@ -60,13 +60,13 @@ class DatasetAttack(abc.ABC):
         pass
 
 
-class DatasetAttackPerRecord(DatasetAttack):
+class DatasetAttackMembership(DatasetAttack):
     """
          An abstract base class for performing privacy risk assessment for synthetic datasets on a per-record level.
     """
 
     @abc.abstractmethod
-    def calculate_privacy_score(self, dataset_attack_result: DatasetAttackResultPerRecord,
+    def calculate_privacy_score(self, dataset_attack_result: DatasetAttackResultMembership,
                                 generate_plot=False) -> DatasetAttackScore:
         """
         Calculate dataset privacy score based on the result of the privacy attack
@@ -75,15 +75,15 @@ class DatasetAttackPerRecord(DatasetAttack):
         """
         pass
 
-    def plot_roc_curve(self, pos_probabilities, neg_probabilities, name_prefix=""):
+    def plot_roc_curve(self, member_probabilities, non_member_probabilities, name_prefix=""):
         """
         Plot ROC curve
-        :param pos_probabilities: probability estimates of the positive samples, the training data
-        :param neg_probabilities: probability estimates of the negative samples, the hold-out data
+        :param member_probabilities: probability estimates of the member samples, the training data
+        :param non_member_probabilities: probability estimates of the non-member samples, the hold-out data
         :param name_prefix: name prefix for the ROC curve plot
         """
-        labels = np.concatenate((np.zeros((len(neg_probabilities),)), np.ones((len(pos_probabilities),))))
-        results = np.concatenate((neg_probabilities, pos_probabilities))
+        labels = np.concatenate((np.zeros((len(non_member_probabilities),)), np.ones((len(member_probabilities),))))
+        results = np.concatenate((non_member_probabilities, member_probabilities))
         svc_disp = RocCurveDisplay.from_predictions(labels, results)
         svc_disp.plot()
         plt.plot([0, 1], [0, 1], color="navy", linewidth=2, linestyle="--", label='No skills')
@@ -91,11 +91,11 @@ class DatasetAttackPerRecord(DatasetAttack):
         plt.savefig(f'{name_prefix}{self.dataset_name}_roc_curve.png')
 
     @staticmethod
-    def calculate_metrics(pos_probabilities, neg_probabilities):
+    def calculate_metrics(member_probabilities, non_member_probabilities):
         """
         Calculate attack performance metrics
-        :param pos_probabilities: probability estimates of the positive samples, the training data
-        :param neg_probabilities: probability estimates of the negative samples, the hold-out data
+        :param member_probabilities: probability estimates of the member samples, the training data
+        :param non_member_probabilities: probability estimates of the non-member samples, the hold-out data
         :return:
             fpr: False Positive rate
             tpr: True Positive rate
@@ -103,8 +103,8 @@ class DatasetAttackPerRecord(DatasetAttack):
             auc: area under the Receiver Operating Characteristic Curve
             ap: average precision score
         """
-        labels = np.concatenate((np.zeros((len(neg_probabilities),)), np.ones((len(pos_probabilities)))))
-        results = np.concatenate((neg_probabilities, pos_probabilities))
+        labels = np.concatenate((np.zeros((len(non_member_probabilities),)), np.ones((len(member_probabilities)))))
+        results = np.concatenate((non_member_probabilities, member_probabilities))
         fpr, tpr, threshold = metrics.roc_curve(labels, results, pos_label=1)
         auc = metrics.roc_auc_score(labels, results)
         ap = metrics.average_precision_score(labels, results)

@@ -104,20 +104,20 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
 
     def calculate_distances(self):
         """
-        Calculate positive and negative query probabilities, based on their distance to their KNN among
+        Calculate member and non-member query probabilities, based on their distance to their KNN among
         synthetic samples. This distance is called distance to the closest record (DCR), as defined by
         N. Park et. al. in "Data Synthesis based on Generative Adversarial Networks."
 
         :return:
-            pos_distances - distances of each synthetic data member from its nearest training sample
-            neg_distances - distances of each synthetic data member from its nearest validation sample
+            member_distances - distances of each synthetic data member from its nearest training sample
+            non_member_distances - distances of each synthetic data member from its nearest validation sample
         """
         # nearest neighbor search
         self.attack_strategy_utils.fit(self.knn_learner_members, self.original_data_members)
         self.attack_strategy_utils.fit(self.knn_learner_non_members, self.original_data_non_members)
 
-        # distances of the synthetic data from the positive and negative samples (members and non-members)
-        pos_distances = self.attack_strategy_utils.find_knn(self.knn_learner_members, self.synthetic_data)
-        neg_distances = self.attack_strategy_utils.find_knn(self.knn_learner_non_members, self.synthetic_data)
+        # distances of the synthetic data from the member and non-member samples
+        member_distances = self.attack_strategy_utils.find_knn(self.knn_learner_members, self.synthetic_data)
+        non_member_distances = self.attack_strategy_utils.find_knn(self.knn_learner_non_members, self.synthetic_data)
 
-        return pos_distances, neg_distances
+        return member_distances, non_member_distances
