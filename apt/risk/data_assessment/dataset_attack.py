@@ -37,8 +37,7 @@ class DatasetAttack(abc.ABC):
         :param original_data_non_members: A container for the holdout original samples and labels,
             only samples are used in the assessment
         :param synthetic_data: A container for the synthetic samples and labels, only samples are used in the assessment
-        :param config: Configuration parameters to guide the assessment process such as which attack
-               frameworks to use
+        :param config: Configuration parameters to guide the assessment process
         :param dataset_name: A name to identify the dataset under attack, optional
         :param attack_strategy_utils: Utils for use with the attack strategy, optional
         """

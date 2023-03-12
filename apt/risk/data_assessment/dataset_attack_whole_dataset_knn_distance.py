@@ -46,7 +46,7 @@ class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
             A value of 0.5 or close to it means good privacy.
     assessment_type : assessment type is 'WholeDatasetKnnDistance', to be used in reports
     """
-    share: float
+    share: float = -1.0
     assessment_type: str = 'WholeDatasetKnnDistance'
 
 

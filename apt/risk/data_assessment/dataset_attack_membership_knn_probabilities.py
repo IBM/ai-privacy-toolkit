@@ -13,7 +13,7 @@ from sklearn.neighbors import NearestNeighbors
 from apt.risk.data_assessment.attack_strategy_utils import KNNAttackStrategyUtils
 from apt.risk.data_assessment.dataset_attack import DatasetAttackMembership, Config
 from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, DatasetAttackResultMembership, \
-    DatasetAttackScoreWithResult, DEFAULT_DATASET_NAME
+    DEFAULT_DATASET_NAME
 from apt.utils.datasets import ArrayDataset
 
 
@@ -41,7 +41,7 @@ class DatasetAttackConfigMembershipKnnProbabilities(Config):
 
 
 @dataclass
-class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScoreWithResult):
+class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScore):
     """DatasetAttackMembershipKnnProbabilities privacy score.
     Attributes
     ----------
@@ -50,8 +50,8 @@ class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScoreWithResult)
     average_precision_score: the proportion of predicted members that are correctly members
     assessment_type : assessment type is 'MembershipKnnProbabilities', to be used in reports
     """
-    roc_auc_score: float
-    average_precision_score: float
+    roc_auc_score: float = -1.0
+    average_precision_score: float = -1.0
     assessment_type: str = 'MembershipKnnProbabilities'
 
 
