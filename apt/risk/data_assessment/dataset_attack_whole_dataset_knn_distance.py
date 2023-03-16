@@ -39,15 +39,19 @@ class DatasetAttackConfigWholeDatasetKnnDistance(Config):
 
 @dataclass
 class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
-    """DatasetAttackWholeDatasetKnnDistance privacy score.
-    Attributes
-    ----------
-    share : the share of synthetic records closer to the training than the holdout dataset.
-            A value of 0.5 or close to it means good privacy.
-    assessment_type : assessment type is 'WholeDatasetKnnDistance', to be used in reports
+    """DatasetAttackWholeDatasetKnnDistance privacy risk score.
     """
-    share: float = -1.0
-    assessment_type: str = 'WholeDatasetKnnDistance'
+    share: float
+    assessment_type: str = 'WholeDatasetKnnDistance'  # to be used in reports
+
+    def __init__(self, dataset_name, share) -> None:
+        """
+        dataset_name:    dataset name to be used in reports
+        share : the share of synthetic records closer to the training than the holdout dataset.
+                A value of 0.5 or close to it means good privacy.
+        """
+        super().__init__(dataset_name=dataset_name, risk_score=share, result=None)
+        self.share = share
 
 
 class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):

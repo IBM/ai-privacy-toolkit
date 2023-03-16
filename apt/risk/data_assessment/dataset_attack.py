@@ -54,7 +54,7 @@ class DatasetAttack(abc.ABC):
         """
         Assess the privacy of the dataset
         :return:
-            score: DatasetAttackScore the privacy attack score
+            score: DatasetAttackScore the privacy attack risk score
         """
         pass
 

@@ -39,8 +39,8 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
         :param query_samples: query samples, to which nearest neighbors are to be found
         :param knn_learner: unsupervised learner for implementing neighbor searches, after it was fitted
         :param distance_processor: function for processing the distance into another more relevant metric per sample.
-            Its input is an array representing distances (the distances returned by NearestNeighbors.kneighbors() ),
-            and the output should be another array with distance-based values that enable to compute the final score
+            Its input is an array representing distances (the distances returned by NearestNeighbors.kneighbors() ), and
+            the output should be another array with distance-based values that enable to compute the final risk score
         :return:
             distances of the query samples to their nearest neighbors, or a metric based on that distance and calculated
             by the distance_processor function

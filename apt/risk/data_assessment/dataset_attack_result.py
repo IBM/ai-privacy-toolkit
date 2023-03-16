@@ -14,7 +14,8 @@ class DatasetAttackResult:
 @dataclass
 class DatasetAttackScore:
     dataset_name: str
-    result: Optional[DatasetAttackResult] = None
+    risk_score: float
+    result: Optional[DatasetAttackResult]
 
 
 @dataclass

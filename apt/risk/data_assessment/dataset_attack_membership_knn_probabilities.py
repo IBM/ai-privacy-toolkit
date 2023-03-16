@@ -42,17 +42,24 @@ class DatasetAttackConfigMembershipKnnProbabilities(Config):
 
 @dataclass
 class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScore):
-    """DatasetAttackMembershipKnnProbabilities privacy score.
-    Attributes
-    ----------
-    roc_auc_score :   the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
-                      performance.
-    average_precision_score: the proportion of predicted members that are correctly members
-    assessment_type : assessment type is 'MembershipKnnProbabilities', to be used in reports
+    """DatasetAttackMembershipKnnProbabilities privacy risk score.
     """
-    roc_auc_score: float = -1.0
-    average_precision_score: float = -1.0
-    assessment_type: str = 'MembershipKnnProbabilities'
+    roc_auc_score: float
+    average_precision_score: float
+    assessment_type: str = 'MembershipKnnProbabilities'  # to be used in reports
+
+    def __init__(self, dataset_name: str, roc_auc_score: float, average_precision_score: float,
+                 result: DatasetAttackResultMembership) -> None:
+        """
+        dataset_name:    dataset name to be used in reports
+        roc_auc_score:   the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
+                          performance.
+        average_precision_score: the proportion of predicted members that are correctly members
+        result:          the result of the membership inference attack
+        """
+        super().__init__(dataset_name=dataset_name, risk_score=roc_auc_score, result=result)
+        self.roc_auc_score = roc_auc_score
+        self.average_precision_score = average_precision_score
 
 
 class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):

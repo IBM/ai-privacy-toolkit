@@ -14,6 +14,10 @@ from apt.utils.dataset_utils import get_iris_dataset_np, get_diabetes_dataset_np
     get_nursery_dataset_pd
 from apt.utils.datasets import ArrayDataset
 
+MIN_SHARE = 0.5
+MIN_ROC_AUC = 0.0
+MIN_PRECISION = 0.0
+
 NUM_SYNTH_SAMPLES = 40000
 NUM_SYNTH_COMPONENTS = 4
 
@@ -60,12 +64,9 @@ def test_risk_anonymization(name, data, dataset_type, k, mgr):
     original_data_members = ArrayDataset(preprocessed_x_train, y_train)
     original_data_non_members = ArrayDataset(preprocessed_x_test, y_test)
 
-    [score_g, score_h] = mgr.assess(original_data_members, original_data_non_members, anonymized_data,
-                                    f'anon_k{k}_{name}')
-    assert (score_g.roc_auc_score > 0.5)
-    assert (score_g.average_precision_score > 0.5)
-
-    assert (score_h.share > 0.5)
+    dataset_name = f'anon_k{k}_{name}'
+    assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, anonymized_data,
+                                       dataset_name)
 
 
 testdata = [('iris_np', iris_dataset_np, 'np', mgr),
@@ -96,13 +97,8 @@ def test_risk_kde(name, data, dataset_type, mgr):
     original_data_members = ArrayDataset(encoded, y_train)
     original_data_non_members = ArrayDataset(encoded_test, y_test)
 
-    [score_g, score_h] = mgr.assess(original_data_members, original_data_non_members, synth_data,
-                                    'kde' + str(NUM_SYNTH_SAMPLES) + name)
-
-    assert (score_g.roc_auc_score > 0.5)
-    assert (score_g.average_precision_score > 0.5)
-
-    assert (score_h.share > 0.5)
+    dataset_name = 'kde' + str(NUM_SYNTH_SAMPLES) + name
+    assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synth_data, dataset_name)
 
 
 def kde(n_samples, n_components, original_data):
@@ -166,3 +162,12 @@ def preprocess_nursery_x_data(x_train, x_test):
     encoded = preprocessor.fit_transform(x_train)
     encoded_test = preprocessor.fit_transform(x_test)
     return encoded, encoded_test
+
+
+def assess_privacy_and_validate_result(dataset_assessment_manager, original_data_members, original_data_non_members,
+                                       synth_data, dataset_name):
+    [score_g, score_h] = dataset_assessment_manager.assess(original_data_members, original_data_non_members, synth_data,
+                                                           dataset_name)
+    assert (score_g.roc_auc_score > MIN_ROC_AUC)
+    assert (score_g.average_precision_score > MIN_PRECISION)
+    assert (score_h.share > MIN_SHARE)

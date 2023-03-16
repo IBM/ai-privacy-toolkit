@@ -45,7 +45,7 @@ class DatasetAssessmentManager:
         :param dataset_name: A name to identify this dataset, optional
 
         :return:
-            a list of dataset attack scores
+            a list of dataset attack risk scores
         """
         config_gl = DatasetAttackConfigMembershipKnnProbabilities(use_batches=False,
                                                                   generate_plot=self.config.generate_plots)
