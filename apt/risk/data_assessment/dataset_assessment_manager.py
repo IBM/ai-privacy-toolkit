@@ -35,7 +35,7 @@ class DatasetAssessmentManager:
     def assess(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                synthetic_data: ArrayDataset, dataset_name: str = DEFAULT_DATASET_NAME) -> list[DatasetAttackScore]:
         """
-        Do dataset assessment by running dataset attacks, and return their scores.
+        Do dataset privacy risk assessment by running dataset attacks, and return their scores.
 
         :param original_data_members: A container for the training original samples and labels,
             only samples are used in the assessment

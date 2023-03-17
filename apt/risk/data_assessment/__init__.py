@@ -1,7 +1,7 @@
 """
 Module providing privacy risk assessment for synthetic data.
 
-The main interface, ``DatasetAttack``, with the assess_privacy() main method assumes the availability of the
+The main interface, ``DatasetAttack``, with the ``assess_privacy()`` main method assumes the availability of the
 training data, holdout data and synthetic data at the time of the privacy evaluation.
 It is to be implemented by concrete assessment methods, which can run the assessment on a per-record level,
 or on the whole dataset.

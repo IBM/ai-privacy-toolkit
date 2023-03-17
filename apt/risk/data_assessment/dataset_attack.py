@@ -23,8 +23,8 @@ class Config(abc.ABC):
 
 class DatasetAttack(abc.ABC):
     """
-         The interface for performing privacy attack for risk assessment for synthetic datasets to be used in AI models.
-         The original data members (training data) and non-members (the holdout data) should be available.
+         The interface for performing privacy attack for risk assessment of synthetic datasets to be used in AI model
+         training. The original data members (training data) and non-members (the holdout data) should be available.
          For reliability, all the datasets should be preprocessed and normalized.
     """
 
