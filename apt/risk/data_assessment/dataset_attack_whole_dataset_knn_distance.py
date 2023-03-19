@@ -44,7 +44,7 @@ class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
     share: float
     assessment_type: str = 'WholeDatasetKnnDistance'  # to be used in reports
 
-    def __init__(self, dataset_name, share) -> None:
+    def __init__(self, dataset_name: str, share: float) -> None:
         """
         dataset_name:    dataset name to be used in reports
         share : the share of synthetic records closer to the training than the holdout dataset.
