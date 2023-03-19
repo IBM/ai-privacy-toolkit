@@ -90,16 +90,16 @@ Citations
 ---------
 
   [^1]: "GAN-Leaks: A Taxonomy of Membership Inference Attacks against Generative Models" by D. Chen, N. Yu, Y. Zhang,
-  M. Fritz published in Proceedings of the 2020 ACM SIGSAC Conference on Computer and Communications Security, 343–62,
-  2020. [https://doi.org/10.1145/3372297.3417238](https://doi.org/10.1145/3372297.3417238)
+    M. Fritz in Proceedings of the 2020 ACM SIGSAC Conference on Computer and Communications Security, 343–62, 2020.
+    [https://doi.org/10.1145/3372297.3417238](https://doi.org/10.1145/3372297.3417238)
 
   [^2]: Code for the paper "GAN-Leaks: A Taxonomy of Membership Inference Attacks against Generative Models"
-  [https://github.com/DingfanChen/GAN-Leaks](https://github.com/DingfanChen/GAN-Leaks)
+    [https://github.com/DingfanChen/GAN-Leaks](https://github.com/DingfanChen/GAN-Leaks)
 
   [^3]: "Data Synthesis based on Generative Adversarial Networks." by N. Park, M. Mohammadi, K. Gorde, S. Jajodia,
-  H. Park, and Y. Kim in International Conference on Very Large Data Bases (VLDB), 2018.
+    H. Park, and Y. Kim in International Conference on Very Large Data Bases (VLDB), 2018.
 
   [^4]: "Holdout-Based Fidelity and Privacy Assessment of Mixed-Type Synthetic Data" by M. Platzer and T. Reutterer.
 
   [^5]: Code for the paper "Holdout-Based Fidelity and Privacy Assessment of Mixed-Type Synthetic Data"
-  [https://github.com/mostly-ai/paper-fidelity-accuracy](https://github.com/mostly-ai/paper-fidelity-accuracy)
+    [https://github.com/mostly-ai/paper-fidelity-accuracy](https://github.com/mostly-ai/paper-fidelity-accuracy)
