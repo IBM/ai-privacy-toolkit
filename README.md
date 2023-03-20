@@ -38,3 +38,8 @@ A Python library for Machine Learning Security. Includes an attack module called
 (membership inference, attribute inference, model inversion and database reconstruction) as well as a *privacy* metrics module that contains
 membership leakage metrics for ML models.
 
+
+Citation
+--------
+Abigail Goldsteen, Ola Saadi, Ron Shmelkin, Shlomit Shachor, Natalia Razinkov,
+"AI privacy toolkit", SoftwareX, Volume 22, 2023, 101352, ISSN 2352-7110, https://doi.org/10.1016/j.softx.2023.101352.
