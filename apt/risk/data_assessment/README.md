@@ -25,13 +25,13 @@ Models"[^1] and its implementation[^2]. It is based on Black-Box MIA attack usin
 distances of members (training set) and non-members (holdout set) from their nearest neighbors in the synthetic dataset.
 By default, the Euclidean distance is used (L2 norm), but another ``compute_distance()`` method can be provided in
 configuration instead.
-The area under the receiver operating characteristic curve (AUC ROC) gives the privacy risk measure.
+The area under the receiver operating characteristic curve (AUC ROC) gives the privacy risk score.
 
 Another implementation is based on the papers "Data Synthesis based on Generative Adversarial Networks"[^3] and
 "Holdout-Based Fidelity and Privacy Assessment of Mixed-Type Synthetic Data"[^4], and on a variation of its reference
 implementation[^5].
 It is based on distances of synthetic data records from members (training set) and non-members (holdout set).
-The privacy risk measure is the share of synthetic records closer to the training than the holdout dataset.
+The privacy risk score is the share of synthetic records closer to the training than the holdout dataset.
 By default, the Euclidean distance is used (L2 norm), but another ``compute_distance()`` method can be provided in
 configuration instead.
 
