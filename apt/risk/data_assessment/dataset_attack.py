@@ -87,7 +87,7 @@ class DatasetAttackMembership(DatasetAttack):
         """
         labels = np.concatenate((np.zeros((len(non_member_probabilities),)), np.ones((len(member_probabilities),))))
         results = np.concatenate((non_member_probabilities, member_probabilities))
-        svc_disp = RocCurveDisplay.from_predictions(labels, results)
+        RocCurveDisplay.from_predictions(labels, results)
         plt.plot([0, 1], [0, 1], color="navy", linewidth=2, linestyle="--", label='No skills')
         plt.title('ROC curve')
         plt.savefig(f'{filename_prefix}{dataset_name}_roc_curve.png')
