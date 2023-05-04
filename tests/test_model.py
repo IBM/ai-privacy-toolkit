@@ -10,13 +10,15 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
 from art.utils import check_and_transform_label_format
 
-
 from art.utils import to_categorical
+
+tf.compat.v1.disable_eager_execution()
 
 
 def test_sklearn_classifier():
