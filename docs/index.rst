@@ -18,6 +18,8 @@ minimization principle in GDPR for ML models. It enables to reduce the amount of
 personal data needed to perform predictions with a machine learning model, while still enabling the model
 to make accurate predictions. This is done by by removing or generalizing some of the input features.
 
+The dataset risk assessment module implements a tool for privacy assessment of synthetic datasets that are to be used in AI model training.
+
 .. toctree::
    :maxdepth: 2
    :caption: Getting Started:

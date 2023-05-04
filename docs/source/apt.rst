@@ -9,6 +9,7 @@ Subpackages
 
    apt.anonymization
    apt.minimization
+   apt.risk
    apt.utils
 
 Module contents

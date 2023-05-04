@@ -12,7 +12,6 @@ apt.utils.datasets.datasets module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 
