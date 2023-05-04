@@ -16,6 +16,9 @@ minimization principle in GDPR for ML models. It enables to reduce the amount of
 personal data needed to perform predictions with a machine learning model, while still enabling the model
 to make accurate predictions. This is done by by removing or generalizing some of the input features.
 
+The [**dataset assessment**](apt/risk/data_assessment/README.md) module implements a tool for privacy assessment of
+synthetic datasets that are to be used in AI model training.
+
 Official ai-privacy-toolkit documentation: https://ai-privacy-toolkit.readthedocs.io/en/latest/
 
 Installation: pip install ai-privacy-toolkit
