@@ -20,16 +20,16 @@ K = 1  # Number of nearest neighbors to search. For DCR we need only the nearest
 
 @dataclass
 class DatasetAttackConfigWholeDatasetKnnDistance(Config):
-    """Configuration for DatasetAttackWholeDatasetKnnDistance.
+    """
+    Configuration for DatasetAttackWholeDatasetKnnDistance.
 
-    Attributes:
-        use_batches:  Divide query samples into batches or not.
-        batch_size:   Query sample batch size.
-        compute_distance: A callable function, which takes two arrays representing 1D vectors as inputs and must return
-            one value indicating the distance between those vectors.
-            See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
-        distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
-            sklearn.neighbors.NearestNeighbors documentation.
+    :param use_batches: Divide query samples into batches or not.
+    :param batch_size: Query sample batch size.
+    :param compute_distance: A callable function, which takes two arrays representing 1D vectors as inputs and must
+                             return one value indicating the distance between those vectors.
+                             See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
+    :param distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
+                             sklearn.neighbors.NearestNeighbors documentation.
     """
     use_batches: bool = False
     batch_size: int = 10
@@ -39,41 +39,40 @@ class DatasetAttackConfigWholeDatasetKnnDistance(Config):
 
 @dataclass
 class DatasetAttackScoreWholeDatasetKnnDistance(DatasetAttackScore):
-    """DatasetAttackWholeDatasetKnnDistance privacy risk score.
+    """
+    DatasetAttackWholeDatasetKnnDistance privacy risk score.
+
+    :param dataset_name: Dataset name to be used in reports.
+    :param share: The share of synthetic records closer to the training than the holdout dataset.
+                  A value of 0.5 or close to it means good privacy.
     """
     share: float
     assessment_type: str = 'WholeDatasetKnnDistance'  # to be used in reports
 
     def __init__(self, dataset_name: str, share: float) -> None:
-        """
-        dataset_name:    dataset name to be used in reports
-        share : the share of synthetic records closer to the training than the holdout dataset.
-                A value of 0.5 or close to it means good privacy.
-        """
         super().__init__(dataset_name=dataset_name, risk_score=share, result=None)
         self.share = share
 
 
 class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
     """
-         Privacy risk assessment for synthetic datasets based on distances of synthetic data records from
-         members (training set) and non-members (holdout set). The privacy risk measure is the share of synthetic
-         records closer to the training than the holdout dataset.
-         By default, the Euclidean distance is used (L2 norm), but another compute_distance() method can be provided in
-         configuration instead.
+    Privacy risk assessment for synthetic datasets based on distances of synthetic data records from
+    members (training set) and non-members (holdout set). The privacy risk measure is the share of synthetic
+    records closer to the training than the holdout dataset.
+    By default, the Euclidean distance is used (L2 norm), but another compute_distance() method can be provided in
+    configuration instead.
+
+    :param original_data_members: A container for the training original samples and labels.
+    :param original_data_non_members: A container for the holdout original samples and labels.
+    :param synthetic_data: A container for the synthetic samples and labels.
+    :param config: Configuration parameters to guide the assessment process, optional.
+    :param dataset_name: A name to identify this dataset, optional.
     """
 
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                  synthetic_data: ArrayDataset,
                  config: DatasetAttackConfigWholeDatasetKnnDistance = DatasetAttackConfigWholeDatasetKnnDistance(),
                  dataset_name: str = DEFAULT_DATASET_NAME):
-        """
-        :param original_data_members: A container for the training original samples and labels
-        :param original_data_non_members: A container for the holdout original samples and labels
-        :param synthetic_data: A container for the synthetic samples and labels
-        :param config: Configuration parameters to guide the assessment process, optional
-        :param dataset_name: A name to identify this dataset, optional
-        """
         attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size)
         super().__init__(original_data_members, original_data_non_members, synthetic_data, config, dataset_name,
                          attack_strategy_utils)
@@ -90,6 +89,7 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
         """
         Calculate the share of synthetic records closer to the training than the holdout dataset, based on the
         DCR computed by 'calculate_distances()'.
+
         :return:
             score of the attack, based on the NN distances from the query samples to the synthetic data samples
         """

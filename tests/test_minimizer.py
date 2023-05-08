@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
@@ -18,6 +19,8 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_german_credit_dataset_pd
 from apt.utils.datasets import ArrayDataset
 from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier
+
+tf.compat.v1.disable_eager_execution()
 
 
 @pytest.fixture

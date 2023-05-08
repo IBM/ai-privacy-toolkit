@@ -15,6 +15,12 @@ from apt.utils.datasets import ArrayDataset
 
 @dataclass
 class DatasetAssessmentManagerConfig:
+    """
+    Configuration for DatasetAssessmentManager.
+
+    :param persist_reports: Whether to save assessment results to filesystem.
+    :param generate_plots: Whether to generate and visualize plots as part of assessment.
+    """
     persist_reports: bool = False
     generate_plots: bool = False
 
@@ -22,14 +28,13 @@ class DatasetAssessmentManagerConfig:
 class DatasetAssessmentManager:
     """
     The main class for running dataset assessment attacks.
+
+    :param config: Configuration parameters to guide the dataset assessment process
     """
     attack_scores_per_record_knn_probabilities: list[DatasetAttackScore] = []
     attack_scores_whole_dataset_knn_distance: list[DatasetAttackScore] = []
 
     def __init__(self, config: Optional[DatasetAssessmentManagerConfig] = DatasetAssessmentManagerConfig) -> None:
-        """
-        :param config: Configuration parameters to guide the dataset assessment process
-        """
         self.config = config
 
     def assess(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
@@ -67,14 +72,17 @@ class DatasetAssessmentManager:
         return [score_gl, score_h]
 
     def dump_all_scores_to_files(self):
+        """
+        Save assessment results to filesystem.
+        """
         if self.config.persist_reports:
             results_log_file = "_results.log.csv"
-            self.dump_scores_to_file(self.attack_scores_per_record_knn_probabilities,
+            self._dump_scores_to_file(self.attack_scores_per_record_knn_probabilities,
                                      "per_record_knn_probabilities" + results_log_file, True)
-            self.dump_scores_to_file(self.attack_scores_whole_dataset_knn_distance,
+            self._dump_scores_to_file(self.attack_scores_whole_dataset_knn_distance,
                                      "whole_dataset_knn_distance" + results_log_file, True)
 
     @staticmethod
-    def dump_scores_to_file(attack_scores: list[DatasetAttackScore], filename: str, header: bool):
+    def _dump_scores_to_file(attack_scores: list[DatasetAttackScore], filename: str, header: bool):
         run_results_df = pd.DataFrame(attack_scores).drop('result', axis=1, errors='ignore')  # don't serialize result
         run_results_df.to_csv(filename, header=header, encoding='utf-8', index=False, mode='w')  # Overwrite
