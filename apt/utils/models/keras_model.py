@@ -2,9 +2,6 @@ from typing import Optional
 
 import numpy as np
 
-import tensorflow as tf
-from tensorflow import keras
-
 from sklearn.metrics import mean_squared_error
 
 from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output
@@ -13,8 +10,6 @@ from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 from art.utils import check_and_transform_label_format
 from art.estimators.classification.keras import KerasClassifier as ArtKerasClassifier
 from art.estimators.regression.keras import KerasRegressor as ArtKerasRegressor
-
-tf.compat.v1.disable_eager_execution()
 
 
 class KerasModel(Model):
@@ -41,7 +36,7 @@ class KerasClassifier(KerasModel):
                               queries that can be submitted. Default is True.
     :type unlimited_queries: boolean, optional
     """
-    def __init__(self, model: keras.models.Model, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
+    def __init__(self, model: "keras.models.Model", output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
         logits = False
@@ -107,7 +102,7 @@ class KerasRegressor(KerasModel):
                               queries that can be submitted. Default is True.
     :type unlimited_queries: boolean, optional
     """
-    def __init__(self, model: keras.models.Model, black_box_access: Optional[bool] = True,
+    def __init__(self, model: "keras.models.Model", black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, ModelOutputType.REGRESSOR_SCALAR, black_box_access, unlimited_queries, **kwargs)
         self._art_model = ArtKerasRegressor(model)

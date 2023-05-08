@@ -3,7 +3,6 @@ from typing import Optional, Tuple
 from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output, is_one_hot
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
-from xgboost import XGBClassifier
 import numpy as np
 
 from art.estimators.classification.xgboost import XGBoostClassifier as ArtXGBoostClassifier
@@ -37,7 +36,7 @@ class XGBoostClassifier(XGBoostModel):
                               queries that can be submitted. Default is True.
     :type unlimited_queries: boolean, optional
     """
-    def __init__(self, model: XGBClassifier, output_type: ModelOutputType, input_shape: Tuple[int, ...],
+    def __init__(self, model: "xgboost.XGBClassifier", output_type: ModelOutputType, input_shape: Tuple[int, ...],
                  nb_classes: int, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)

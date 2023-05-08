@@ -12,7 +12,6 @@ apt.minimization.minimizer module
    :undoc-members:
    :show-inheritance:
 
-
 Module contents
 ---------------
 

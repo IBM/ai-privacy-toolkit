@@ -19,18 +19,18 @@ from apt.utils.datasets import ArrayDataset
 
 @dataclass
 class DatasetAttackConfigMembershipKnnProbabilities(Config):
-    """Configuration for DatasetAttackMembershipKnnProbabilities.
+    """
+    Configuration for DatasetAttackMembershipKnnProbabilities.
 
-    Attributes:
-        k: Number of nearest neighbors to search
-        use_batches: Divide query samples into batches or not.
-        batch_size:  Query sample batch size.
-        compute_distance: A callable function, which takes two arrays representing 1D vectors as inputs and must return
-            one value indicating the distance between those vectors.
-            See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
-        distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
-            sklearn.neighbors.NearestNeighbors documentation.
-        generate_plot: Generate or not an AUR ROC curve and persist it in a file
+    :param k: Number of nearest neighbors to search.
+    :param use_batches: Divide query samples into batches or not.
+    :param batch_size:  Query sample batch size.
+    :param compute_distance: A callable function, which takes two arrays representing 1D vectors as inputs and must
+                             return one value indicating the distance between those vectors.
+                             See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
+    :param distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
+                             sklearn.neighbors.NearestNeighbors documentation.
+    :param generate_plot: Generate or not an AUR ROC curve and persist it in a file.
     """
     k: int = 5
     use_batches: bool = False
@@ -42,7 +42,14 @@ class DatasetAttackConfigMembershipKnnProbabilities(Config):
 
 @dataclass
 class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScore):
-    """DatasetAttackMembershipKnnProbabilities privacy risk score.
+    """
+    DatasetAttackMembershipKnnProbabilities privacy risk score.
+
+    :param dataset_name: dataset name to be used in reports
+    :param roc_auc_score: the area under the receiver operating characteristic curve (AUC ROC) to evaluate the
+                          attack performance.
+    :param average_precision_score: the proportion of predicted members that are correctly members.
+    :param result: the result of the membership inference attack.
     """
     roc_auc_score: float
     average_precision_score: float
@@ -50,13 +57,6 @@ class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScore):
 
     def __init__(self, dataset_name: str, roc_auc_score: float, average_precision_score: float,
                  result: DatasetAttackResultMembership) -> None:
-        """
-        dataset_name:    dataset name to be used in reports
-        roc_auc_score:   the area under the receiver operating characteristic curve (AUC ROC) to evaluate the attack
-                          performance.
-        average_precision_score: the proportion of predicted members that are correctly members
-        result:          the result of the membership inference attack
-        """
         super().__init__(dataset_name=dataset_name, risk_score=roc_auc_score, result=result)
         self.roc_auc_score = roc_auc_score
         self.average_precision_score = average_precision_score
@@ -64,24 +64,23 @@ class DatasetAttackScoreMembershipKnnProbabilities(DatasetAttackScore):
 
 class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
     """
-         Privacy risk assessment for synthetic datasets based on Black-Box MIA attack using distances of
-         members (training set) and non-members (holdout set) from their nearest neighbors in the synthetic dataset.
-         By default, the Euclidean distance is used (L2 norm), but another ``compute_distance()`` method can be provided
-         in configuration instead.
-         The area under the receiver operating characteristic curve (AUC ROC) gives the privacy risk measure.
+    Privacy risk assessment for synthetic datasets based on Black-Box MIA attack using distances of
+    members (training set) and non-members (holdout set) from their nearest neighbors in the synthetic dataset.
+    By default, the Euclidean distance is used (L2 norm), but another ``compute_distance()`` method can be provided
+    in configuration instead.
+    The area under the receiver operating characteristic curve (AUC ROC) gives the privacy risk measure.
+
+    :param original_data_members: A container for the training original samples and labels
+    :param original_data_non_members: A container for the holdout original samples and labels
+    :param synthetic_data: A container for the synthetic samples and labels
+    :param config: Configuration parameters to guide the attack, optional
+    :param dataset_name: A name to identify this dataset, optional
     """
 
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                  synthetic_data: ArrayDataset,
                  config: DatasetAttackConfigMembershipKnnProbabilities = DatasetAttackConfigMembershipKnnProbabilities(),
                  dataset_name: str = DEFAULT_DATASET_NAME):
-        """
-        :param original_data_members: A container for the training original samples and labels
-        :param original_data_non_members: A container for the holdout original samples and labels
-        :param synthetic_data: A container for the synthetic samples and labels
-        :param config: Configuration parameters to guide the attack, optional
-        :param dataset_name: A name to identify this dataset, optional
-        """
         attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size)
         super().__init__(original_data_members, original_data_non_members, synthetic_data, config, dataset_name,
                          attack_strategy_utils)
@@ -103,10 +102,9 @@ class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
         by the Parzen window density estimation in ``probability_per_sample()``, computed from the NN distances from the
         query samples to the synthetic data samples.
 
-        :return:
-            Privacy score of the attack together with the attack result with the probabilities of member and
-            non-member samples to be generated by the synthetic data generator based on the NN distances from the
-            query samples to the synthetic data samples
+        :return: Privacy score of the attack together with the attack result with the probabilities of member and
+                 non-member samples to be generated by the synthetic data generator based on the NN distances from the
+                 query samples to the synthetic data samples
         """
         # nearest neighbor search
         self.attack_strategy_utils.fit(self.knn_learner, self.synthetic_data)
@@ -130,11 +128,11 @@ class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
         """
         Evaluate privacy score from the probabilities of member and non-member samples to be generated by the synthetic
         data generator. The probabilities are computed by the ``assess_privacy()`` method.
-        :param dataset_attack_result attack result containing probabilities of member and non-member samples to be
-                generated by the synthetic data generator
-        :param generate_plot generate AUC ROC curve plot and persist it
-        :return:
-            score of the attack, based on distance-based probabilities - mainly the ROC AUC score
+
+        :param dataset_attack_result: attack result containing probabilities of member and non-member samples to be
+                generated by the synthetic data generator.
+        :param generate_plot: generate AUC ROC curve plot and persist it.
+        :return: score of the attack, based on distance-based probabilities - mainly the ROC AUC score.
         """
         member_proba, non_member_proba = \
             dataset_attack_result.member_probabilities, dataset_attack_result.non_member_probabilities
@@ -151,10 +149,10 @@ class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
         """
         For every sample represented by its distance from the query sample to its KNN in synthetic data,
         computes the probability of the synthetic data to be part of the query dataset.
+
         :param distances: distance between every query sample in batch to its KNNs among synthetic samples, a numpy
-        array of size (n, k) with n being the number of samples, k - the number of KNNs
-        :return:
-            probability estimates of the query samples being generated and so - of being part of the synthetic set, a
-            numpy array of size (n,)
+                          array of size (n, k) with n being the number of samples, k - the number of KNNs.
+        :return: probability estimates of the query samples being generated and so - of being part of the synthetic set,
+                 a numpy array of size (n,)
         """
         return np.average(np.exp(-distances), axis=1)

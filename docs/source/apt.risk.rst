@@ -1,5 +1,5 @@
-apt package
-===========
+apt.risk package
+================
 
 Subpackages
 -----------
@@ -7,15 +7,12 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   apt.anonymization
-   apt.minimization
-   apt.risk
-   apt.utils
+   apt.risk.data_assessment
 
 Module contents
 ---------------
 
-.. automodule:: apt
+.. automodule:: apt.risk
    :members:
    :undoc-members:
    :show-inheritance:
