@@ -34,9 +34,9 @@ def teardown_function():
 
 
 anon_testdata = [('iris_np', iris_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)] \
-                + [('diabetes_np', diabetes_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)] \
-                + [('nursery_pd', nursery_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)] \
-                + [('adult_pd', adult_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)]
+    + [('diabetes_np', diabetes_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)] \
+    + [('nursery_pd', nursery_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)] \
+    + [('adult_pd', adult_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)]
 
 
 @pytest.mark.parametrize("name, data, dataset_type, k, mgr", anon_testdata)
