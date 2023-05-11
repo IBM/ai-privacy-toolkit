@@ -1,3 +1,5 @@
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/5836/badge)](https://bestpractices.coreinfrastructure.org/projects/5836)
+
 # ai-privacy-toolkit
 <p align="center">
   <img src="docs/images/logo with text.jpg?raw=true" width="467" title="ai-privacy-toolkit logo">
