@@ -78,9 +78,9 @@ class DatasetAssessmentManager:
         if self.config.persist_reports:
             results_log_file = "_results.log.csv"
             self._dump_scores_to_file(self.attack_scores_per_record_knn_probabilities,
-                                     "per_record_knn_probabilities" + results_log_file, True)
+                                      "per_record_knn_probabilities" + results_log_file, True)
             self._dump_scores_to_file(self.attack_scores_whole_dataset_knn_distance,
-                                     "whole_dataset_knn_distance" + results_log_file, True)
+                                      "whole_dataset_knn_distance" + results_log_file, True)
 
     @staticmethod
     def _dump_scores_to_file(attack_scores: list[DatasetAttackScore], filename: str, header: bool):
