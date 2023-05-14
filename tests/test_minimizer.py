@@ -4,7 +4,7 @@ import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 
-from sklearn.datasets import load_boston, load_diabetes
+from sklearn.datasets import load_diabetes
 from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -24,11 +24,11 @@ tf.compat.v1.disable_eager_execution()
 
 
 @pytest.fixture
-def data():
-    return load_boston(return_X_y=True)
+def dataset():
+    return load_diabetes()
 
 
-def test_minimizer_params(data):
+def test_minimizer_params():
     # Assume two features, age and height, and boolean label
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
               'categories': {}, "representative": {"age": 26, "height": 149}},
@@ -54,7 +54,7 @@ def test_minimizer_params(data):
     gen.transform(dataset=ArrayDataset(X, features_names=features))
 
 
-def test_minimizer_fit(data):
+def test_minimizer_fit():
     features = ['age', 'height']
     X = np.array([[23, 165],
                   [45, 158],
@@ -108,7 +108,7 @@ def test_minimizer_fit(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_fit_pandas(data):
+def test_minimizer_fit_pandas():
     features = ['age', 'height', 'sex', 'ola']
     X = [[23, 165, 'f', 'aa'],
          [45, 158, 'f', 'aa'],
@@ -179,7 +179,7 @@ def test_minimizer_fit_pandas(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_params_categorical(data):
+def test_minimizer_params_categorical():
     # Assume three features, age, sex and height, and boolean label
     cells = [{'id': 1, 'label': 0, 'ranges': {'age': {'start': None, 'end': None}},
               'categories': {'sex': ['f', 'm']}, 'hist': [2, 0],
@@ -246,7 +246,7 @@ def test_minimizer_params_categorical(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_fit_QI(data):
+def test_minimizer_fit_QI():
     features = ['age', 'height', 'weight']
     X = np.array([[23, 165, 70],
                   [45, 158, 67],
@@ -301,7 +301,7 @@ def test_minimizer_fit_QI(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_fit_pandas_QI(data):
+def test_minimizer_fit_pandas_QI():
     features = ['age', 'height', 'weight', 'sex', 'ola']
     X = [[23, 165, 65, 'f', 'aa'],
          [45, 158, 76, 'f', 'aa'],
@@ -577,8 +577,7 @@ def test_german_credit_pandas():
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_regression():
-    dataset = load_diabetes()
+def test_regression(dataset):
     x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
 
     base_est = DecisionTreeRegressor(random_state=10, min_samples_split=2)
@@ -651,7 +650,7 @@ def test_regression():
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_X_y(data):
+def test_X_y():
     features = [0, 1, 2]
     X = np.array([[23, 165, 70],
                   [45, 158, 67],
@@ -705,7 +704,7 @@ def test_X_y(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_X_y_features_names(data):
+def test_X_y_features_names():
     features = ['age', 'height', 'weight']
     X = np.array([[23, 165, 70],
                   [45, 158, 67],
@@ -759,7 +758,7 @@ def test_X_y_features_names(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_BaseEstimator_classification(data):
+def test_BaseEstimator_classification():
     features = ['age', 'height', 'weight', 'sex', 'ola']
     X = [[23, 165, 65, 'f', 'aa'],
          [45, 158, 76, 'f', 'aa'],
@@ -833,8 +832,7 @@ def test_BaseEstimator_classification(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_BaseEstimator_regression():
-    dataset = load_diabetes()
+def test_BaseEstimator_regression(dataset):
     x_train, x_test, y_train, y_test = train_test_split(dataset.data, dataset.target, test_size=0.5, random_state=14)
 
     base_est = DecisionTreeRegressor(random_state=10, min_samples_split=2)
