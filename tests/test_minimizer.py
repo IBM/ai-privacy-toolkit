@@ -54,6 +54,33 @@ def test_minimizer_params(data):
     gen.transform(dataset=ArrayDataset(X, features_names=features))
 
 
+def test_minimizer_params_not_transform(data):
+    # Assume two features, age and height, and boolean label
+    cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
+              'categories': {}, "representative": {"age": 26, "height": 149}},
+             {"id": 2, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": None, "end": 170}}, "label": 1,
+              'categories': {}, "representative": {"age": 58, "height": 163}},
+             {"id": 3, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": 171, "end": None}}, "label": 0,
+              'categories': {}, "representative": {"age": 31, "height": 184}},
+             {"id": 4, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": 171, "end": None}}, "label": 1,
+              'categories': {}, "representative": {"age": 45, "height": 176}}
+             ]
+    features = ['age', 'height']
+    X = np.array([[23, 165],
+                  [45, 158],
+                  [18, 190]])
+    y = [1, 1, 0]
+    base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+                                      min_samples_leaf=1)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model.fit(ArrayDataset(X, y))
+
+    gen = GeneralizeToRepresentative(model, cells=cells)
+    gen.calculate_ncp(X)
+    ncp = gen.ncp
+    assert (ncp > 0.0)
+
+
 def test_minimizer_fit(data):
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -101,11 +128,60 @@ def test_minimizer_fit(data):
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
+
+def test_minimizer_fit_not_transform(data):
+    features = ['age', 'height']
+    X = np.array([[23, 165],
+                  [45, 158],
+                  [56, 123],
+                  [67, 154],
+                  [45, 149],
+                  [42, 166],
+                  [73, 172],
+                  [94, 168],
+                  [69, 175],
+                  [24, 181],
+                  [18, 190]])
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+                                      min_samples_leaf=1)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model.fit(ArrayDataset(X, y))
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
+    train_dataset = ArrayDataset(X, predictions, features_names=features)
+
+    gen.fit(dataset=train_dataset)
+    gener = gen.generalizations
+    expected_generalizations = {'ranges': {}, 'categories': {}, 'untouched': ['height', 'age']}
+
+    for key in expected_generalizations['ranges']:
+        assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
+    for key in expected_generalizations['categories']:
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
+    assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
+    modified_features = [f for f in features if
+                         f in expected_generalizations['categories'].keys() or f in expected_generalizations[
+                             'ranges'].keys()]
+    indexes = []
+    for i in range(len(features)):
+        if features[i] in modified_features:
+            indexes.append(i)
+
+    ncp = gen.ncp
+    if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
+        assert (ncp > 0.0)
 
 
 def test_minimizer_fit_pandas(data):
@@ -172,7 +248,7 @@ def test_minimizer_fit_pandas(data):
     np.testing.assert_array_equal(transformed.drop(modified_features, axis=1), X.drop(modified_features, axis=1))
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
@@ -294,7 +370,7 @@ def test_minimizer_fit_QI(data):
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
@@ -370,7 +446,7 @@ def test_minimizer_fit_pandas_QI(data):
     np.testing.assert_array_equal(transformed.drop(modified_features, axis=1), X.drop(modified_features, axis=1))
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
@@ -414,7 +490,7 @@ def test_minimize_ndarray_iris():
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
@@ -492,7 +568,7 @@ def test_minimize_pandas_adult():
     np.testing.assert_array_equal(transformed.drop(modified_features, axis=1), x_train.drop(modified_features, axis=1))
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
@@ -570,7 +646,7 @@ def test_german_credit_pandas():
     np.testing.assert_array_equal(transformed.drop(modified_features, axis=1), x_train.drop(modified_features, axis=1))
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[modified_features]).equals(x_train[modified_features])) is False)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
@@ -644,7 +720,7 @@ def test_regression():
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
@@ -698,7 +774,7 @@ def test_X_y(data):
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
@@ -752,7 +828,7 @@ def test_X_y_features_names(data):
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(X, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
@@ -826,7 +902,7 @@ def test_BaseEstimator_classification(data):
     np.testing.assert_array_equal(transformed.drop(modified_features, axis=1), X.drop(modified_features, axis=1))
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[modified_features]).equals(X[modified_features])) is False)
 
     rel_accuracy = model.score(preprocessor.transform(transformed), predictions)
@@ -899,7 +975,7 @@ def test_BaseEstimator_regression():
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_train, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (x_train[indexes])).any())
 
     rel_accuracy = model.score(transformed, predictions)
@@ -940,7 +1016,7 @@ def test_keras_model():
     assert ((np.delete(transformed, indexes, axis=1) == np.delete(x_test, indexes, axis=1)).all())
     ncp = gen.ncp
     if len(gener['ranges'].keys()) > 0 or len(gener['categories'].keys()) > 0:
-        assert (ncp > 0)
+        assert (ncp > 0.0)
         assert (((transformed[indexes]) != (X[indexes])).any())
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
