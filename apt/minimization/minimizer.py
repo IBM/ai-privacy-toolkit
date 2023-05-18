@@ -93,8 +93,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.train_only_features_to_minimize = train_only_features_to_minimize
         self.is_regression = is_regression
         self.encoder = encoder
-        # self.generalize_using_transform = generalize_using_transform
-        self.generalize_using_transform = False
+        self.generalize_using_transform = generalize_using_transform
         self._ncp = 0.0
         self._feature_data = {}
         self._categorical_values = {}
