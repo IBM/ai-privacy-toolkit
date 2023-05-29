@@ -972,7 +972,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 if 'untouched' in cell:
                     for feature in cell['untouched']:
                         record_copy.pop(feature)
-                        representative.pop(feature)
+                        if feature in representative:
+                            representative.pop(feature)
                 if record_copy == representative:
                     # handle numerical features
                     for feature in [key for key in cell['ranges'].keys() if
