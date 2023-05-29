@@ -164,6 +164,138 @@ def test_minimizer_fit(data):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
+def test_minimizer_ncp(data):
+    features = ['age', 'height']
+    X = np.array([[23, 165],
+                  [45, 158],
+                  [56, 123],
+                  [67, 154],
+                  [45, 149],
+                  [42, 166],
+                  [73, 172],
+                  [94, 168],
+                  [69, 175],
+                  [24, 181],
+                  [18, 190]])
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    X1 = np.array([[33, 165],
+                  [43, 150],
+                  [71, 143],
+                  [92, 194],
+                  [13, 125],
+                  [22, 169]])
+
+    base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+                                      min_samples_leaf=1)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model.fit(ArrayDataset(X, y))
+    ad = ArrayDataset(X)
+    ad1 = ArrayDataset(X1, features_names=features)
+    predictions = model.predict(ad)
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    target_accuracy = 0.4
+    train_dataset = ArrayDataset(X, predictions, features_names=features)
+
+    gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, generalize_using_transform=False)
+    gen1.fit(dataset=train_dataset)
+    ncp1 = gen1.ncp
+    gen1.calculate_ncp(ad1)
+    ncp2 = gen1.ncp
+
+    gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
+    gen2.fit(dataset=train_dataset)
+    ncp3 = gen2.ncp
+    gen2.transform(dataset=ad1)
+    ncp4 = gen2.ncp
+    gen2.transform(dataset=ad)
+    ncp5 = gen2.ncp
+    gen2.transform(dataset=ad1)
+    ncp6 = gen2.ncp
+
+    assert(ncp1 <= ncp3)
+    assert(ncp2 != ncp3)
+    assert(ncp3 != ncp4)
+    assert(ncp4 != ncp5)
+    assert(ncp6 == ncp4)
+
+
+def test_minimizer_ncp_categorical(data):
+    features = ['age', 'height', 'sex', 'ola']
+    X = [[23, 165, 'f', 'aa'],
+         [45, 158, 'f', 'aa'],
+         [56, 123, 'f', 'bb'],
+         [67, 154, 'm', 'aa'],
+         [45, 149, 'f', 'bb'],
+         [42, 166, 'm', 'bb'],
+         [73, 172, 'm', 'bb'],
+         [94, 168, 'f', 'aa'],
+         [69, 175, 'm', 'aa'],
+         [24, 181, 'm', 'bb'],
+         [18, 190, 'm', 'bb']]
+    X = pd.DataFrame(X, columns=features)
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    X1 = [[33, 165, 'f', 'aa'],
+                   [43, 150, 'm', 'aa'],
+                   [71, 143, 'f', 'aa'],
+                   [92, 194, 'm', 'aa'],
+                   [13, 125, 'f', 'aa'],
+                   [22, 169, 'f', 'bb']]
+    X1 = pd.DataFrame(X1, columns=features)
+
+    numeric_features = ["age", "height"]
+    numeric_transformer = Pipeline(
+        steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
+    )
+
+    categorical_features = ["sex", "ola"]
+    categorical_transformer = OneHotEncoder(handle_unknown="ignore")
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    encoded = preprocessor.fit_transform(X)
+    encoded = pd.DataFrame(encoded)
+
+    base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+                                      min_samples_leaf=1)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model.fit(ArrayDataset(encoded, y))
+    ad = ArrayDataset(X)
+    ad1 = ArrayDataset(X1)
+    predictions = model.predict(ArrayDataset(encoded))
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    target_accuracy = 0.4
+    train_dataset = ArrayDataset(X, predictions, features_names=features)
+
+    gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, generalize_using_transform=False,
+                                      categorical_features=categorical_features)
+    gen1.fit(dataset=train_dataset)
+    ncp1 = gen1.ncp
+    gen1.calculate_ncp(ad1)
+    ncp2 = gen1.ncp
+
+    gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, categorical_features=categorical_features)
+    gen2.fit(dataset=train_dataset)
+    ncp3 = gen2.ncp
+    gen2.transform(dataset=ad1)
+    ncp4 = gen2.ncp
+    gen2.transform(dataset=ad)
+    ncp5 = gen2.ncp
+    gen2.transform(dataset=ad1)
+    ncp6 = gen2.ncp
+
+    assert(ncp1 <= ncp3)
+    assert(ncp2 != ncp3)
+    assert(ncp3 != ncp4)
+    assert(ncp4 != ncp5)
+    assert(ncp6 == ncp4)
+
+
 def test_minimizer_fit_not_transform(data):
     features = ['age', 'height']
     X = np.array([[23, 165],
@@ -1099,5 +1231,9 @@ def test_errors():
     gen = GeneralizeToRepresentative(model, generalize_using_transform=False)
     train_dataset = ArrayDataset(X, predictions, features_names=features)
     gen.fit(dataset=train_dataset)
+
     with pytest.raises(ValueError):
         gen.transform(X)
+
+    with pytest.raises(ValueError):
+        gen.calculate_ncp(ad)
