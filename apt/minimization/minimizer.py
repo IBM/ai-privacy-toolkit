@@ -403,10 +403,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             raise ValueError('transform method called even though generalize_using_transform parameter was False. This '
                              'can lead to inconsistent results.')
         transformed_dataset = ArrayDataset(transformed, features_names=self._features)
-        self.calculate_ncp(transformed_dataset, True)
+        self.calculate_ncp(transformed_dataset)
         return transformed
 
-    def calculate_ncp(self, samples: Optional[ArrayDataset] = None, transformed: Optional[bool] = False):
+    def calculate_ncp(self, samples: Optional[ArrayDataset] = None):
         """
         Compute the NCP score of the generalization. Calculation is based on the value of the
         generalize_using_transform param. If samples are provided, updates stored ncp value to the one computed on the
@@ -419,9 +419,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         transformed (e.g., test/runtime data). If not samples supplied, will return the last NCP score
                         computed by the `fit` or `transform` method.
         :type samples: ArrayDataset, optional. feature_names should be set.
-        :param transformed: Whether the supplied samples have already been transformed using the `transform` method.
-                            Default is False.
-        :type transformed: boolean, optional
         :return: NCP score as float.
         """
         if samples is None:
@@ -437,21 +434,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         total_samples = samples_pd.shape[0]
 
         if self.generalize_using_transform:
-            # TODO: not sure I need to transform, data should be mapped to correct cell both with or without transforming
-            if not transformed:
-                # transform data
-                transformed_data = self._inner_transform(dataset=samples)  # can return numpy or pandas
-                if not samples.is_pandas:
-                    transformed_data = pd.DataFrame(transformed_data, columns=samples.features_names)
-            else:
-                transformed_data = samples_pd
-            generalizations = self._calculate_transformed_generalizations(transformed_data)
-            # count how many transformed values are mapped to each cell
-            counted = np.zeros(transformed_data.shape[0])  # to mark records we already counted
+            generalizations = self._calculate_cell_generalizations()
+            # count how many records are mapped to each cell
+            counted = np.zeros(samples_pd.shape[0])  # to mark records we already counted
             ncp = 0
             for i in range(len(self.cells)):
                 cell = self.cells[i]
-                count = self._get_record_count_for_cell(transformed_data, cell, counted)
+                count = self._get_record_count_for_cell(samples_pd, cell, counted)
                 range_counts = {}
                 category_counts = {}
                 for feature in cell['ranges']:
@@ -987,7 +976,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self._remove_categorical_untouched(generalizations)
         return generalizations
 
-    def _calculate_transformed_generalizations(self, transformed):
+    def _calculate_cell_generalizations(self):
         # calculate generalizations separately per cell
         cell_generalizations = {}
         for cell in self.cells:
@@ -995,7 +984,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return cell_generalizations
 
     @staticmethod
-    def _find_range_counts(self, samples, ranges):
+    def _find_range_counts(samples, ranges):
         range_counts = {}
         last_value = None
         for r in ranges.keys():
@@ -1013,7 +1002,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return range_counts
 
     @staticmethod
-    def _find_categories_counts(self, samples, categories):
+    def _find_categories_counts(samples, categories):
         category_counts = {}
         for c in categories.keys():
             category_counts[c] = []
