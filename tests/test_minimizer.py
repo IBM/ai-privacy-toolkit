@@ -82,7 +82,7 @@ def test_minimizer_params_not_transform():
     assert (ncp > 0.0)
 
 
-def test_minimizer_params_not_transform_no_data(data):
+def test_minimizer_params_not_transform_no_data():
     # Assume two features, age and height, and boolean label
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
               'categories': {}, "representative": {"age": 26, "height": 149}},
