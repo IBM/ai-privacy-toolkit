@@ -213,11 +213,11 @@ def test_minimizer_ncp():
     gen2.transform(dataset=ad1)
     ncp6 = gen2.ncp
 
-    assert(ncp1 <= ncp3)
-    assert(ncp2 != ncp3)
-    assert(ncp3 != ncp4)
-    assert(ncp4 != ncp5)
-    assert(ncp6 == ncp4)
+    assert (ncp1 <= ncp3)
+    assert (ncp2 != ncp3)
+    assert (ncp3 != ncp4)
+    assert (ncp4 != ncp5)
+    assert (ncp6 == ncp4)
 
 
 def test_minimizer_ncp_categorical():
@@ -289,11 +289,11 @@ def test_minimizer_ncp_categorical():
     gen2.transform(dataset=ad1)
     ncp6 = gen2.ncp
 
-    assert(ncp1 <= ncp3)
-    assert(ncp2 != ncp3)
-    assert(ncp3 != ncp4)
-    assert(ncp4 != ncp5)
-    assert(ncp6 == ncp4)
+    assert (ncp1 <= ncp3)
+    assert (ncp2 != ncp3)
+    assert (ncp3 != ncp4)
+    assert (ncp4 != ncp5)
+    assert (ncp6 == ncp4)
 
 
 def test_minimizer_fit_not_transform():
