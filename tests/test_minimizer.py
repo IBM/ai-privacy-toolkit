@@ -49,7 +49,24 @@ def test_minimizer_params():
     model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
 
+    expected_generalizations = {'categories': {}, 'category_representatives': {},
+                                'range_representatives': {'age': [38, 0.5, 40], 'height': [170, 0.5, 172]},
+                                'ranges': {'age': [38, 39], 'height': [170, 171]}, 'untouched': []}
+
     gen = GeneralizeToRepresentative(model, cells=cells)
+    gener = gen.generalizations
+    for key in expected_generalizations['ranges']:
+        assert (set(expected_generalizations['ranges'][key]) == set(gener['ranges'][key]))
+    for key in expected_generalizations['categories']:
+        assert (set([frozenset(sl) for sl in expected_generalizations['categories'][key]])
+                == set([frozenset(sl) for sl in gener['categories'][key]]))
+    assert (set(expected_generalizations['untouched']) == set(gener['untouched']))
+    for key in expected_generalizations['range_representatives']:
+        assert (set(expected_generalizations['range_representatives'][key]) == set(gener['range_representatives'][key]))
+    for key in expected_generalizations['category_representatives']:
+        assert (set([frozenset(sl) for sl in expected_generalizations['category_representatives'][key]])
+                == set([frozenset(sl) for sl in gener['category_representatives'][key]]))
+
     gen.fit()
     gen.transform(dataset=ArrayDataset(X, features_names=features))
 
