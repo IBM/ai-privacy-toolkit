@@ -96,7 +96,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.train_only_features_to_minimize = train_only_features_to_minimize
         self.is_regression = is_regression
         self.encoder = encoder
-        # self._ncp = 0.0
         self._ncp_scores = NCPScores()
         self._feature_data = None
         self._categorical_values = {}
@@ -119,13 +118,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         ret['features_to_minimize'] = self.features_to_minimize
         ret['train_only_features_to_minimize'] = self.train_only_features_to_minimize
         ret['is_regression'] = self.is_regression
-        ret['generalize_using_transform'] = self.generalize_using_transform
+        ret['estimator'] = self.estimator
+        ret['encoder'] = self.encoder
         if deep:
             ret['cells'] = copy.deepcopy(self.cells)
-            ret['estimator'] = self.estimator
-            ret['encoder'] = self.encoder
         else:
             ret['cells'] = copy.copy(self.cells)
+
         return ret
 
     def set_params(self, **params):
@@ -153,8 +152,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.is_regression = params['is_regression']
         if 'cells' in params:
             self.cells = params['cells']
-        if 'generalize_using_transform' in params:
-            self.generalize_using_transform = params['generalize_using_transform']
+        if 'estimator' in params:
+            self.estimator = params['estimator']
+        if 'encoder' in params:
+            self.encoder = params['encoder']
         return self
 
     @property
@@ -182,8 +183,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     def fit_transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
                       features_names: Optional[list] = None, dataset: Optional[ArrayDataset] = None):
         """
-        Learns the generalizations based on training data, and applies them to the data. Updates stored ncp value to the
-        one computed on the training data.
+        Learns the generalizations based on training data, and applies them to the data. Also sets the fit_score,
+        transform_score and generalizations_score in self.ncp.
 
         :param X: The training input samples.
         :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -203,7 +204,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def fit(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
             features_names: Optional = None, dataset: ArrayDataset = None, generalize_using_transform: bool = True):
-        """Learns the generalizations based on training data.
+        """Learns the generalizations based on training data. Also sets the fit_score and generalizations_score in
+        self.ncp.
 
         :param X: The training input samples.
         :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -215,10 +217,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         :param dataset: Data wrapper containing the training input samples and the predictions of the original model
                         on the training data. Either ``X``, ``y`` OR ``dataset`` need to be provided, not both.
         :type dataset: `ArrayDataset`, optional
-        :param generalize_using_transform: Indicates how to calculate NCP and accuracy during the generalization process.
-                                       True means that the `transform` method is used to transform original data into
-                                       generalized data that is used for accuracy and NCP calculation. False indicates
-                                       that the `generalizations` structure should be used. Default is True.
+        :param generalize_using_transform: Indicates how to calculate NCP and accuracy during the generalization
+                                           process. True means that the `transform` method is used to transform original
+                                           data into generalized data that is used for accuracy and NCP calculation.
+                                           False indicates that the `generalizations` structure should be used.
+                                           Default is True.
         :type generalize_using_transform: boolean, optional
         :return: self
         """
@@ -254,32 +257,32 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.features_to_minimize = [str(i) for i in self.features_to_minimize]
             if not all(elem in self._features for elem in self.features_to_minimize):
                 raise ValueError('features to minimize should be a subset of features names')
-            x_QI = x.loc[:, self.features_to_minimize]
+            x_qi = x.loc[:, self.features_to_minimize]
 
             # divide dataset into train and test
             used_data = x
             if self.train_only_features_to_minimize:
-                used_data = x_QI
+                used_data = x_qi
             if self.is_regression:
-                X_train, X_test, y_train, y_test = train_test_split(x, dataset.get_labels(), test_size=0.4,
+                x_train, x_test, y_train, y_test = train_test_split(x, dataset.get_labels(), test_size=0.4,
                                                                     random_state=14)
             else:
                 try:
-                    X_train, X_test, y_train, y_test = train_test_split(x, dataset.get_labels(),
+                    x_train, x_test, y_train, y_test = train_test_split(x, dataset.get_labels(),
                                                                         stratify=dataset.get_labels(), test_size=0.4,
                                                                         random_state=18)
                 except ValueError:
                     print('Could not stratify split due to uncommon class value, doing unstratified split instead')
-                    X_train, X_test, y_train, y_test = train_test_split(x, dataset.get_labels(), test_size=0.4,
+                    x_train, x_test, y_train, y_test = train_test_split(x, dataset.get_labels(), test_size=0.4,
                                                                         random_state=18)
 
-            X_train_QI = X_train.loc[:, self.features_to_minimize]
-            X_test_QI = X_test.loc[:, self.features_to_minimize]
-            used_X_train = X_train
-            used_X_test = X_test
+            x_train_qi = x_train.loc[:, self.features_to_minimize]
+            x_test_qi = x_test.loc[:, self.features_to_minimize]
+            used_x_train = x_train
+            used_x_test = x_test
             if self.train_only_features_to_minimize:
-                used_X_train = X_train_QI
-                used_X_test = X_test_QI
+                used_x_train = x_train_qi
+                used_x_test = x_test_qi
 
             # collect feature data (such as min, max)
             self._feature_data = self._get_feature_data(x)
@@ -310,9 +313,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # prepare data for DT
             self._encode_categorical_features(used_data, save_mapping=True)
-            x_prepared = self._encode_categorical_features(used_X_train)
+            x_prepared = self._encode_categorical_features(used_x_train)
             self._dt.fit(x_prepared, y_train)
-            x_prepared_test = self._encode_categorical_features(used_X_test)
+            x_prepared_test = self._encode_categorical_features(used_x_test)
 
             self._calculate_cells()
             self._modify_cells()
@@ -322,14 +325,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     self._remove_feature_from_cells(self.cells, self._cells_by_id, feature)
 
             nodes = self._get_nodes_level(0)
-            self._attach_cells_representatives(x_prepared, used_X_train, y_train, nodes)
+            self._attach_cells_representatives(x_prepared, used_x_train, y_train, nodes)
 
             # self._cells currently holds the generalization created from the tree leaves
-            self._calculate_generalizations(X_test)
+            self._calculate_generalizations(x_test)
             if generalize_using_transform:
-                generalized = self._generalize_from_tree(X_test, x_prepared_test, nodes, self.cells, self._cells_by_id)
+                generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells, self._cells_by_id)
             else:
-                generalized = self._generalize_from_generalizations(X_test, self.generalizations)
+                generalized = self._generalize_from_generalizations(x_test, self.generalizations)
 
             # check accuracy
             accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
@@ -353,14 +356,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         self._level -= 1
                         break
 
-                    self._attach_cells_representatives(x_prepared, used_X_train, y_train, nodes)
+                    self._attach_cells_representatives(x_prepared, used_x_train, y_train, nodes)
 
-                    self._calculate_generalizations(X_test)
+                    self._calculate_generalizations(x_test)
                     if generalize_using_transform:
-                        generalized = self._generalize_from_tree(X_test, x_prepared_test, nodes, self.cells,
+                        generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells,
                                                                  self._cells_by_id)
                     else:
-                        generalized = self._generalize_from_generalizations(X_test, self.generalizations)
+                        generalized = self._generalize_from_generalizations(x_test, self.generalizations)
 
                     accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
                     # if accuracy passed threshold roll back to previous iteration generalizations
@@ -378,26 +381,26 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             elif accuracy < self.target_accuracy:
                 print('Improving accuracy')
                 while accuracy < self.target_accuracy:
-                    removed_feature = self._remove_feature_from_generalization(X_test, x_prepared_test,
+                    removed_feature = self._remove_feature_from_generalization(x_test, x_prepared_test,
                                                                                nodes, y_test,
                                                                                self._feature_data, accuracy,
                                                                                generalize_using_transform)
                     if removed_feature is None:
                         break
 
-                    self._calculate_generalizations(X_test)
+                    self._calculate_generalizations(x_test)
                     if generalize_using_transform:
-                        generalized = self._generalize_from_tree(X_test, x_prepared_test, nodes, self.cells,
+                        generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells,
                                                                  self._cells_by_id)
                     else:
-                        generalized = self._generalize_from_generalizations(X_test, self.generalizations)
+                        generalized = self._generalize_from_generalizations(x_test, self.generalizations)
                     accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
                     print('Removed feature: %s, new relative accuracy: %f' % (removed_feature, accuracy))
 
             # self._cells currently holds the chosen generalization based on target accuracy
 
             # calculate iLoss
-            X_test_dataset = ArrayDataset(X_test, features_names=self._features)
+            X_test_dataset = ArrayDataset(x_test, features_names=self._features)
             self._ncp_scores.fit_score = self.calculate_ncp(X_test_dataset, generalize_using_transform)
             self._ncp_scores.generalizations_score = self.calculate_ncp(X_test_dataset, False)
 
@@ -406,8 +409,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional[list] = None,
                   dataset: Optional[ArrayDataset] = None):
-        """ Transforms data records to representative points. Updates stored ncp value to the one computed on the
-        transformed data.
+        """ Transforms data records to representative points. Also sets the transform_score in self.ncp.
 
         :param X: The training input samples.
         :type X: {array-like, sparse matrix}, shape (n_samples, n_features), optional
@@ -457,8 +459,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # count how many records are mapped to each cell
             counted = np.zeros(samples_pd.shape[0])  # to mark records we already counted
             ncp = 0
-            for i in range(len(self.cells)):
-                cell = self.cells[i]
+            for cell in self.cells:
                 count = self._get_record_count_for_cell(samples_pd, cell, counted)
                 range_counts = {}
                 category_counts = {}
@@ -471,7 +472,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         else:  # use generalizations
             generalizations = self.generalizations
             range_counts = self._find_range_counts(samples_pd, generalizations['ranges'])
-            category_counts = self._find_categories_counts(samples_pd, generalizations['categories'])
+            category_counts = self._find_category_counts(samples_pd, generalizations['categories'])
             ncp = self._calc_ncp_for_generalization(generalizations, range_counts, category_counts, total_samples)
 
         return ncp
@@ -515,8 +516,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         else:
             mapped = np.zeros(x.shape[0])  # to mark records we already mapped
             all_indexes = []
-            for i in range(len(self.cells)):
-                indexes = self._get_record_indexes_for_cell(x, self.cells[i], mapped)
+            for cell in self.cells:
+                indexes = self._get_record_indexes_for_cell(x, cell, mapped)
                 all_indexes.append(indexes)
             generalized = self._generalize_indexes(x, self.cells, all_indexes)
 
@@ -556,13 +557,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return average_group_size / feature_data['range']  # number of values in category
 
     @staticmethod
-    def _calc_ncp_numeric(feature_range, range_count, feature_data, total):
+    def _calc_ncp_numeric(range, range_count, feature_data, total):
         # if there are no ranges, feature is suppressed and iLoss is 1
-        if not feature_range:
+        if not range:
             return 1
         # range only contains the split values, need to add min and max value of feature
         # to enable computing sizes of all ranges
-        new_range = [feature_data['min']] + feature_range + [feature_data['max']]
+        new_range = [feature_data['min']] + range + [feature_data['max']]
         range_sizes = [b - a for a, b in zip(new_range[::1], new_range[1::1])]
         normalized_range_sizes = [s * n / total for s, n in zip(range_sizes, range_count)]
         average_range_size = sum(normalized_range_sizes) / len(normalized_range_sizes)
@@ -600,8 +601,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return count
 
     def _cell_contains(self, cell, x, index, mapped):
-        for f in self._features:
-            i = self._features.index(f)
+        for i, f in enumerate(self._features):
             if f in cell['ranges']:
                 if not self._cell_contains_numeric(i, cell['ranges'][f], x):
                     return False
@@ -989,7 +989,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         range_min = sys.float_info.max
         remove_feature = None
         categories = self.generalizations['categories']
-        category_counts = self._find_categories_counts(original_data, categories)
+        category_counts = self._find_category_counts(original_data, categories)
 
         for feature in ranges.keys():
             if feature not in self._generalizations['untouched']:
@@ -1053,8 +1053,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         counted = np.zeros(samples_pd.shape[0])  # to mark records we already counted
         total = samples_pd.shape[0]
         feature_ncp = 0
-        for i in range(len(self.cells)):
-            cell = self.cells[i]
+        for cell in self.cells:
             count = self._get_record_count_for_cell(samples_pd, cell, counted)
             generalizations = self._calculate_generalizations_for_cell(cell)
             cell_ncp = 0
@@ -1169,7 +1168,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return range_counts
 
     @staticmethod
-    def _find_categories_counts(samples, categories):
+    def _find_category_counts(samples, categories):
         category_counts = {}
         for c in categories.keys():
             category_counts[c] = []
