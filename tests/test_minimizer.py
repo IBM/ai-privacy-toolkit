@@ -246,6 +246,7 @@ def create_encoder(numeric_features, categorical_features, x):
 
     return preprocessor, encoded
 
+
 def test_minimizer_params_not_transform(get_cells):
     # Assume two features, age and height, and boolean label
     cells, features, x, y = get_cells
@@ -385,7 +386,7 @@ def test_minimizer_fit_not_transform(get_data_two_features):
 
     gen.fit(dataset=train_dataset, generalize_using_transform=False)
     gener = gen.generalizations
-    expected_generalizations = {'ranges': {'age': [], 'height':[157.0]}, 'categories': {}, 'untouched': []}
+    expected_generalizations = {'ranges': {'age': [], 'height': [157.0]}, 'categories': {}, 'untouched': []}
 
     compare_generalizations(gener, expected_generalizations)
 

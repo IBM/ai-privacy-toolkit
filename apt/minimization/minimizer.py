@@ -878,7 +878,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         rows[feature] = generalizations['range_representatives'][feature][r_index]
         return original_data_generalized
 
-
     def _generalize_from_tree(self, original_data, prepared_data, level_nodes, cells, cells_by_id):
         mapping_to_cells = self._map_to_cells(prepared_data, level_nodes, cells_by_id)
         all_indexes = []
@@ -1199,6 +1198,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             else:
                 ranges[feature] = list(set(ranges[feature]))
                 ranges[feature].sort()
+                prev_value = 0
                 for index, value in enumerate(ranges[feature]):
                     if index == 0:
                         # for first range, use min value
