@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from scipy.spatial import distance
 from collections import Counter
 
 from sklearn.compose import ColumnTransformer
@@ -146,7 +145,8 @@ class Anonymize:
                     min_value = max(values)
                     min_dist = float("inf")
                     for value in values:
-                        dist = distance.euclidean(value, median)
+                        # euclidean distance between two floating point values
+                        dist = abs(value - median)
                         if dist < min_dist:
                             min_dist = dist
                             min_value = value

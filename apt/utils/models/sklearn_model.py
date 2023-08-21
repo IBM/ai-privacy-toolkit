@@ -46,7 +46,7 @@ class SklearnClassifier(SklearnModel):
     def __init__(self, model: BaseEstimator, output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
-        self._art_model = ArtSklearnClassifier(model)
+        self._art_model = ArtSklearnClassifier(model, preprocessing=None)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """

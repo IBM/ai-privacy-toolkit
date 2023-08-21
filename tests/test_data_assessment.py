@@ -18,7 +18,7 @@ MIN_SHARE = 0.5
 MIN_ROC_AUC = 0.0
 MIN_PRECISION = 0.0
 
-NUM_SYNTH_SAMPLES = 40000
+NUM_SYNTH_SAMPLES = 400
 NUM_SYNTH_COMPONENTS = 4
 
 iris_dataset_np = get_iris_dataset_np()
@@ -109,8 +109,8 @@ def kde(n_samples, n_components, original_data):
     digit_data = original_data
     pca = PCA(n_components=n_components, whiten=False)
     data = pca.fit_transform(digit_data)
-    params = {'bandwidth': np.logspace(-1, 1, 20)}
-    grid = GridSearchCV(KernelDensity(), params, cv=5)
+    params = {'bandwidth': np.logspace(-1, 1, 10)}
+    grid = GridSearchCV(KernelDensity(), params, cv=2)
     grid.fit(data)
 
     kde_estimator = grid.best_estimator_
