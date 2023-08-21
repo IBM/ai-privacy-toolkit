@@ -68,6 +68,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     :param is_regression: Whether the model is a regression model or not (if False, assumes a classification model).
                           Default is False.
     :type is_regression: boolean, optional
+    :param generalize_using_transform: Indicates how to calculate NCP and accuracy during the generalization
+                                       process. True means that the `transform` method is used to transform original
+                                       data into generalized data that is used for accuracy and NCP calculation.
+                                       False indicates that the `generalizations` structure should be used.
+                                       Default is True.
+    :type generalize_using_transform: boolean, optional
     """
 
     def __init__(self, estimator: Union[BaseEstimator, Model] = None,
@@ -77,7 +83,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                  encoder: Optional[Union[OrdinalEncoder, OneHotEncoder]] = None,
                  features_to_minimize: Optional[Union[np.ndarray, list]] = None,
                  train_only_features_to_minimize: Optional[bool] = True,
-                 is_regression: Optional[bool] = False):
+                 is_regression: Optional[bool] = False,
+                 generalize_using_transform: bool = True):
 
         self.estimator = estimator
         if estimator is not None and not issubclass(estimator.__class__, Model):
@@ -96,6 +103,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self.train_only_features_to_minimize = train_only_features_to_minimize
         self.is_regression = is_regression
         self.encoder = encoder
+        self.generalize_using_transform = generalize_using_transform
         self._ncp_scores = NCPScores()
         self._feature_data = None
         self._categorical_values = {}
@@ -199,11 +207,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         :return: Array containing the representative values to which each record in ``X`` is mapped, as numpy array or
                  pandas DataFrame (depending on the type of ``X``), shape (n_samples, n_features)
         """
+        if not self.generalize_using_transform:
+            raise ValueError('fit_transform method called even though generalize_using_transform parameter was False. '
+                             'This can lead to inconsistent results.')
         self.fit(X, y, features_names, dataset=dataset)
         return self.transform(X, features_names, dataset=dataset)
 
     def fit(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, y: Optional[DATA_PANDAS_NUMPY_TYPE] = None,
-            features_names: Optional = None, dataset: ArrayDataset = None, generalize_using_transform: bool = True):
+            features_names: Optional = None, dataset: ArrayDataset = None):
         """Learns the generalizations based on training data. Also sets the fit_score and generalizations_score in
         self.ncp.
 
@@ -217,12 +228,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         :param dataset: Data wrapper containing the training input samples and the predictions of the original model
                         on the training data. Either ``X``, ``y`` OR ``dataset`` need to be provided, not both.
         :type dataset: `ArrayDataset`, optional
-        :param generalize_using_transform: Indicates how to calculate NCP and accuracy during the generalization
-                                           process. True means that the `transform` method is used to transform original
-                                           data into generalized data that is used for accuracy and NCP calculation.
-                                           False indicates that the `generalizations` structure should be used.
-                                           Default is True.
-        :type generalize_using_transform: boolean, optional
         :return: self
         """
 
@@ -329,7 +334,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # self._cells currently holds the generalization created from the tree leaves
             self._calculate_generalizations(x_test)
-            if generalize_using_transform:
+            if self.generalize_using_transform:
                 generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells, self._cells_by_id)
             else:
                 generalized = self._generalize_from_generalizations(x_test, self.generalizations)
@@ -359,7 +364,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     self._attach_cells_representatives(x_prepared, used_x_train, y_train, nodes)
 
                     self._calculate_generalizations(x_test)
-                    if generalize_using_transform:
+                    if self.generalize_using_transform:
                         generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells,
                                                                  self._cells_by_id)
                     else:
@@ -384,12 +389,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     removed_feature = self._remove_feature_from_generalization(x_test, x_prepared_test,
                                                                                nodes, y_test,
                                                                                self._feature_data, accuracy,
-                                                                               generalize_using_transform)
+                                                                               self.generalize_using_transform)
                     if removed_feature is None:
                         break
 
                     self._calculate_generalizations(x_test)
-                    if generalize_using_transform:
+                    if self.generalize_using_transform:
                         generalized = self._generalize_from_tree(x_test, x_prepared_test, nodes, self.cells,
                                                                  self._cells_by_id)
                     else:
@@ -401,8 +406,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
             # calculate iLoss
             x_test_dataset = ArrayDataset(x_test, features_names=self._features)
-            self._ncp_scores.fit_score = self.calculate_ncp(x_test_dataset, generalize_using_transform)
-            self._ncp_scores.generalizations_score = self.calculate_ncp(x_test_dataset, False)
+            self._ncp_scores.fit_score = self.calculate_ncp(x_test_dataset)
+            self._ncp_scores.generalizations_score = self.calculate_ncp(x_test_dataset)
 
         # Return the transformer
         return self
@@ -422,12 +427,15 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         :return: Array containing the representative values to which each record in ``X`` is mapped, as numpy array or
                  pandas DataFrame (depending on the type of ``X``), shape (n_samples, n_features)
         """
+        if not self.generalize_using_transform:
+            raise ValueError('transform method called even though generalize_using_transform parameter was False. This '
+                             'can lead to inconsistent results.')
         transformed = self._inner_transform(X, features_names, dataset)
         transformed_dataset = ArrayDataset(transformed, features_names=self._features)
-        self._ncp_scores.transform_score = self.calculate_ncp(transformed_dataset, True)
+        self._ncp_scores.transform_score = self.calculate_ncp(transformed_dataset)
         return transformed
 
-    def calculate_ncp(self, samples: ArrayDataset, generalize_using_transform: bool = True):
+    def calculate_ncp(self, samples: ArrayDataset):
         """
         Compute the NCP score of the generalization. Calculation is based on the value of the
         generalize_using_transform param. If samples are provided, updates stored ncp value to the one computed on the
@@ -438,11 +446,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         :param samples: The input samples to compute the NCP score on.
         :type samples: ArrayDataset, optional. feature_names should be set.
-        :param generalize_using_transform: Indicates how to calculate NCP and accuracy during the generalization process.
-                                       True means that the `transform` method is used to transform original data into
-                                       generalized data that is used for accuracy and NCP calculation. False indicates
-                                       that the `generalizations` structure should be used. Default is True.
-        :type generalize_using_transform: boolean, optional
         :return: NCP score as float.
         """
         if not samples.features_names:
@@ -454,7 +457,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self._feature_data = self._get_feature_data(samples_pd)
         total_samples = samples_pd.shape[0]
 
-        if generalize_using_transform:
+        if self.generalize_using_transform:
             generalizations = self._calculate_cell_generalizations()
             # count how many records are mapped to each cell
             counted = np.zeros(samples_pd.shape[0])  # to mark records we already counted

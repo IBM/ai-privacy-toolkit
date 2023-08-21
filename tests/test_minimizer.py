@@ -256,8 +256,8 @@ def test_minimizer_params_not_transform(cells):
     model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
 
-    gen = GeneralizeToRepresentative(model, cells=cells)
-    ncp = gen.calculate_ncp(samples, generalize_using_transform=False)
+    gen = GeneralizeToRepresentative(model, cells=cells, generalize_using_transform=False)
+    ncp = gen.calculate_ncp(samples)
     assert (ncp > 0.0)
 
 
@@ -304,10 +304,10 @@ def test_minimizer_ncp(data_two_features):
     target_accuracy = 0.4
     train_dataset = ArrayDataset(x, predictions, features_names=features)
 
-    gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
-    gen1.fit(dataset=train_dataset, generalize_using_transform=False)
+    gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, generalize_using_transform=False)
+    gen1.fit(dataset=train_dataset)
     ncp1 = gen1.ncp.fit_score
-    ncp2 = gen1.calculate_ncp(ad1, generalize_using_transform=False)
+    ncp2 = gen1.calculate_ncp(ad1)
 
     gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
     gen2.fit(dataset=train_dataset)
@@ -348,10 +348,10 @@ def test_minimizer_ncp_categorical(data_four_features):
     train_dataset = ArrayDataset(x, predictions, features_names=features)
 
     gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                      categorical_features=categorical_features)
-    gen1.fit(dataset=train_dataset, generalize_using_transform=False)
+                                      categorical_features=categorical_features, generalize_using_transform=False)
+    gen1.fit(dataset=train_dataset)
     ncp1 = gen1.ncp.fit_score
-    ncp2 = gen1.calculate_ncp(ad1, generalize_using_transform=False)
+    ncp2 = gen1.calculate_ncp(ad1)
 
     gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, categorical_features=categorical_features)
     gen2.fit(dataset=train_dataset)
@@ -381,10 +381,10 @@ def test_minimizer_fit_not_transform(data_two_features):
     if predictions.shape[1] > 1:
         predictions = np.argmax(predictions, axis=1)
     target_accuracy = 0.5
-    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy)
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, generalize_using_transform=False)
     train_dataset = ArrayDataset(x, predictions, features_names=features)
 
-    gen.fit(dataset=train_dataset, generalize_using_transform=False)
+    gen.fit(dataset=train_dataset)
     gener = gen.generalizations
     expected_generalizations = {'ranges': {'age': [], 'height': [157.0]}, 'categories': {}, 'untouched': []}
 
@@ -954,3 +954,32 @@ def test_untouched():
     gener = gen.generalizations
     expected_generalizations = {'ranges': {'age': [38, 39]}, 'categories': {}, 'untouched': ['gender']}
     compare_generalizations(gener, expected_generalizations)
+
+
+def test_errors():
+    features = ['age', 'height']
+    X = np.array([[23, 165],
+                  [45, 158],
+                  [56, 123],
+                  [67, 154],
+                  [45, 149],
+                  [42, 166],
+                  [73, 172],
+                  [94, 168],
+                  [69, 175],
+                  [24, 181],
+                  [18, 190]])
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
+                                      min_samples_leaf=1)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model.fit(ArrayDataset(X, y))
+    ad = ArrayDataset(X)
+    predictions = model.predict(ad)
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    gen = GeneralizeToRepresentative(model, generalize_using_transform=False)
+    train_dataset = ArrayDataset(X, predictions, features_names=features)
+    gen.fit(dataset=train_dataset)
+    with pytest.raises(ValueError):
+        gen.transform(X)
