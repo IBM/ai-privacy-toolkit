@@ -400,9 +400,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # self._cells currently holds the chosen generalization based on target accuracy
 
             # calculate iLoss
-            X_test_dataset = ArrayDataset(x_test, features_names=self._features)
-            self._ncp_scores.fit_score = self.calculate_ncp(X_test_dataset, generalize_using_transform)
-            self._ncp_scores.generalizations_score = self.calculate_ncp(X_test_dataset, False)
+            x_test_dataset = ArrayDataset(x_test, features_names=self._features)
+            self._ncp_scores.fit_score = self.calculate_ncp(x_test_dataset, generalize_using_transform)
+            self._ncp_scores.generalizations_score = self.calculate_ncp(x_test_dataset, False)
 
         # Return the transformer
         return self
@@ -477,7 +477,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
         return ncp
 
-    def _inner_transform(self, X: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional[list] = None,
+    def _inner_transform(self, x: Optional[DATA_PANDAS_NUMPY_TYPE] = None, features_names: Optional[list] = None,
                          dataset: Optional[ArrayDataset] = None):
         # Check if fit has been called
         msg = 'This %(name)s instance is not initialized yet. ' \
@@ -485,45 +485,45 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
               'appropriate arguments before using this method.'
         check_is_fitted(self, ['cells'], msg=msg)
 
-        if X is not None:
+        if x is not None:
             if dataset is not None:
-                raise ValueError('Either X OR dataset need to be provided, not both')
+                raise ValueError('Either x OR dataset need to be provided, not both')
             else:
-                dataset = ArrayDataset(X, features_names=features_names)
+                dataset = ArrayDataset(x, features_names=features_names)
         elif dataset is None:
-            raise ValueError('Either X OR dataset need to be provided, not both')
+            raise ValueError('Either x OR dataset need to be provided, not both')
         if dataset and dataset.features_names:
             if self._features is None:
                 self._features = dataset.features_names
         if dataset and dataset.get_samples() is not None:
-            x = pd.DataFrame(dataset.get_samples(), columns=self._features)
+            x_pd = pd.DataFrame(dataset.get_samples(), columns=self._features)
 
-        if x.shape[1] != self._n_features and self._n_features != 0:
+        if x_pd.shape[1] != self._n_features and self._n_features != 0:
             raise ValueError('Shape of input is different from what was seen'
                              'in `fit`')
 
         if not self._features:
-            self._features = [i for i in range(x.shape[1])]
+            self._features = [i for i in range(x_pd.shape[1])]
 
         if self._dt:  # only works if fit was called previously (but much more efficient)
             nodes = self._get_nodes_level(self._level)
-            QI = x.loc[:, self.features_to_minimize]
-            used_x = x
+            QI = x_pd.loc[:, self.features_to_minimize]
+            used_x = x_pd
             if self.train_only_features_to_minimize:
                 used_x = QI
             prepared = self._encode_categorical_features(used_x)
-            generalized = self._generalize_from_tree(x, prepared, nodes, self.cells, self._cells_by_id)
+            generalized = self._generalize_from_tree(x_pd, prepared, nodes, self.cells, self._cells_by_id)
         else:
-            mapped = np.zeros(x.shape[0])  # to mark records we already mapped
+            mapped = np.zeros(x_pd.shape[0])  # to mark records we already mapped
             all_indexes = []
             for cell in self.cells:
-                indexes = self._get_record_indexes_for_cell(x, cell, mapped)
+                indexes = self._get_record_indexes_for_cell(x_pd, cell, mapped)
                 all_indexes.append(indexes)
-            generalized = self._generalize_indexes(x, self.cells, all_indexes)
+            generalized = self._generalize_indexes(x_pd, self.cells, all_indexes)
 
         if dataset and dataset.is_pandas:
             return generalized
-        elif isinstance(X, pd.DataFrame):
+        elif isinstance(x, pd.DataFrame):
             return generalized
         return generalized.to_numpy()
 
@@ -584,39 +584,37 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 feature_data[feature] = fd
         return feature_data
 
-    def _get_record_indexes_for_cell(self, X, cell, mapped):
+    def _get_record_indexes_for_cell(self, x, cell, mapped):
         indexes = []
-        for index, row in X.iterrows():
+        for index, row in x.iterrows():
             if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
                 indexes.append(index)
         return indexes
 
-    def _get_record_count_for_cell(self, X, cell, mapped):
+    def _get_record_count_for_cell(self, x, cell, mapped):
         count = 0
-        index = 0
-        for _, row in X.iterrows():
+        for index, (_, row) in enumerate(x.iterrows()):
             if not mapped.item(index) and self._cell_contains(cell, row, index, mapped):
                 count += 1
-            index += 1
         return count
 
-    def _cell_contains(self, cell, x, index, mapped):
-        for i, f in enumerate(self._features):
-            if f in cell['ranges']:
-                if not self._cell_contains_numeric(i, cell['ranges'][f], x):
+    def _cell_contains(self, cell, row, index, mapped):
+        for i, feature in enumerate(self._features):
+            if feature in cell['ranges']:
+                if not self._cell_contains_numeric(i, cell['ranges'][feature], row):
                     return False
-            elif f in cell['categories']:
-                if not self._cell_contains_categorical(i, cell['categories'][f], x):
+            elif feature in cell['categories']:
+                if not self._cell_contains_categorical(i, cell['categories'][feature], row):
                     return False
-            elif f in cell['untouched']:
+            elif feature in cell['untouched']:
                 continue
             else:
-                raise TypeError("feature " + f + "not found in cell" + cell['id'])
+                raise TypeError("feature " + feature + "not found in cell" + cell['id'])
         # Mark as mapped
         mapped.itemset(index, 1)
         return True
 
-    def _encode_categorical_features(self, X, save_mapping=False):
+    def _encode_categorical_features(self, x, save_mapping=False):
         if save_mapping:
             self._categorical_values = {}
             self._one_hot_vector_features_to_features = {}
@@ -627,31 +625,31 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         for feature in self.categorical_features:
             if feature in used_features:
                 try:
-                    all_values = X.loc[:, feature]
+                    all_values = x.loc[:, feature]
                     values = list(all_values.unique())
                     if save_mapping:
                         self._categorical_values[feature] = values
-                    X[feature] = pd.Categorical(X.loc[:, feature], categories=self._categorical_values[feature],
+                    x[feature] = pd.Categorical(x.loc[:, feature], categories=self._categorical_values[feature],
                                                 ordered=False)
-                    ohe = pd.get_dummies(X[feature], prefix=feature)
+                    ohe = pd.get_dummies(x[feature], prefix=feature)
                     if save_mapping:
                         for one_hot_vector_feature in ohe.columns:
                             self._one_hot_vector_features_to_features[one_hot_vector_feature] = feature
-                    X = pd.concat([X, ohe], axis=1)
+                    x = pd.concat([x, ohe], axis=1)
                     features_to_remove.append(feature)
                 except KeyError:
                     print("feature " + feature + "not found in training data")
 
-        new_data = X.drop(features_to_remove, axis=1)
+        new_data = x.drop(features_to_remove, axis=1)
         if save_mapping:
             self._encoded_features = new_data.columns
         return new_data
 
     @staticmethod
-    def _cell_contains_numeric(i, range, x):
-        # convert x to ndarray to allow indexing
-        a = np.array(x)
-        value = a.item(i)
+    def _cell_contains_numeric(index, range, row):
+        # convert row to ndarray to allow indexing
+        a = np.array(row)
+        value = a.item(index)
         if range['start']:
             if value <= range['start']:
                 return False
@@ -661,10 +659,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         return True
 
     @staticmethod
-    def _cell_contains_categorical(i, range, x):
-        # convert x to ndarray to allow indexing
-        a = np.array(x)
-        value = a.item(i)
+    def _cell_contains_categorical(index, range, row):
+        # convert row to ndarray to allow indexing
+        a = np.array(row)
+        value = a.item(index)
         if value in range:
             return True
         return False
@@ -863,14 +861,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                                         generalizations['categories'])
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
         for feature in self._generalizations['categories']:
-            if ('untouched' not in generalizations or feature not in generalizations['untouched']):
+            if 'untouched' not in generalizations or feature not in generalizations['untouched']:
                 for g_index, group in enumerate(generalizations['categories'][feature]):
                     indexes = [i for i, s in enumerate(sample_indexes) if s[feature] == g_index]
                     if indexes:
                         rows = original_data_generalized.iloc[indexes]
                         rows[feature] = generalizations['category_representatives'][feature][g_index]
         for feature in self._generalizations['ranges']:
-            if ('untouched' not in generalizations or feature not in generalizations['untouched']):
+            if 'untouched' not in generalizations or feature not in generalizations['untouched']:
                 for r_index, range in enumerate(generalizations['ranges'][feature]):
                     indexes = [i for i, s in enumerate(sample_indexes) if s[feature] == r_index]
                     if indexes:
@@ -941,16 +939,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     if row[feature] in group:
                         sample_indexes[feature] = g_index
                         break
-                # found = False
-                # for g_index, group in enumerate(categories):
-                #     sample_indexes[feature] = {}
-                #     for c_index, category in enumerate(group):
-                #         if row[feature] == group:
-                #             sample_indexes[feature][g_index] = c_index
-                #             found = True
-                #             break
-                #     if found:
-                #         break
             all_sample_indexes.append(sample_indexes)
         return all_sample_indexes
 
@@ -1087,20 +1075,12 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             for feature in self._generalizations['categories']:
                 category_representatives[feature] = []
                 for g_index, group in enumerate(self._generalizations['categories'][feature]):
-                    # max_count = 0
-                    # for c_index in range(len(group)):
-                    # indexes = [i for i, s in enumerate(sample_indexes) if s[feature][g_index] == c_index]
                     indexes = [i for i, s in enumerate(sample_indexes) if s[feature] == g_index]
                     if indexes:
                         rows = samples.iloc[indexes]
                         values = rows[feature]
                         category = Counter(values).most_common(1)[0][0]
                         category_representatives[feature].append(category)
-                        #     c_count = len([s for s in sample_indexes if s[feature][g_index] == c_index])
-                        #     if c_count > max_count:
-                        #         max_count = c_count
-                        #         category = c_index
-                        # category_representatives[feature].append(group[category])
                     else:
                         category_representatives[feature].append(old_category_representatives[feature][g_index])
 

@@ -30,7 +30,7 @@ def diabetes_dataset():
 
 
 @pytest.fixture
-def get_cells():
+def cells():
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}, "height": {"start": None, "end": 170}}, "label": 0,
               'categories': {}, "representative": {"age": 26, "height": 149}},
              {"id": 2, "ranges": {"age": {"start": 39, "end": None}, "height": {"start": None, "end": 170}}, "label": 1,
@@ -49,7 +49,7 @@ def get_cells():
 
 
 @pytest.fixture
-def get_cells_categorical():
+def cells_categorical():
     cells = [{'id': 1, 'label': 0, 'ranges': {'age': {'start': None, 'end': None}},
               'categories': {'sex': ['f', 'm']}, 'hist': [2, 0],
               'representative': {'age': 45, 'height': 149, 'sex': 'f'},
@@ -80,7 +80,7 @@ def get_cells_categorical():
 
 
 @pytest.fixture
-def get_data_two_features():
+def data_two_features():
     x = np.array([[23, 165],
                   [45, 158],
                   [56, 123],
@@ -104,7 +104,7 @@ def get_data_two_features():
 
 
 @pytest.fixture
-def get_data_three_features():
+def data_three_features():
     features = ['age', 'height', 'weight']
     x = np.array([[23, 165, 70],
                   [45, 158, 67],
@@ -122,7 +122,7 @@ def get_data_three_features():
 
 
 @pytest.fixture
-def get_data_four_features():
+def data_four_features():
     features = ['age', 'height', 'sex', 'ola']
     x = [[23, 165, 'f', 'aa'],
          [45, 158, 'f', 'aa'],
@@ -146,7 +146,7 @@ def get_data_four_features():
 
 
 @pytest.fixture
-def get_data_five_features():
+def data_five_features():
     features = ['age', 'height', 'weight', 'sex', 'ola']
     x = [[23, 165, 65, 'f', 'aa'],
          [45, 158, 76, 'f', 'aa'],
@@ -205,9 +205,9 @@ def check_ncp(ncp, expected_generalizations):
         assert (ncp > 0.0)
 
 
-def test_minimizer_params(get_cells):
+def test_minimizer_params(cells):
     # Assume two features, age and height, and boolean label
-    cells, features, x, y = get_cells
+    cells, features, x, y = cells
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -247,9 +247,9 @@ def create_encoder(numeric_features, categorical_features, x):
     return preprocessor, encoded
 
 
-def test_minimizer_params_not_transform(get_cells):
+def test_minimizer_params_not_transform(cells):
     # Assume two features, age and height, and boolean label
-    cells, features, x, y = get_cells
+    cells, features, x, y = cells
     samples = ArrayDataset(x, y, features)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -261,8 +261,8 @@ def test_minimizer_params_not_transform(get_cells):
     assert (ncp > 0.0)
 
 
-def test_minimizer_fit(get_data_two_features):
-    x, y, features, _ = get_data_two_features
+def test_minimizer_fit(data_two_features):
+    x, y, features, _ = data_two_features
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
     model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
@@ -289,8 +289,8 @@ def test_minimizer_fit(get_data_two_features):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_ncp(get_data_two_features):
-    x, y, features, x1 = get_data_two_features
+def test_minimizer_ncp(data_two_features):
+    x, y, features, x1 = data_two_features
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -326,8 +326,8 @@ def test_minimizer_ncp(get_data_two_features):
     assert (ncp6 == ncp4)
 
 
-def test_minimizer_ncp_categorical(get_data_four_features):
-    x, y, features, x1 = get_data_four_features
+def test_minimizer_ncp_categorical(data_four_features):
+    x, y, features, x1 = data_four_features
     x = pd.DataFrame(x, columns=features)
     x1 = pd.DataFrame(x1, columns=features)
 
@@ -370,8 +370,8 @@ def test_minimizer_ncp_categorical(get_data_four_features):
     assert (ncp6 == ncp4)
 
 
-def test_minimizer_fit_not_transform(get_data_two_features):
-    x, y, features, x1 = get_data_two_features
+def test_minimizer_fit_not_transform(data_two_features):
+    x, y, features, x1 = data_two_features
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
     model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
@@ -394,8 +394,8 @@ def test_minimizer_fit_not_transform(get_data_two_features):
     check_ncp(ncp, expected_generalizations)
 
 
-def test_minimizer_fit_pandas(get_data_four_features):
-    x, y, features, _ = get_data_four_features
+def test_minimizer_fit_pandas(data_four_features):
+    x, y, features, _ = data_four_features
     x = pd.DataFrame(x, columns=features)
 
     numeric_features = ["age", "height"]
@@ -431,9 +431,9 @@ def test_minimizer_fit_pandas(get_data_four_features):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_params_categorical(get_cells_categorical):
+def test_minimizer_params_categorical(cells_categorical):
     # Assume three features, age, sex and height, and boolean label
-    cells, features, x, y = get_cells_categorical
+    cells, features, x, y = cells_categorical
 
     x = pd.DataFrame(x, columns=features)
     numeric_features = ["age", "height"]
@@ -459,8 +459,8 @@ def test_minimizer_params_categorical(get_cells_categorical):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_fit_qi(get_data_three_features):
-    x, y, features = get_data_three_features
+def test_minimizer_fit_qi(data_three_features):
+    x, y, features = data_three_features
     qi = ['age', 'weight']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
@@ -487,8 +487,8 @@ def test_minimizer_fit_qi(get_data_three_features):
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_minimizer_fit_pandas_qi(get_data_five_features):
-    x, y, features = get_data_five_features
+def test_minimizer_fit_pandas_qi(data_five_features):
+    x, y, features = data_five_features
     x = pd.DataFrame(x, columns=features)
     qi = ['age', 'weight', 'ola']
 
@@ -809,8 +809,8 @@ def test_x_y_features_names():
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
-def test_BaseEstimator_classification(get_data_five_features):
-    x, y, features = get_data_five_features
+def test_BaseEstimator_classification(data_five_features):
+    x, y, features = data_five_features
     x = pd.DataFrame(x, columns=features)
     QI = ['age', 'weight', 'ola']
 
