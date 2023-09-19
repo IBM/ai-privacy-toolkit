@@ -29,9 +29,9 @@ def teardown_function():
 
 
 anon_testdata = [('iris_np', iris_dataset_np, 'np', mgr1)] \
-    + [('nursery_pd', nursery_dataset_pd, 'pd', mgr2)] \
-    + [('iris_np', iris_dataset_np, 'np', mgr3)] \
-    + [('nursery_pd', nursery_dataset_pd, 'pd', mgr4)]
+                + [('nursery_pd', nursery_dataset_pd, 'pd', mgr2)] \
+                + [('iris_np', iris_dataset_np, 'np', mgr3)] \
+                + [('nursery_pd', nursery_dataset_pd, 'pd', mgr4)]
 
 
 @pytest.mark.parametrize("name, data, dataset_type, mgr", anon_testdata)
