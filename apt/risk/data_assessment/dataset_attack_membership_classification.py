@@ -61,7 +61,8 @@ class DatasetAttackMembershipClassification(DatasetAttackMembership):
          from the members dataset (training) as opposed to the distinguishability of the synthetic dataset from the
          non-members dataset (test).
          The privacy risk measure is calculated as the ratio of the receiver operating characteristic curve (AUC ROC) of
-         the members dataset to AU ROC of the non-members dataset.
+         the members dataset to AUC ROC of the non-members dataset. It can be 0.0 or higher, with higher scores meaning
+         higher privacy risk and worse privacy.
     """
     SHORT_NAME = 'MembershipClassification'
 

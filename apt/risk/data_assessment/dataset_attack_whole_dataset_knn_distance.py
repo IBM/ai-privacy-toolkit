@@ -30,11 +30,18 @@ class DatasetAttackConfigWholeDatasetKnnDistance(Config):
             See 'metric' parameter in sklearn.neighbors.NearestNeighbors documentation.
         distance_params:  Additional keyword arguments for the distance computation function, see 'metric_params' in
             sklearn.neighbors.NearestNeighbors documentation.
+        distribution_comparison_alpha: the significance level of the statistical distribution test p-value.
+                                       If p-value is less than alpha, then we reject the null hypothesis that the
+                                       observed samples are drawn from the same distribution, and we claim that the
+                                       distributions are different.
     """
     use_batches: bool = False
     batch_size: int = 10
     compute_distance: callable = None
     distance_params: dict = None
+    distribution_comparison_alpha: float = 0.05
+    distribution_comparison_numeric_test: str = 'KS',
+    distribution_comparison_categorical_test: str = 'CHI'
 
 
 @dataclass
@@ -68,7 +75,7 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
     def __init__(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
                  synthetic_data: ArrayDataset,
                  config: DatasetAttackConfigWholeDatasetKnnDistance = DatasetAttackConfigWholeDatasetKnnDistance(),
-                 dataset_name: str = DEFAULT_DATASET_NAME, categorical_features: list = None):
+                 dataset_name: str = DEFAULT_DATASET_NAME, categorical_features: list = None, **kwargs):
         """
         :param original_data_members: A container for the training original samples and labels
         :param original_data_non_members: A container for the holdout original samples and labels
@@ -76,7 +83,8 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
         :param config: Configuration parameters to guide the assessment process, optional
         :param dataset_name: A name to identify this dataset, optional
         """
-        attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size)
+        attack_strategy_utils = KNNAttackStrategyUtils(config.use_batches, config.batch_size,
+                                                       config.distribution_comparison_alpha, **kwargs)
         super().__init__(original_data_members, original_data_non_members, synthetic_data, config, dataset_name,
                          categorical_features, attack_strategy_utils)
         if config.compute_distance:
@@ -95,8 +103,12 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
         """
         Calculate the share of synthetic records closer to the training than the holdout dataset, based on the
         DCR computed by 'calculate_distances()'.
+        Before running the assessment, there is a validation that the distribution of the synthetic data is similar to
+        that of the original data members and to that of the original data non-members.
         :return:
-            score of the attack, based on the NN distances from the query samples to the synthetic data samples
+            score of the attack, based on the NN distances from the query samples to the synthetic data samples.
+            The result also contains the distribution validation result and a warning if the distributions are not
+            similar.
         """
         distributions_validation_result = self.attack_strategy_utils.validate_distributions(
             self.original_data_members, self.original_data_non_members, self.synthetic_data, self.categorical_features)

@@ -4,6 +4,10 @@ from apt.anonymization import Anonymize
 from apt.risk.data_assessment.dataset_assessment_manager import DatasetAssessmentManager, DatasetAssessmentManagerConfig
 from apt.utils.dataset_utils import get_iris_dataset_np, get_nursery_dataset_pd
 from apt.utils.datasets import ArrayDataset
+from data_assessment.dataset_attack_membership_classification import DatasetAttackScoreMembershipClassification
+from data_assessment.dataset_attack_membership_knn_probabilities import DatasetAttackScoreMembershipKnnProbabilities, \
+    DatasetAttackConfigMembershipKnnProbabilities, DatasetAttackMembershipKnnProbabilities
+from data_assessment.dataset_attack_whole_dataset_knn_distance import DatasetAttackScoreWholeDatasetKnnDistance
 from tests.test_data_assessment import kde, preprocess_nursery_x_data
 
 NUM_SYNTH_SAMPLES = 10
@@ -28,10 +32,10 @@ def teardown_function():
         mgr.dump_all_scores_to_files()
 
 
-anon_testdata = [('iris_np', iris_dataset_np, 'np', mgr1)] \
-                + [('nursery_pd', nursery_dataset_pd, 'pd', mgr2)] \
-                + [('iris_np', iris_dataset_np, 'np', mgr3)] \
-                + [('nursery_pd', nursery_dataset_pd, 'pd', mgr4)]
+anon_testdata = ([('iris_np', iris_dataset_np, 'np', mgr1)]
+                 + [('nursery_pd', nursery_dataset_pd, 'pd', mgr2)]
+                 + [('iris_np', iris_dataset_np, 'np', mgr3)]
+                 + [('nursery_pd', nursery_dataset_pd, 'pd', mgr4)])
 
 
 @pytest.mark.parametrize("name, data, dataset_type, mgr", anon_testdata)
@@ -44,9 +48,10 @@ def test_risk_anonymization(name, data, dataset_type, mgr):
         preprocessed_x_test = x_test
         QI = [0, 2]
         anonymizer = Anonymize(ANON_K, QI, train_only_QI=True)
+        categorical_features = []
     elif "nursery" in name:
-        preprocessed_x_train, preprocessed_x_test = preprocess_nursery_x_data(x_train, x_test)
-        QI = list(range(15, 27))
+        preprocessed_x_train, preprocessed_x_test, categorical_features = preprocess_nursery_x_data(x_train, x_test)
+        QI = list(range(15, 20))
         anonymizer = Anonymize(ANON_K, QI, train_only_QI=True)
     else:
         raise ValueError('Pandas dataset missing a preprocessing step')
@@ -57,11 +62,12 @@ def test_risk_anonymization(name, data, dataset_type, mgr):
 
     dataset_name = f'anon_k{ANON_K}_{name}'
     assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, anonymized_data,
-                                       dataset_name)
+                                       dataset_name, categorical_features)
 
     assess_privacy_and_validate_result(mgr, original_data_members=original_data_members,
                                        original_data_non_members=original_data_non_members,
-                                       synth_data=anonymized_data, dataset_name=None)
+                                       synth_data=anonymized_data, dataset_name=None,
+                                       categorical_features=categorical_features)
 
 
 testdata = [('iris_np', iris_dataset_np, 'np', mgr4),
@@ -72,38 +78,85 @@ testdata = [('iris_np', iris_dataset_np, 'np', mgr4),
 
 @pytest.mark.parametrize("name, data, dataset_type, mgr", testdata)
 def test_risk_kde(name, data, dataset_type, mgr):
+    original_data_members, original_data_non_members, synthetic_data, categorical_features \
+        = encode_and_generate_synthetic_data(dataset_type, name, data)
+
+    dataset_name = 'kde' + str(NUM_SYNTH_SAMPLES) + name
+    assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synthetic_data,
+                                       dataset_name, categorical_features)
+
+    assess_privacy_and_validate_result(mgr, original_data_members=original_data_members,
+                                       original_data_non_members=original_data_non_members,
+                                       synth_data=synthetic_data, dataset_name=None,
+                                       categorical_features=categorical_features)
+
+
+testdata_knn_options = [('iris_np', iris_dataset_np, 'np'),
+                        ('nursery_pd', nursery_dataset_pd, 'pd')]
+
+
+@pytest.mark.parametrize("name, data, dataset_type", testdata_knn_options)
+def test_risk_kde_knn_options(name, data, dataset_type):
+    original_data_members, original_data_non_members, synthetic_data, categorical_features \
+        = encode_and_generate_synthetic_data(dataset_type, name, data)
+
+    dataset_name = 'kde' + str(NUM_SYNTH_SAMPLES) + name
+
+    config_g = DatasetAttackConfigMembershipKnnProbabilities(use_batches=True, generate_plot=False,
+                                                             distribution_comparison_alpha=0.1)
+    numeric_tests = ['KS', 'CVM', 'AD', 'ES']
+    categorical_tests = ['CHI', 'AD', 'ES']
+    for numeric_test in numeric_tests:
+        for categorical_test in categorical_tests:
+            attack_g = DatasetAttackMembershipKnnProbabilities(original_data_members,
+                                                               original_data_non_members,
+                                                               synthetic_data,
+                                                               config_g,
+                                                               dataset_name,
+                                                               categorical_features,
+                                                               distribution_comparison_numeric_test=numeric_test,
+                                                               distribution_comparison_categorical_test=categorical_test
+                                                               )
+
+            score_g = attack_g.assess_privacy()
+            assert score_g.roc_auc_score > MIN_ROC_AUC
+            assert score_g.average_precision_score > MIN_PRECISION
+
+
+def encode_and_generate_synthetic_data(dataset_type, name, data):
     (x_train, y_train), (x_test, y_test) = data
 
     if dataset_type == 'np':
         encoded = x_train
         encoded_test = x_test
         num_synth_components = NUM_SYNTH_COMPONENTS
+        categorical_features = []
     elif "nursery" in name:
-        encoded, encoded_test = preprocess_nursery_x_data(x_train, x_test)
+        encoded, encoded_test, categorical_features = preprocess_nursery_x_data(x_train, x_test)
         num_synth_components = 10
     else:
         raise ValueError('Pandas dataset missing a preprocessing step')
-
-    synth_data = ArrayDataset(
+    synthetic_data = ArrayDataset(
         kde(NUM_SYNTH_SAMPLES, n_components=num_synth_components, original_data=encoded))
     original_data_members = ArrayDataset(encoded, y_train)
     original_data_non_members = ArrayDataset(encoded_test, y_test)
-
-    dataset_name = 'kde' + str(NUM_SYNTH_SAMPLES) + name
-    assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synth_data, dataset_name)
-
-    assess_privacy_and_validate_result(mgr, original_data_members=original_data_members,
-                                       original_data_non_members=original_data_non_members,
-                                       synth_data=synth_data, dataset_name=None)
+    return original_data_members, original_data_non_members, synthetic_data, categorical_features
 
 
-def assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synth_data,
-                                       dataset_name):
-    if dataset_name:
-        [score_g, score_h] = mgr.assess(original_data_members, original_data_non_members, synth_data,
-                                        dataset_name)
-    else:
-        [score_g, score_h] = mgr.assess(original_data_members, original_data_non_members, synth_data)
-    assert (score_g.roc_auc_score > MIN_ROC_AUC)
-    assert (score_g.average_precision_score > MIN_PRECISION)
-    assert (score_h.share > MIN_SHARE)
+def assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synth_data, dataset_name,
+                                       categorical_features):
+    attack_scores = mgr.assess(original_data_members, original_data_non_members, synth_data, dataset_name,
+                               categorical_features)
+
+    for i, (assessment_type, scores) in enumerate(attack_scores.items()):
+        if assessment_type == 'MembershipKnnProbabilities':
+            score_g: DatasetAttackScoreMembershipKnnProbabilities = scores[0]
+            assert score_g.roc_auc_score > MIN_ROC_AUC
+            assert score_g.average_precision_score > MIN_PRECISION
+        elif assessment_type == 'WholeDatasetKnnDistance':
+            score_h: DatasetAttackScoreWholeDatasetKnnDistance = scores[0]
+            assert score_h.share > MIN_SHARE
+        if assessment_type == 'MembershipClassification':
+            score_mc: DatasetAttackScoreMembershipClassification = scores[0]
+            assert score_mc.synthetic_data_quality_warning is False
+            assert 0 <= score_mc.normalized_ratio <= 1

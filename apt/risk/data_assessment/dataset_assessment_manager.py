@@ -19,7 +19,15 @@ from data_assessment.dataset_attack_membership_classification import DatasetAtta
 
 @dataclass
 class DatasetAssessmentManagerConfig:
+    """
+    Configuration for DatasetAssessmentManager.
+    :param persist_reports: save assessment results to filesystem, or not.
+    :param timestamp_reports: if persist_reports is True, then define if create a separate report for each timestamp,
+                              or append to the same reports
+    :param generate_plots: generate and visualize plots as part of assessment, or not..
+    """
     persist_reports: bool = False
+    timestamp_reports: bool = False
     generate_plots: bool = False
 
 
@@ -47,6 +55,7 @@ class DatasetAssessmentManager:
             only samples are used in the assessment
         :param synthetic_data: A container for the synthetic samples and labels, only samples are used in the assessment
         :param dataset_name: A name to identify this dataset, optional
+        :param categorical_features: A list of categorical feature names or numbers
 
         :return:
             a list of dataset attack risk scores
@@ -84,10 +93,16 @@ class DatasetAssessmentManager:
         return self.attack_scores
 
     def dump_all_scores_to_files(self):
+        """
+         Save assessment results to filesystem.
+         """
         if self.config.persist_reports:
             time_str = time.strftime("%Y%m%d-%H%M%S")
             for i, (attack_name, attack_scores) in enumerate(self.attack_scores.items()):
-                results_log_file = f"{time_str}_{attack_name}_results.log.csv"
+                if self.config.timestamp_reports:
+                    results_log_file = f"{time_str}_{attack_name}_results.log.csv"
+                else:
+                    results_log_file = f"{attack_name}_results.log.csv"
                 run_results_df = (pd.DataFrame(attack_scores).drop('result', axis=1, errors='ignore').
                                   drop('distributions_validation_result', axis=1, errors='ignore'))
-                run_results_df.to_csv(results_log_file, header=True, encoding='utf-8', index=False, mode='w')  # Overwrite
+                run_results_df.to_csv(results_log_file, header=True, encoding='utf-8', index=False, mode='w')

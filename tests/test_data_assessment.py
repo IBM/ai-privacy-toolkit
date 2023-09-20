@@ -21,6 +21,7 @@ MIN_SHARE = 0.5
 MIN_ROC_AUC = 0.0
 MIN_PRECISION = 0.0
 
+NUM_SYNTH_SAMPLES = 100
 NUM_SYNTH_COMPONENTS = 4
 
 iris_dataset_np = get_iris_dataset_np()
@@ -28,7 +29,7 @@ diabetes_dataset_np = get_diabetes_dataset_np()
 nursery_dataset_pd = get_nursery_dataset_pd()
 adult_dataset_pd = get_adult_dataset_pd()
 
-mgr = DatasetAssessmentManager(DatasetAssessmentManagerConfig(persist_reports=True, generate_plots=False))
+mgr = DatasetAssessmentManager(DatasetAssessmentManagerConfig(persist_reports=False, generate_plots=False))
 
 
 def teardown_function():
@@ -36,10 +37,10 @@ def teardown_function():
     mgr.dump_all_scores_to_files()
 
 
-anon_testdata = [('iris_np', iris_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)] \
-                + [('diabetes_np', diabetes_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)] \
-                + [('nursery_pd', nursery_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)] \
-                + [('adult_pd', adult_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)]
+anon_testdata = ([('iris_np', iris_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)]
+                 + [('diabetes_np', diabetes_dataset_np, 'np', k, mgr) for k in range(2, 10, 4)]
+                 + [('nursery_pd', nursery_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)]
+                 + [('adult_pd', adult_dataset_pd, 'pd', k, mgr) for k in range(2, 10, 4)])
 
 
 @pytest.mark.parametrize("name, data, dataset_type, k, mgr", anon_testdata)
@@ -97,13 +98,12 @@ def test_risk_kde(name, data, dataset_type, mgr):
     else:
         raise ValueError('Pandas dataset missing a preprocessing step')
 
-    num_synth_samples = x_train.shape[0]  # required by the chi test
     synth_data = ArrayDataset(
-        kde(num_synth_samples, n_components=num_synth_components, original_data=encoded))
+        kde(NUM_SYNTH_SAMPLES, n_components=num_synth_components, original_data=encoded))
     original_data_members = ArrayDataset(encoded, y_train)
     original_data_non_members = ArrayDataset(encoded_test, y_test)
 
-    dataset_name = 'kde' + str(num_synth_samples) + name
+    dataset_name = 'kde' + str(NUM_SYNTH_SAMPLES) + name
     assess_privacy_and_validate_result(mgr, original_data_members, original_data_non_members, synth_data, dataset_name,
                                        categorical_features)
 
