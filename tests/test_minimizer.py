@@ -939,6 +939,77 @@ def test_keras_model():
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
 
 
+def test_minimizer_pytorch(data_three_features):
+    x, y, features = data_three_features
+    x = x.astype(np.float32)
+    qi = ['age', 'weight']
+
+    from torch import nn, optim
+    from apt.utils.datasets.datasets import PytorchData
+    from apt.utils.models.pytorch_model import PyTorchClassifier
+
+    class pytorch_model(nn.Module):
+
+        def __init__(self, num_classes, num_features):
+            super(pytorch_model, self).__init__()
+
+            self.fc1 = nn.Sequential(
+                nn.Linear(num_features, 1024),
+                nn.Tanh(), )
+
+            self.fc2 = nn.Sequential(
+                nn.Linear(1024, 512),
+                nn.Tanh(), )
+
+            self.fc3 = nn.Sequential(
+                nn.Linear(512, 256),
+                nn.Tanh(), )
+
+            self.fc4 = nn.Sequential(
+                nn.Linear(256, 128),
+                nn.Tanh(),
+            )
+
+            self.classifier = nn.Linear(128, num_classes)
+
+        def forward(self, x):
+            out = self.fc1(x)
+            out = self.fc2(out)
+            out = self.fc3(out)
+            out = self.fc4(out)
+            return self.classifier(out)
+
+
+    base_est = pytorch_model(2, 3)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(base_est.parameters(), lr=0.01)
+
+    model = PyTorchClassifier(model=base_est, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
+                              optimizer=optimizer, input_shape=(3,),
+                              nb_classes=2)
+    model.fit(PytorchData(x.astype(np.float32), y), save_entire_model=False, nb_epochs=10)
+
+    ad = ArrayDataset(x)
+    predictions = model.predict(ad)
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    target_accuracy = 0.5
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=qi)
+    train_dataset = ArrayDataset(x, predictions, features_names=features)
+    gen.fit(dataset=train_dataset)
+    transformed = gen.transform(dataset=ad)
+    gener = gen.generalizations
+    expected_generalizations = {'ranges': {'age': [], 'weight': []}, 'categories': {}, 'untouched': ['height']}
+    compare_generalizations(gener, expected_generalizations)
+    check_features(features, expected_generalizations, transformed, x)
+    assert ((np.delete(transformed, [0, 2], axis=1) == np.delete(x, [0, 2], axis=1)).all())
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(ArrayDataset(transformed.astype(np.float32), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+
+
 def test_untouched():
     cells = [{"id": 1, "ranges": {"age": {"start": None, "end": 38}}, "label": 0,
               'categories': {'gender': ['male']}, "representative": {"age": 26, "height": 149}},
