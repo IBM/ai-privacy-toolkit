@@ -13,8 +13,8 @@ from apt.risk.data_assessment.dataset_attack_result import DatasetAttackScore, D
 from apt.risk.data_assessment.dataset_attack_whole_dataset_knn_distance import \
     DatasetAttackConfigWholeDatasetKnnDistance, DatasetAttackWholeDatasetKnnDistance
 from apt.utils.datasets import ArrayDataset
-from data_assessment.dataset_attack_membership_classification import DatasetAttackConfigMembershipClassification, \
-    DatasetAttackMembershipClassification
+from apt.risk.data_assessment.dataset_attack_membership_classification import \
+    DatasetAttackConfigMembershipClassification, DatasetAttackMembershipClassification
 
 
 @dataclass
