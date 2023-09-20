@@ -6,8 +6,6 @@ https://doi.org/10.1145/3372297.3417238 and its implementation in https://github
 """
 from dataclasses import dataclass
 from typing import Callable
-import os.path
-from math import floor
 
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
@@ -119,14 +117,15 @@ class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
             #     X_non_members = np.genfromtxt(test_filename, delimiter=",")
             # else:
             x_synth_ref = self.generate_synth_data(len(X_reference), n_components=10, original_data=X_reference)
-                # np.savetxt(ref_filename, x_synth_ref, delimiter=",")
-                # np.savetxt(test_filename, X_non_members, delimiter=",")
+            # np.savetxt(ref_filename, x_synth_ref, delimiter=",")
+            # np.savetxt(test_filename, X_non_members, delimiter=",")
 
             self.original_data_non_members = ArrayDataset(X_non_members)
             self.synthetic_data_ref = ArrayDataset(x_synth_ref)
         if config.compute_distance:
-            self.knn_learner_ref = NearestNeighbors(n_neighbors=config.k, algorithm='auto', metric=config.compute_distance,
-                                                metric_params=config.distance_params)
+            self.knn_learner_ref = NearestNeighbors(n_neighbors=config.k, algorithm='auto',
+                                                    metric=config.compute_distance,
+                                                    metric_params=config.distance_params)
         else:
             self.knn_learner_ref = NearestNeighbors(n_neighbors=config.k, algorithm='auto')
 
@@ -166,26 +165,30 @@ class DatasetAttackMembershipKnnProbabilities(DatasetAttackMembership):
             self.attack_strategy_utils.fit(self.knn_learner_ref, self.synthetic_data_ref)
 
             # members query
-            member_distances_ref = self.attack_strategy_utils.find_knn(self.knn_learner_ref, self.original_data_members)
+            member_distances_ref = self.attack_strategy_utils.find_knn(self.knn_learner_ref,
+                                                                       self.original_data_members)
 
             # non-members query
-            non_member_distances_ref = self.attack_strategy_utils.find_knn(self.knn_learner_ref, self.original_data_non_members)
+            non_member_distances_ref = self.attack_strategy_utils.find_knn(self.knn_learner_ref,
+                                                                           self.original_data_non_members)
 
             assert (len(member_distances) == len(member_distances_ref))
             assert (len(non_member_distances) == len(non_member_distances_ref))
             num_pos_samples = len(member_distances)
             num_neg_samples = len(non_member_distances)
 
-            member_proba_calibrate = self.probability_per_sample(member_distances[:num_pos_samples] - member_distances_ref[:num_pos_samples])
-            non_member_proba_calibrate = self.probability_per_sample(non_member_distances[:num_neg_samples] - non_member_distances_ref[:num_neg_samples])
+            member_proba_calibrate = self.probability_per_sample(member_distances[:num_pos_samples] -
+                                                                 member_distances_ref[:num_pos_samples])
+            non_member_proba_calibrate = self.probability_per_sample(non_member_distances[:num_neg_samples] -
+                                                                     non_member_distances_ref[:num_neg_samples])
 
             result = DatasetAttackResultMembership(member_probabilities=member_proba_calibrate,
-                                                non_member_probabilities=non_member_proba_calibrate)
+                                                   non_member_probabilities=non_member_proba_calibrate)
         else:
             member_proba = self.probability_per_sample(member_distances)
             non_member_proba = self.probability_per_sample(non_member_distances)
             result = DatasetAttackResultMembership(member_probabilities=member_proba,
-                                               non_member_probabilities=non_member_proba)
+                                                   non_member_probabilities=non_member_proba)
 
         score = self.calculate_privacy_score(result, self.config.generate_plot)
         score.distributions_validation_result = distributions_validation_result

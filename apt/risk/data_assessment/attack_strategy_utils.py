@@ -131,14 +131,19 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
             def is_categorical(col_name):
                 col_name in categorical_features or is_categorical_dtype(df1_samples.dtypes[col_name])
 
-            def is_numeric(col_name): is_numeric_dtype(df1_samples.dtypes[col_name])
+            def is_numeric(col_name):
+                is_numeric_dtype(df1_samples.dtypes[col_name])
+
             for name, _ in df1_samples.items():
                 KNNAttackStrategyUtils._column_statistical_test(df1_samples[name], df2_samples[name], name,
                                                                 is_categorical, is_numeric(df1_samples.dtypes[name]),
                                                                 test_type, alpha, differing_columns)
         else:
             is_df1_numeric_dtype = np.issubdtype(df1_samples.dtype, int) or np.issubdtype(df1_samples.dtype, float)
-            def is_categorical(col_name): col_name in categorical_features
+
+            def is_categorical(col_name):
+                col_name in categorical_features
+
             for i, column in enumerate(df1_samples.T):
                 KNNAttackStrategyUtils._column_statistical_test(df1_samples[:, i], df2_samples[:, i], i,
                                                                 is_categorical, is_df1_numeric_dtype, test_type, alpha,

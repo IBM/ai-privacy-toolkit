@@ -134,7 +134,7 @@ class DatasetAttackMembershipClassification(DatasetAttackMembership):
         predict_proba = classifier.predict_proba(test_x)
         return roc_auc_score(test_labels, predict_proba[:, 1])
 
-    def calculate_privacy_score(self, member_roc_auc: float, non_member_roc_auc: float) ->(
+    def calculate_privacy_score(self, member_roc_auc: float, non_member_roc_auc: float) -> (
             DatasetAttackScoreMembershipClassification):
         """
         Compare the distinguishability of the synthetic data from the members dataset (training)
@@ -144,7 +144,7 @@ class DatasetAttackMembershipClassification(DatasetAttackMembership):
         score, baseline_score = member_roc_auc, non_member_roc_auc
 
         if 0 < baseline_score <= score:
-            normalized_ratio = score/baseline_score - 1.0
+            normalized_ratio = score / baseline_score - 1.0
         else:
             normalized_ratio = 0
 
