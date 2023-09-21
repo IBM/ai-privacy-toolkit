@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -145,6 +146,37 @@ def test_anonymize_ndarray_one_hot():
     _, counts_elements = np.unique(anon[:, QI], return_counts=True)
     assert (np.min(counts_elements) >= k)
     assert ((np.delete(anon, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
+
+
+def test_anonymize_pandas_one_hot():
+    feature_names = ["age", "gender_M", "gender_F", "height"]
+    x_train = np.array([[23, 0, 1, 165],
+                        [45, 0, 1, 158],
+                        [56, 1, 0, 123],
+                        [67, 0, 1, 154],
+                        [45, 1, 0, 149],
+                        [42, 1, 0, 166],
+                        [73, 0, 1, 172],
+                        [94, 0, 1, 168],
+                        [69, 0, 1, 175],
+                        [24, 1, 0, 181],
+                        [18, 1, 0, 190]])
+    y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    x_train = pd.DataFrame(x_train, columns=feature_names)
+    y_train = pd.Series(y_train)
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    pred = model.predict(x_train)
+
+    k = 10
+    QI = ["age", "gender_M", "gender_F"]
+    QI_slices = [["gender_M", "gender_F"]]
+    anonymizer = Anonymize(k, QI, train_only_QI=True, quasi_identifer_slices=QI_slices)
+    anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
+    assert (anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
+    assert (anon.loc[:, QI].value_counts().min() >= k)
+    np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
 
 
 def test_errors():
