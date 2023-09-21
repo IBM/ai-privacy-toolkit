@@ -979,7 +979,6 @@ def test_minimizer_pytorch(data_three_features):
             out = self.fc4(out)
             return self.classifier(out)
 
-
     base_est = pytorch_model(2, 3)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(base_est.parameters(), lr=0.01)
