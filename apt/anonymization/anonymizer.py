@@ -41,7 +41,7 @@ class Anonymize:
 
     def __init__(self, k: int,
                  quasi_identifiers: Union[np.ndarray, list],
-                 quasi_identifer_slices: Optional[list[list]] = None,
+                 quasi_identifer_slices: Optional[list] = None,
                  categorical_features: Optional[list] = None,
                  is_regression: Optional[bool] = False,
                  train_only_QI: Optional[bool] = False):
