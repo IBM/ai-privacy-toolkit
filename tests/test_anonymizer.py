@@ -146,6 +146,10 @@ def test_anonymize_ndarray_one_hot():
     _, counts_elements = np.unique(anon[:, QI], return_counts=True)
     assert (np.min(counts_elements) >= k)
     assert ((np.delete(anon, QI, axis=1) == np.delete(x_train, QI, axis=1)).all())
+    anonymized_slice = anon[:, QI_slices[0]]
+    assert ((np.sum(anonymized_slice, axis=1) == 1).all())
+    assert ((np.max(anonymized_slice, axis=1) == 1).all())
+    assert ((np.min(anonymized_slice, axis=1) == 0).all())
 
 
 def test_anonymize_pandas_one_hot():
@@ -177,6 +181,10 @@ def test_anonymize_pandas_one_hot():
     assert (anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
     assert (anon.loc[:, QI].value_counts().min() >= k)
     np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
+    anonymized_slice = anon.loc[:, QI_slices[0]]
+    assert ((np.sum(anonymized_slice, axis=1) == 1).all())
+    assert ((np.max(anonymized_slice, axis=1) == 1).all())
+    assert ((np.min(anonymized_slice, axis=1) == 0).all())
 
 
 def test_errors():
