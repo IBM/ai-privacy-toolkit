@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
+from torch import nn, optim
+
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
@@ -22,6 +24,9 @@ from apt.utils.datasets import ArrayDataset
 from apt.utils.models import SklearnClassifier, ModelOutputType, SklearnRegressor, KerasClassifier
 
 tf.compat.v1.disable_eager_execution()
+
+
+ACCURACY_DIFF = 0.05
 
 
 @pytest.fixture
@@ -286,7 +291,7 @@ def test_minimizer_fit(data_two_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimizer_ncp(data_two_features):
@@ -348,12 +353,15 @@ def test_minimizer_ncp_categorical(data_four_features):
     train_dataset = ArrayDataset(x, predictions, features_names=features)
 
     gen1 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                      categorical_features=categorical_features, generalize_using_transform=False)
+                                      categorical_features=categorical_features,
+                                      generalize_using_transform=False,
+                                      encoder=preprocessor)
     gen1.fit(dataset=train_dataset)
     ncp1 = gen1.ncp.fit_score
     ncp2 = gen1.calculate_ncp(ad1)
 
-    gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, categorical_features=categorical_features)
+    gen2 = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, categorical_features=categorical_features,
+                                      encoder=preprocessor)
     gen2.fit(dataset=train_dataset)
     ncp3 = gen2.ncp.fit_score
     gen2.transform(dataset=ad1)
@@ -414,7 +422,8 @@ def test_minimizer_fit_pandas(data_four_features):
     # Now we have a full prediction pipeline.
     target_accuracy = 0.5
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features)
+                                     categorical_features=categorical_features,
+                                     encoder=preprocessor)
     train_dataset = ArrayDataset(x, predictions)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ArrayDataset(x))
@@ -428,7 +437,7 @@ def test_minimizer_fit_pandas(data_four_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimizer_params_categorical(cells_categorical):
@@ -450,13 +459,14 @@ def test_minimizer_params_categorical(cells_categorical):
     # Now we have a full prediction pipeline.
     target_accuracy = 0.5
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features, cells=cells)
+                                     categorical_features=categorical_features, cells=cells,
+                                     encoder=preprocessor)
     train_dataset = ArrayDataset(x, predictions)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ArrayDataset(x))
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimizer_fit_qi(data_three_features):
@@ -484,7 +494,7 @@ def test_minimizer_fit_qi(data_three_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimizer_fit_pandas_qi(data_five_features):
@@ -508,7 +518,8 @@ def test_minimizer_fit_pandas_qi(data_five_features):
     # Now we have a full prediction pipeline.
     target_accuracy = 0.5
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features, features_to_minimize=qi)
+                                     categorical_features=categorical_features, features_to_minimize=qi,
+                                     encoder=preprocessor)
     train_dataset = ArrayDataset(x, predictions)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ArrayDataset(x))
@@ -523,7 +534,7 @@ def test_minimizer_fit_pandas_qi(data_five_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimize_ndarray_iris():
@@ -552,7 +563,7 @@ def test_minimize_ndarray_iris():
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_minimize_pandas_adult():
@@ -582,7 +593,8 @@ def test_minimize_pandas_adult():
         predictions = np.argmax(predictions, axis=1)
     target_accuracy = 0.7
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features, features_to_minimize=qi)
+                                     categorical_features=categorical_features, features_to_minimize=qi,
+                                     encoder=preprocessor)
     gen.fit(dataset=ArrayDataset(x_train, predictions, features_names=features))
     transformed = gen.transform(dataset=ArrayDataset(x_train))
     gener = gen.generalizations
@@ -609,7 +621,7 @@ def test_minimize_pandas_adult():
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_german_credit_pandas():
@@ -637,7 +649,8 @@ def test_german_credit_pandas():
         predictions = np.argmax(predictions, axis=1)
     target_accuracy = 0.7
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features, features_to_minimize=qi)
+                                     categorical_features=categorical_features, features_to_minimize=qi,
+                                     encoder=preprocessor)
     gen.fit(dataset=ArrayDataset(x_train, predictions))
     transformed = gen.transform(dataset=ArrayDataset(x_train))
     gener = gen.generalizations
@@ -666,7 +679,7 @@ def test_german_credit_pandas():
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(preprocessor.transform(transformed), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_regression(diabetes_dataset):
@@ -726,7 +739,7 @@ def test_regression(diabetes_dataset):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_x_y():
@@ -766,7 +779,7 @@ def test_x_y():
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_x_y_features_names():
@@ -806,7 +819,7 @@ def test_x_y_features_names():
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_BaseEstimator_classification(data_five_features):
@@ -828,7 +841,8 @@ def test_BaseEstimator_classification(data_five_features):
     # Now we have a full prediction pipeline.
     target_accuracy = 0.5
     gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy,
-                                     categorical_features=categorical_features, features_to_minimize=QI)
+                                     categorical_features=categorical_features, features_to_minimize=QI,
+                                     encoder=preprocessor)
     train_dataset = ArrayDataset(x, predictions)
     gen.fit(dataset=train_dataset)
     transformed = gen.transform(dataset=ArrayDataset(x))
@@ -844,7 +858,7 @@ def test_BaseEstimator_classification(data_five_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(preprocessor.transform(transformed), predictions)
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_BaseEstimator_regression(diabetes_dataset):
@@ -903,7 +917,7 @@ def test_BaseEstimator_regression(diabetes_dataset):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(transformed, predictions)
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_keras_model():
@@ -936,7 +950,39 @@ def test_keras_model():
     check_ncp(ncp, gener)
 
     rel_accuracy = model.score(ArrayDataset(transformed, predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+
+
+class PytorchModel(nn.Module):
+
+    def __init__(self, num_classes, num_features):
+        super(PytorchModel, self).__init__()
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(num_features, 1024),
+            nn.Tanh(), )
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.Tanh(), )
+
+        self.fc3 = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.Tanh(), )
+
+        self.fc4 = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.Tanh(),
+        )
+
+        self.classifier = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out = self.fc2(out)
+        out = self.fc3(out)
+        out = self.fc4(out)
+        return self.classifier(out)
 
 
 def test_minimizer_pytorch(data_three_features):
@@ -944,49 +990,17 @@ def test_minimizer_pytorch(data_three_features):
     x = x.astype(np.float32)
     qi = ['age', 'weight']
 
-    from torch import nn, optim
     from apt.utils.datasets.datasets import PytorchData
     from apt.utils.models.pytorch_model import PyTorchClassifier
 
-    class pytorch_model(nn.Module):
-
-        def __init__(self, num_classes, num_features):
-            super(pytorch_model, self).__init__()
-
-            self.fc1 = nn.Sequential(
-                nn.Linear(num_features, 1024),
-                nn.Tanh(), )
-
-            self.fc2 = nn.Sequential(
-                nn.Linear(1024, 512),
-                nn.Tanh(), )
-
-            self.fc3 = nn.Sequential(
-                nn.Linear(512, 256),
-                nn.Tanh(), )
-
-            self.fc4 = nn.Sequential(
-                nn.Linear(256, 128),
-                nn.Tanh(),
-            )
-
-            self.classifier = nn.Linear(128, num_classes)
-
-        def forward(self, x):
-            out = self.fc1(x)
-            out = self.fc2(out)
-            out = self.fc3(out)
-            out = self.fc4(out)
-            return self.classifier(out)
-
-    base_est = pytorch_model(2, 3)
+    base_est = PytorchModel(2, 3)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(base_est.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=base_est, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
                               optimizer=optimizer, input_shape=(3,),
                               nb_classes=2)
-    model.fit(PytorchData(x.astype(np.float32), y), save_entire_model=False, nb_epochs=10)
+    model.fit(PytorchData(x, y), save_entire_model=False, nb_epochs=10)
 
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -1006,7 +1020,41 @@ def test_minimizer_pytorch(data_three_features):
     check_ncp(ncp, expected_generalizations)
 
     rel_accuracy = model.score(ArrayDataset(transformed.astype(np.float32), predictions))
-    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= 0.05)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+
+
+def test_minimizer_pytorch_iris():
+    features = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
+    (x_train, y_train), _ = get_iris_dataset_np()
+    x_train = x_train.astype(np.float32)
+    qi = ['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']
+
+    from apt.utils.datasets.datasets import PytorchData
+    from apt.utils.models.pytorch_model import PyTorchClassifier
+
+    base_est = PytorchModel(3, 4)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(base_est.parameters(), lr=0.01)
+
+    model = PyTorchClassifier(model=base_est, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
+                              optimizer=optimizer, input_shape=(4,),
+                              nb_classes=3)
+    model.fit(PytorchData(x_train, y_train), save_entire_model=False, nb_epochs=10)
+
+    predictions = model.predict(ArrayDataset(x_train))
+    if predictions.shape[1] > 1:
+        predictions = np.argmax(predictions, axis=1)
+    target_accuracy = 0.99
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, features_to_minimize=qi)
+    transformed = gen.fit_transform(dataset=ArrayDataset(x_train, predictions, features_names=features))
+    gener = gen.generalizations
+
+    check_features(features, gener, transformed, x_train)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, gener)
+
+    rel_accuracy = model.score(ArrayDataset(transformed.astype(np.float32), predictions))
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_untouched():

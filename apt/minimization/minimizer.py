@@ -57,7 +57,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot
                                  encoded before using them to train the decision tree model).
     :param encoder: Optional encoder for encoding data before feeding it into the estimator (e.g., for categorical
-                    features)
+                    features). If not provided, the data will be fed as is directly to the estimator.
     :type encoder: sklearn OrdinalEncoder or OneHotEncoder
     :type categorical_features: list of strings, optional
     :param features_to_minimize: The features to be minimized.
@@ -256,7 +256,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         # Going to fit
         # (currently not dealing with option to fit with only X and y and no estimator)
         if self.estimator and dataset and dataset.get_samples() is not None and dataset.get_labels() is not None:
-            dtype = dataset.get_samples().dtype
             x = pd.DataFrame(dataset.get_samples(), columns=self._features)
             if not self.features_to_minimize:
                 self.features_to_minimize = self._features
@@ -293,21 +292,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # collect feature data (such as min, max)
             self._feature_data = self._get_feature_data(x)
 
-            # default encoder in case none provided
-            if self.encoder is None:
-                numeric_features = [f for f in self._features if f not in self.categorical_features]
-                numeric_transformer = Pipeline(
-                    steps=[('imputer', SimpleImputer(strategy='constant', fill_value=0))]
-                )
-                categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse=False)
-                self.encoder = ColumnTransformer(
-                    transformers=[
-                        ("num", numeric_transformer, numeric_features),
-                        ("cat", categorical_transformer, self.categorical_features),
-                    ]
-                )
-                self.encoder.fit(x)
-
             self.cells = []
             self._categorical_values = {}
 
@@ -341,7 +325,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 generalized = self._generalize_from_generalizations(x_test, self.generalizations)
 
             # check accuracy
-            accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized).astype(dtype), y_test))
+            if self.encoder:
+                accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
+            else:
+                accuracy = self.estimator.score(ArrayDataset(generalized, y_test))
             print('Initial accuracy of model on generalized data, relative to original model predictions '
                   '(base generalization derived from tree, before improvements): %f' % accuracy)
 
@@ -371,8 +358,10 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     else:
                         generalized = self._generalize_from_generalizations(x_test, self.generalizations)
 
-                    accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized).astype(dtype),
-                                                                 y_test))
+                    if self.encoder:
+                        accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
+                    else:
+                        accuracy = self.estimator.score(ArrayDataset(generalized, y_test))
                     # if accuracy passed threshold roll back to previous iteration generalizations
                     if accuracy < self.target_accuracy:
                         self.cells = cells_previous_iter
@@ -401,8 +390,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                                                  self._cells_by_id)
                     else:
                         generalized = self._generalize_from_generalizations(x_test, self.generalizations)
-                    accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized).astype(dtype),
-                                                                 y_test))
+
+                    if self.encoder:
+                        accuracy = self.estimator.score(ArrayDataset(self.encoder.transform(generalized), y_test))
+                    else:
+                        accuracy = self.estimator.score(ArrayDataset(generalized, y_test))
                     print('Removed feature: %s, new relative accuracy: %f' % (removed_feature, accuracy))
 
             # self._cells currently holds the chosen generalization based on target accuracy
@@ -893,7 +885,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _generalize_indexes(self, original_data, cells, all_indexes):
         # prepared data include one hot encoded categorical data + QI
-        representatives = pd.DataFrame(columns=self._features)  # empty except for columns
+        dtypes = original_data.dtypes.to_dict()
+        new_dtypes = {}
+        for t in dtypes.keys():
+            new_dtypes[t] = pd.Series(dtype=dtypes[t].name)
+        representatives = pd.DataFrame(new_dtypes)  # empty except for columns
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
 
         # iterate over cells (leaves in decision tree)
@@ -1000,8 +996,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
                     generalized = self._generalize_from_tree(original_data, prepared_data, nodes, new_cells,
                                                              cells_by_id)
-                    accuracy_gain = self.estimator.score(ArrayDataset(self.encoder.transform(generalized),
-                                                                      labels)) - current_accuracy
+                    if self.encoder:
+                        accuracy_gain = self.estimator.score(ArrayDataset(self.encoder.transform(generalized),
+                                                                          labels)) - current_accuracy
+                    else:
+                        accuracy_gain = self.estimator.score(ArrayDataset(generalized, labels)) - current_accuracy
                     if accuracy_gain < 0:
                         accuracy_gain = 0
                     if accuracy_gain != 0:
@@ -1027,8 +1026,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
                     generalized = self._generalize_from_tree(original_data, prepared_data, nodes, new_cells,
                                                              cells_by_id)
-                    accuracy_gain = self.estimator.score(ArrayDataset(self.encoder.transform(generalized),
-                                                                      labels)) - current_accuracy
+                    if self.encoder:
+                        accuracy_gain = self.estimator.score(ArrayDataset(self.encoder.transform(generalized),
+                                                                          labels)) - current_accuracy
+                    else:
+                        accuracy_gain = self.estimator.score(ArrayDataset(generalized, labels)) - current_accuracy
 
                     if accuracy_gain < 0:
                         accuracy_gain = 0
