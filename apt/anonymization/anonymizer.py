@@ -23,7 +23,11 @@ class Anonymize:
     :type k: int
     :param quasi_identifiers: The features that need to be minimized in case of pandas data, and indexes of features
                               in case of numpy data.
-    :type quasi_identifiers: np.ndarray or list
+    :type quasi_identifiers: np.ndarray or list of strings or integers.
+    :param quasi_identifer_slices: If some of the quasi-identifiers represent 1-hot encoded features that need to remain
+                                   consistent after anonymization, provide a list containing the list of column names
+                                   or indexes that represent a single feature.
+    :type quasi_identifer_slices: list of lists of strings or integers.
     :param categorical_features: The list of categorical features (if supplied, these featurtes will be one-hot encoded
                                  before using them to train the decision tree model).
     :type categorical_features: list, optional
@@ -35,8 +39,12 @@ class Anonymize:
     :type train_only_QI: boolean, optional
     """
 
-    def __init__(self, k: int, quasi_identifiers: Union[np.ndarray, list], categorical_features: Optional[list] = None,
-                 is_regression: Optional[bool] = False, train_only_QI: Optional[bool] = False):
+    def __init__(self, k: int,
+                 quasi_identifiers: Union[np.ndarray, list],
+                 quasi_identifer_slices: Optional[list] = None,
+                 categorical_features: Optional[list] = None,
+                 is_regression: Optional[bool] = False,
+                 train_only_QI: Optional[bool] = False):
         if k < 2:
             raise ValueError("k should be a positive integer with a value of 2 or higher")
         if quasi_identifiers is None or len(quasi_identifiers) < 1:
@@ -49,6 +57,7 @@ class Anonymize:
         self.train_only_QI = train_only_QI
         self.features_names = None
         self.features = None
+        self.quasi_identifer_slices = quasi_identifer_slices
 
     def anonymize(self, dataset: ArrayDataset) -> DATA_PANDAS_NUMPY_TYPE:
         """
@@ -76,7 +85,14 @@ class Anonymize:
         if self.categorical_features and not set(self.categorical_features).issubset(set(self.features_names)):
             raise ValueError('Categorical features should bs a subset of the supplied features or indexes in range of '
                              'the data columns')
+        # transform quasi identifiers to indexes
         self.quasi_identifiers = [i for i, v in enumerate(self.features_names) if v in self.quasi_identifiers]
+        if self.quasi_identifer_slices:
+            temp_list = []
+            for slice in self.quasi_identifer_slices:
+                new_slice = [i for i, v in enumerate(self.features_names) if v in slice]
+                temp_list.append(new_slice)
+            self.quasi_identifer_slices = temp_list
         if self.categorical_features:
             self.categorical_features = [i for i, v in enumerate(self.features_names) if v in self.categorical_features]
 
@@ -126,31 +142,49 @@ class Anonymize:
         return cells_by_id
 
     def _find_representatives(self, x, x_anonymizer_train, cells):
-        # x is original data, x_anonymizer_train is only QIs + 1-hot encoded
+        # x is original data (always numpy), x_anonymizer_train is only QIs + 1-hot encoded
         node_ids = self._find_sample_nodes(x_anonymizer_train)
+        if self.quasi_identifer_slices:
+            all_one_hot_features = set([feature for encoded in self.quasi_identifer_slices for feature in encoded])
+        else:
+            all_one_hot_features = set()
         for cell in cells:
             cell['representative'] = {}
             # get all rows in cell
             indexes = [index for index, node_id in enumerate(node_ids) if node_id == cell['id']]
             # TODO: should we filter only those with majority label? (using hist)
             rows = x[indexes]
-            for feature in self.quasi_identifiers:
-                values = rows[:, feature]
-                if self.categorical_features and feature in self.categorical_features:
-                    # find most common value
-                    cell['representative'][feature] = Counter(values).most_common(1)[0][0]
-                else:
-                    # find the mean value (per feature)
-                    median = np.median(values)
-                    min_value = max(values)
-                    min_dist = float("inf")
-                    for value in values:
-                        # euclidean distance between two floating point values
-                        dist = abs(value - median)
-                        if dist < min_dist:
-                            min_dist = dist
-                            min_value = value
-                    cell['representative'][feature] = min_value
+            done = set()
+            for feature in self.quasi_identifiers:  # self.quasi_identifiers are numerical indexes
+                if feature not in done:
+                    # deal with 1-hot encoded features
+                    if feature in all_one_hot_features:
+                        # find features that belong together
+                        for encoded in self.quasi_identifer_slices:
+                            if feature in encoded:
+                                values = rows[:, encoded]
+                                unique_rows, counts = np.unique(values, axis=0, return_counts=True)
+                                rep = unique_rows[np.argmax(counts)]
+                                for i, e in enumerate(encoded):
+                                    done.add(e)
+                                    cell['representative'][e] = rep[i]
+                    else:  # rest of features
+                        values = rows[:, feature]
+                        if self.categorical_features and feature in self.categorical_features:
+                            # find most common value
+                            cell['representative'][feature] = Counter(values).most_common(1)[0][0]
+                        else:
+                            # find the mean value (per feature)
+                            median = np.median(values)
+                            min_value = max(values)
+                            min_dist = float("inf")
+                            for value in values:
+                                # euclidean distance between two floating point values
+                                dist = abs(value - median)
+                                if dist < min_dist:
+                                    min_dist = dist
+                                    min_value = value
+                            cell['representative'][feature] = min_value
 
     def _find_sample_nodes(self, samples):
         paths = self._anonymizer.decision_path(samples).toarray()
