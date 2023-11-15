@@ -962,7 +962,7 @@ def test_minimizer_ndarray_one_hot():
 
 
 def test_anonymize_pandas_one_hot():
-    feature_names = ["age", "gender_M", "gender_F", "height"]
+    features = ["age", "gender_M", "gender_F", "height"]
     x_train = np.array([[23, 0, 1, 165],
                         [45, 0, 1, 158],
                         [56, 1, 0, 123],
@@ -975,25 +975,33 @@ def test_anonymize_pandas_one_hot():
                         [24, 1, 0, 181],
                         [18, 1, 0, 190]])
     y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
-    x_train = pd.DataFrame(x_train, columns=feature_names)
+    x_train = pd.DataFrame(x_train, columns=features)
     y_train = pd.Series(y_train)
 
     model = DecisionTreeClassifier()
     model.fit(x_train, y_train)
-    pred = model.predict(x_train)
+    predictions = model.predict(x_train)
 
-    k = 10
     QI = ["age", "gender_M", "gender_F"]
     QI_slices = [["gender_M", "gender_F"]]
-    anonymizer = Anonymize(k, QI, train_only_QI=True, quasi_identifer_slices=QI_slices)
-    anon = anonymizer.anonymize(ArrayDataset(x_train, pred))
-    assert (anon.loc[:, QI].drop_duplicates().shape[0] < x_train.loc[:, QI].drop_duplicates().shape[0])
-    assert (anon.loc[:, QI].value_counts().min() >= k)
-    np.testing.assert_array_equal(anon.drop(QI, axis=1), x_train.drop(QI, axis=1))
-    anonymized_slice = anon.loc[:, QI_slices[0]]
-    assert ((np.sum(anonymized_slice, axis=1) == 1).all())
-    assert ((np.max(anonymized_slice, axis=1) == 1).all())
-    assert ((np.min(anonymized_slice, axis=1) == 0).all())
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories': {}, 'category_representatives': {},
+                                'range_representatives': {'age': [34.5]},
+                                'ranges': {'age': [34.5]}, 'untouched': ['height', 'gender_M', 'gender_F']}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train, True)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
 
 
 def test_keras_model():
