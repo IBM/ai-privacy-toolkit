@@ -346,8 +346,9 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # if accuracy above threshold, improve generalization
             if accuracy > self.target_accuracy:
                 print('Improving generalizations')
-                self._level = 1
+                self._level = 0
                 while accuracy > self.target_accuracy:
+                    self._level += 1
                     cells_previous_iter = self.cells
                     generalization_prev_iter = self._generalizations
                     cells_by_id_prev = self._cells_by_id
@@ -373,7 +374,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         break
                     else:
                         print('Pruned tree to level: %d, new relative accuracy: %f' % (self._level, accuracy))
-                        self._level += 1
 
             # if accuracy below threshold, improve accuracy by removing features from generalization
             elif accuracy < self.target_accuracy:
