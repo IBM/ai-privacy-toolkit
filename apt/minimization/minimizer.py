@@ -56,9 +56,13 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
     :param encoder: Optional encoder for encoding data before feeding it into the estimator (e.g., for categorical
                     features). If not provided, the data will be fed as is directly to the estimator.
     :type encoder: sklearn OrdinalEncoder or OneHotEncoder
-    :type categorical_features: list of strings, optional
-    :param features_to_minimize: The features to be minimized.
+    :type categorical_features: list of strings or integers, optional
+    :param features_to_minimize: The features to be minimized. If not provided, all features will be minimized.
     :type features_to_minimize: list of strings or int, optional
+    :param feature_slices: If some of the features to be minimized represent 1-hot encoded features that need to remain
+                           consistent after minimization, provide a list containing the list of column names
+                           or indexes that represent a single feature.
+    :type feature_slices: list of lists of strings or integers, optional
     :param train_only_features_to_minimize: Whether to train the tree just on the ``features_to_minimize`` or on all
                                             features. Default is only on ``features_to_minimize``.
     :type train_only_features_to_minimize: boolean, optional
@@ -79,6 +83,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                  categorical_features: Optional[Union[np.ndarray, list]] = None,
                  encoder: Optional[Union[OrdinalEncoder, OneHotEncoder]] = None,
                  features_to_minimize: Optional[Union[np.ndarray, list]] = None,
+                 feature_slices: Optional[list] = None,
                  train_only_features_to_minimize: Optional[bool] = True,
                  is_regression: Optional[bool] = False,
                  generalize_using_transform: bool = True):
@@ -97,6 +102,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         if categorical_features:
             self.categorical_features = categorical_features
         self.features_to_minimize = features_to_minimize
+        self.feature_slices = feature_slices
+        if self.feature_slices:
+            self.all_one_hot_features = set([str(feature) for encoded in self.feature_slices for feature in encoded])
+        else:
+            self.all_one_hot_features = set()
         self.train_only_features_to_minimize = train_only_features_to_minimize
         self.is_regression = is_regression
         self.encoder = encoder
@@ -121,6 +131,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         ret['target_accuracy'] = self.target_accuracy
         ret['categorical_features'] = self.categorical_features
         ret['features_to_minimize'] = self.features_to_minimize
+        ret['feature_slices'] = self.feature_slices
         ret['train_only_features_to_minimize'] = self.train_only_features_to_minimize
         ret['is_regression'] = self.is_regression
         ret['estimator'] = self.estimator
@@ -151,6 +162,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.categorical_features = params['categorical_features']
         if 'features_to_minimize' in params:
             self.features_to_minimize = params['features_to_minimize']
+        if 'feature_slices' in params:
+            self.feature_slices = params['feature_slices']
         if 'train_only_features_to_minimize' in params:
             self.train_only_features_to_minimize = params['train_only_features_to_minimize']
         if 'is_regression' in params:
@@ -259,6 +272,14 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             self.features_to_minimize = [str(i) for i in self.features_to_minimize]
             if not all(elem in self._features for elem in self.features_to_minimize):
                 raise ValueError('features to minimize should be a subset of features names')
+            if self.feature_slices:
+                temp_list = []
+                for slice in self.feature_slices:
+                    new_slice = [str(i) for i in slice]
+                    if not all(elem in self._features for elem in new_slice):
+                        raise ValueError('features in slices should be a subset of features names')
+                    temp_list.append(new_slice)
+                self.feature_slices = temp_list
             x_qi = x.loc[:, self.features_to_minimize]
 
             # divide dataset into train and test
@@ -703,6 +724,36 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                             # categorical feature can not have this value
                             if categorical_value in new_cell['categories'][categorical_feature]:
                                 new_cell['categories'][categorical_feature].remove(categorical_value)
+                # features that were already one-hot encoded. Legal values should be 0 or 1
+                elif feature in self.all_one_hot_features:
+                    if feature not in new_cell['categories'].keys():
+                        new_cell['categories'][feature] = []
+                    if feature in cell['ranges']:
+                        range = cell['ranges'][feature]
+                        if range['start'] is None and range['end'] < 1:
+                            feature_value = 0
+                        elif range['end'] is None and range['start'] > 0:
+                            feature_value = 1
+                        elif range['start'] is not None and range['end'] is not None:
+                            print(range)
+                        new_cell['categories'][feature].append(feature_value)
+
+                        # need to add other columns that represent same 1-hot encoded feature
+
+                        # search for feature group:
+                        for encoded in self.feature_slices:
+                            if feature in encoded:
+                                other_features = list(set(encoded) - set([feature]))
+                                for other_feature in other_features:
+                                    if other_feature not in new_cell['categories'].keys():
+                                        new_cell['categories'][other_feature] = []
+                                    if feature_value == 1:
+                                        new_cell['categories'][other_feature].append(0)
+                                    elif len(encoded) == 2:
+                                        new_cell['categories'][other_feature].append(1)
+                                    else:
+                                        new_cell['categories'][other_feature].append(0)
+                                        new_cell['categories'][other_feature].append(1)
                 else:
                     if feature in cell['ranges'].keys():
                         new_cell['ranges'][feature] = cell['ranges'][feature]
@@ -813,6 +864,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                     min_dist = dist
                     min = i
                 i = i + 1
+            # since this is an actual row from the data, correct one-hot encoding is already guaranteed
             row = match_rows.iloc[min]
             for feature in cell['ranges'].keys():
                 cell['representative'][feature] = row[feature]
@@ -861,6 +913,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         new_dtypes = {}
         for t in dtypes.keys():
             new_dtypes[t] = pd.Series(dtype=dtypes[t].name)
+            dtypes[t] = dtypes[t].name
         representatives = pd.DataFrame(new_dtypes)  # empty except for columns
         original_data_generalized = pd.DataFrame(original_data, columns=self._features, copy=True)
 
@@ -891,6 +944,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 replace = pd.DataFrame(replace, indexes, columns=self._features)
                 original_data_generalized.loc[indexes, representatives.columns.tolist()] = replace
 
+        original_data_generalized = original_data_generalized.astype(dtype=dtypes)
         return original_data_generalized
 
     def _generalize(self, data, data_prepared, nodes):
@@ -1024,7 +1078,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                         current_accuracy):
         new_cells = copy.deepcopy(self.cells)
         cells_by_id = copy.deepcopy(self._cells_by_id)
-        GeneralizeToRepresentative._remove_feature_from_cells(new_cells, cells_by_id, feature)
+        self._remove_feature_from_cells(new_cells, cells_by_id, feature)
         generalized = self._generalize_from_tree(original_data, prepared_data, nodes, new_cells,
                                                  cells_by_id)
         accuracy = self._calculate_accuracy(generalized, labels, self.estimator, self.encoder)
@@ -1229,16 +1283,25 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         untouched = untouched.intersection(*untouched_lists)
         return list(untouched)
 
+    def _remove_feature_from_cells(self, cells, cells_by_id, feature):
+        if feature in self.all_one_hot_features:
+            for encoded in self.feature_slices:
+                if feature in encoded:
+                    self._remove_feature_from_cells_internal(cells, cells_by_id, encoded)
+        else:
+            self._remove_feature_from_cells_internal(cells, cells_by_id, [feature])
+
     @staticmethod
-    def _remove_feature_from_cells(cells, cells_by_id, feature):
+    def _remove_feature_from_cells_internal(cells, cells_by_id, features):
         for cell in cells:
             if 'untouched' not in cell:
                 cell['untouched'] = []
-            if feature in cell['ranges'].keys():
-                del cell['ranges'][feature]
-            elif feature in cell['categories'].keys():
-                del cell['categories'][feature]
-            cell['untouched'].append(feature)
+            for feature in features:
+                if feature in cell['ranges'].keys():
+                    del cell['ranges'][feature]
+                elif feature in cell['categories'].keys():
+                    del cell['categories'][feature]
+                cell['untouched'].append(feature)
             cells_by_id[cell['id']] = cell.copy()
 
     @staticmethod
