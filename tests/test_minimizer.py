@@ -1038,7 +1038,7 @@ def test_minimizer_ndarray_one_hot_multi():
     transformed = gen.transform(dataset=ArrayDataset(x_train))
     gener = gen.generalizations
     expected_generalizations = {'categories':
-                                    {'1': [[0, 1]], '2': [[0, 1]], '3': [[0, 1]], '4': [[0, 1]], '5': [[0, 1]]},
+                                {'1': [[0, 1]], '2': [[0, 1]], '3': [[0, 1]], '4': [[0, 1]], '5': [[0, 1]]},
                                 'category_representatives': {'1': [0], '2': [1], '3': [0], '4': [1], '5': [0]},
                                 'range_representatives': {'0': []}, 'ranges': {'0': []}, 'untouched': ['6']}
 
