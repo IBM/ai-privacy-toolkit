@@ -96,8 +96,6 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 self.estimator = SklearnClassifier(estimator, ModelOutputType.CLASSIFIER_PROBABILITIES)
         self.target_accuracy = target_accuracy
         self.cells = cells
-        if cells:
-            self._calculate_generalizations()
         self.categorical_features = []
         if categorical_features:
             self.categorical_features = categorical_features
@@ -117,6 +115,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
         self._dt = None
         self._features = None
         self._level = 0
+        if cells:
+            self._calculate_generalizations()
 
     def get_params(self, deep=True):
         """
@@ -741,19 +741,17 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                         # need to add other columns that represent same 1-hot encoded feature
 
                         # search for feature group:
-                        for encoded in self.feature_slices:
-                            if feature in encoded:
-                                other_features = list(set(encoded) - set([feature]))
-                                for other_feature in other_features:
-                                    if other_feature not in new_cell['categories'].keys():
-                                        new_cell['categories'][other_feature] = []
-                                    if feature_value == 1:
-                                        new_cell['categories'][other_feature].append(0)
-                                    elif len(encoded) == 2:
-                                        new_cell['categories'][other_feature].append(1)
-                                    else:
-                                        new_cell['categories'][other_feature].append(0)
-                                        new_cell['categories'][other_feature].append(1)
+                        other_features, encoded = self._get_other_features_in_encoding(feature, self.feature_slices)
+                        for other_feature in other_features:
+                            if other_feature not in new_cell['categories'].keys():
+                                new_cell['categories'][other_feature] = []
+                            if feature_value == 1:
+                                new_cell['categories'][other_feature].append(0)
+                            elif len(encoded) == 2:
+                                new_cell['categories'][other_feature].append(1)
+                            else:
+                                new_cell['categories'][other_feature].append(0)
+                                new_cell['categories'][other_feature].append(1)
                 else:
                     if feature in cell['ranges'].keys():
                         new_cell['ranges'][feature] = cell['ranges'][feature]
@@ -1104,17 +1102,31 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             # categorical - use most common value
             old_category_representatives = category_representatives
             category_representatives = {}
+            done = set()
             for feature in self._generalizations['categories']:
-                category_representatives[feature] = []
-                for g_index, group in enumerate(self._generalizations['categories'][feature]):
-                    indexes = [i for i, s in enumerate(sample_indexes) if s[feature] == g_index]
-                    if indexes:
-                        rows = samples.iloc[indexes]
-                        values = rows[feature]
-                        category = Counter(values).most_common(1)[0][0]
-                        category_representatives[feature].append(category)
-                    else:
-                        category_representatives[feature].append(old_category_representatives[feature][g_index])
+                if feature not in done:
+                    category_representatives[feature] = []
+                    for g_index, group in enumerate(self._generalizations['categories'][feature]):
+                        indexes = [i for i, s in enumerate(sample_indexes) if s[feature] == g_index]
+                        if indexes:
+                            rows = samples.iloc[indexes]
+                            if feature in self.all_one_hot_features:
+                                other_features, encoded = self._get_other_features_in_encoding(feature,
+                                                                                               self.feature_slices)
+                                values = rows.loc[:, encoded].to_numpy()
+                                unique_rows, counts = np.unique(values, axis=0, return_counts=True)
+                                rep = unique_rows[np.argmax(counts)]
+                                for i, e in enumerate(encoded):
+                                    done.add(e)
+                                    if e not in category_representatives.keys():
+                                        category_representatives[e] = []
+                                    category_representatives[e].append(rep[i])
+                            else:
+                                values = rows[feature]
+                                category = Counter(values).most_common(1)[0][0]
+                                category_representatives[feature].append(category)
+                        else:
+                            category_representatives[feature].append(old_category_representatives[feature][g_index])
 
             # numerical - use actual value closest to mean
             old_range_representatives = range_representatives
@@ -1223,34 +1235,54 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 range_representatives[feature].append(prev_value + 1)
         return ranges, range_representatives
 
-    @staticmethod
-    def _calculate_categories(cells):
+    def _calculate_categories(self, cells):
         categories = {}
         category_representatives = {}
         categorical_features_values = GeneralizeToRepresentative._calculate_categorical_features_values(cells)
+        assigned_features = set()
         for feature in categorical_features_values.keys():
             partitions = []
             category_representatives[feature] = []
             values = categorical_features_values[feature]
-            assigned = []
+            assigned_values = set()
             for i in range(len(values)):
                 value1 = values[i]
-                if value1 in assigned:
+                if value1 in assigned_values:
                     continue
                 partition = [value1]
-                assigned.append(value1)
+                assigned_values.add(value1)
                 for j in range(len(values)):
                     if j <= i:
                         continue
                     value2 = values[j]
                     if GeneralizeToRepresentative._are_inseparable(cells, feature, value1, value2):
                         partition.append(value2)
-                        assigned.append(value2)
+                        assigned_values.add(value2)
                 partitions.append(partition)
                 # default representative values (computed with no data)
-                category_representatives[feature].append(partition[0])  # random
+                # for 1-hot encoded features, the first encountered feature will get the value 1 and the rest 0
+                if len(partition) > 1 and feature in self.all_one_hot_features:
+                    other_features, _ = self._get_other_features_in_encoding(feature, self.feature_slices)
+                    assigned = False
+                    for other_feature in other_features:
+                        if other_feature in assigned_features:
+                            category_representatives[feature].append(0)
+                            assigned = True
+                            break
+                    if not assigned:
+                        category_representatives[feature].append(1)
+                    assigned_features.add(feature)
+                else:
+                    category_representatives[feature].append(partition[0])  # random
             categories[feature] = partitions
         return categories, category_representatives
+
+    @staticmethod
+    def _get_other_features_in_encoding(feature, feature_slices):
+        for encoded in feature_slices:
+            if feature in encoded:
+                return (list(set(encoded) - set([feature]))), encoded
+        return [], []
 
     @staticmethod
     def _calculate_categorical_features_values(cells):
