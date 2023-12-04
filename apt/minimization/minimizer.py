@@ -396,6 +396,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             x_test_dataset = ArrayDataset(x_test, features_names=self._features)
             self._ncp_scores.fit_score = self.calculate_ncp(x_test_dataset)
             self._ncp_scores.generalizations_score = self.calculate_ncp(x_test_dataset)
+        else:
+            print('No fitting was performed as some information was missing')
 
         # Return the transformer
         return self
