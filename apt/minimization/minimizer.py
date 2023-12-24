@@ -602,7 +602,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             elif feature in cell['untouched']:
                 continue
             else:
-                raise TypeError("feature " + feature + "not found in cell" + cell['id'])
+                raise TypeError("feature " + str(feature) + " not found in cell " + str(cell['id']))
         # Mark as mapped
         mapped.itemset(index, 1)
         return True
@@ -736,24 +736,20 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                             feature_value = 0
                         elif range['end'] is None and range['start'] > 0:
                             feature_value = 1
-                        elif range['start'] is not None and range['end'] is not None:
-                            print(range)
-                        new_cell['categories'][feature].append(feature_value)
+                        new_cell['categories'][feature] = [feature_value]
 
                         # need to add other columns that represent same 1-hot encoded feature
 
                         # search for feature group:
                         other_features, encoded = self._get_other_features_in_encoding(feature, self.feature_slices)
                         for other_feature in other_features:
-                            if other_feature not in new_cell['categories'].keys():
-                                new_cell['categories'][other_feature] = []
                             if feature_value == 1:
-                                new_cell['categories'][other_feature].append(0)
+                                new_cell['categories'][other_feature] = [0]
                             elif len(encoded) == 2:
-                                new_cell['categories'][other_feature].append(1)
-                            else:
-                                new_cell['categories'][other_feature].append(0)
-                                new_cell['categories'][other_feature].append(1)
+                                new_cell['categories'][other_feature] = [1]
+                            elif (other_feature not in new_cell['categories'].keys() or
+                                  len(new_cell['categories'][other_feature]) == 0):
+                                new_cell['categories'][other_feature] = [0, 1]
                 else:
                     if feature in cell['ranges'].keys():
                         new_cell['ranges'][feature] = cell['ranges'][feature]
