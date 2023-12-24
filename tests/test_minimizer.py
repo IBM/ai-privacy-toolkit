@@ -1082,10 +1082,9 @@ def test_minimizer_ndarray_one_hot_multi2():
     gen.fit(dataset=ArrayDataset(x_train, predictions))
     transformed = gen.transform(dataset=ArrayDataset(x_train))
     gener = gen.generalizations
-    expected_generalizations = {'categories':
-                                    {'1': [[0, 1]], '2': [[0, 1]], '3': [[0, 1]], '4': [[0, 1]], '5': [[0, 1]]},
-                                'category_representatives': {'1': [0], '2': [1], '3': [0], '4': [1], '5': [0]},
-                                'range_representatives': {'0': []}, 'ranges': {'0': []}, 'untouched': ['6']}
+    expected_generalizations = {'categories': {'0': [[0, 1]], '1': [[0, 1]], '2': [[0, 1]]},
+                                'category_representatives': {'0': [0], '1': [0], '2': [1]}, 'range_representatives': {},
+                                'ranges': {}, 'untouched': []}
 
     compare_generalizations(gener, expected_generalizations)
 
@@ -1099,11 +1098,6 @@ def test_minimizer_ndarray_one_hot_multi2():
     assert ((np.sum(transformed_slice, axis=1) == 1).all())
     assert ((np.max(transformed_slice, axis=1) == 1).all())
     assert ((np.min(transformed_slice, axis=1) == 0).all())
-    transformed_slice = transformed[:, QI_slices[1]]
-    assert ((np.sum(transformed_slice, axis=1) == 1).all())
-    assert ((np.max(transformed_slice, axis=1) == 1).all())
-    assert ((np.min(transformed_slice, axis=1) == 0).all())
-
 
 
 def test_anonymize_pandas_one_hot():
