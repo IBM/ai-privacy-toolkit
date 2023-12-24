@@ -757,8 +757,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                                 new_cell['categories'][other_feature] = [0]
                             elif len(encoded) == 2:
                                 new_cell['categories'][other_feature] = [1]
-                            elif (other_feature not in new_cell['categories'].keys() or
-                                  len(new_cell['categories'][other_feature]) == 0):
+                            elif (other_feature not in new_cell['categories'].keys()
+                                  or len(new_cell['categories'][other_feature]) == 0):
                                 new_cell['categories'][other_feature] = [0, 1]
                 else:
                     if feature in cell['ranges'].keys():
