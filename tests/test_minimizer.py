@@ -181,8 +181,8 @@ def compare_generalizations(gener, expected_generalizations):
                     == set(gener['range_representatives'][key]))
     if 'category_representatives' in expected_generalizations:
         for key in expected_generalizations['category_representatives']:
-            assert (set([frozenset(sl) for sl in expected_generalizations['category_representatives'][key]])
-                    == set([frozenset(sl) for sl in gener['category_representatives'][key]]))
+            assert (set(expected_generalizations['category_representatives'][key])
+                    == set(gener['category_representatives'][key]))
 
 
 def check_features(features, expected_generalizations, transformed, x, pandas=False):
@@ -200,9 +200,9 @@ def check_features(features, expected_generalizations, transformed, x, pandas=Fa
             if features[i] in modified_features:
                 indexes.append(i)
         if len(indexes) != transformed.shape[1]:
-            assert ((np.delete(transformed, indexes, axis=1) == np.delete(x, indexes, axis=1)).all())
+            assert (np.array_equal(np.delete(transformed, indexes, axis=1), np.delete(x, indexes, axis=1)))
         if len(expected_generalizations['ranges'].keys()) > 0 or len(expected_generalizations['categories'].keys()) > 0:
-            assert (((transformed[indexes]) != (x[indexes])).any())
+            assert (not np.array_equal(transformed[:, indexes], x[:, indexes]))
 
 
 def check_ncp(ncp, expected_generalizations):
@@ -918,6 +918,233 @@ def test_BaseEstimator_regression(diabetes_dataset):
 
     rel_accuracy = model.score(transformed, predictions)
     assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+
+
+def test_minimizer_ndarray_one_hot():
+    x_train = np.array([[23, 0, 1, 165],
+                        [45, 0, 1, 158],
+                        [56, 1, 0, 123],
+                        [67, 0, 1, 154],
+                        [45, 1, 0, 149],
+                        [42, 1, 0, 166],
+                        [73, 0, 1, 172],
+                        [94, 0, 1, 168],
+                        [69, 0, 1, 175],
+                        [24, 1, 0, 181],
+                        [18, 1, 0, 190]])
+    y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    predictions = model.predict(x_train)
+
+    features = ['0', '1', '2', '3']
+    QI = [0, 1, 2]
+    QI_slices = [[1, 2]]
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories': {}, 'category_representatives': {},
+                                'range_representatives': {'0': [34.5]},
+                                'ranges': {'0': [34.5]}, 'untouched': ['3', '1', '2']}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+    transformed_slice = transformed[:, QI_slices[0]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
+
+
+def test_minimizer_ndarray_one_hot_gen():
+    x_train = np.array([[23, 0, 1, 165],
+                        [45, 0, 1, 158],
+                        [56, 1, 0, 123],
+                        [67, 0, 1, 154],
+                        [45, 1, 0, 149],
+                        [42, 1, 0, 166],
+                        [73, 0, 1, 172],
+                        [94, 0, 1, 168],
+                        [69, 0, 1, 175],
+                        [24, 1, 0, 181],
+                        [18, 1, 0, 190]])
+    y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    predictions = model.predict(x_train)
+
+    features = ['0', '1', '2', '3']
+    QI = [0, 1, 2]
+    QI_slices = [[1, 2]]
+    target_accuracy = 0.2
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories': {'1': [[0, 1]], '2': [[0, 1]]},
+                                'category_representatives': {'1': [0], '2': [1]},
+                                'range_representatives': {'0': []}, 'ranges': {'0': []}, 'untouched': ['3']}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+    transformed_slice = transformed[:, QI_slices[0]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
+
+
+def test_minimizer_ndarray_one_hot_multi():
+    x_train = np.array([[23, 0, 1, 0, 0, 1, 165],
+                        [45, 0, 1, 0, 0, 1, 158],
+                        [56, 1, 0, 0, 0, 1, 123],
+                        [67, 0, 1, 1, 0, 0, 154],
+                        [45, 1, 0, 1, 0, 0, 149],
+                        [42, 1, 0, 1, 0, 0, 166],
+                        [73, 0, 1, 0, 0, 1, 172],
+                        [94, 0, 1, 0, 1, 0, 168],
+                        [69, 0, 1, 0, 1, 0, 175],
+                        [24, 1, 0, 0, 1, 0, 181],
+                        [18, 1, 0, 0, 0, 1, 190]])
+    y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    predictions = model.predict(x_train)
+
+    features = ['0', '1', '2', '3', '4', '5', '6']
+    QI = [0, 1, 2, 3, 4, 5]
+    QI_slices = [[1, 2], [3, 4, 5]]
+    target_accuracy = 0.2
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories':
+                                {'1': [[0, 1]], '2': [[0, 1]], '3': [[0, 1]], '4': [[0, 1]], '5': [[0, 1]]},
+                                'category_representatives': {'1': [0], '2': [1], '3': [0], '4': [1], '5': [0]},
+                                'range_representatives': {'0': []}, 'ranges': {'0': []}, 'untouched': ['6']}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+    transformed_slice = transformed[:, QI_slices[0]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
+    transformed_slice = transformed[:, QI_slices[1]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
+
+
+def test_minimizer_ndarray_one_hot_multi2():
+    x_train = np.array([[0, 0, 1],
+                        [0, 0, 1],
+                        [0, 1, 0],
+                        [0, 1, 0],
+                        [1, 0, 0],
+                        [1, 0, 0]])
+    y_train = np.array([1, 1, 2, 2, 0, 0])
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    predictions = model.predict(x_train)
+
+    features = ['0', '1', '2']
+    QI = [0, 1, 2]
+    QI_slices = [[0, 1, 2]]
+    target_accuracy = 0.2
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories': {'0': [[0, 1]], '1': [[0, 1]], '2': [[0, 1]]},
+                                'category_representatives': {'0': [0], '1': [0], '2': [1]}, 'range_representatives': {},
+                                'ranges': {}, 'untouched': []}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+    transformed_slice = transformed[:, QI_slices[0]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
+
+
+def test_anonymize_pandas_one_hot():
+    features = ["age", "gender_M", "gender_F", "height"]
+    x_train = np.array([[23, 0, 1, 165],
+                        [45, 0, 1, 158],
+                        [56, 1, 0, 123],
+                        [67, 0, 1, 154],
+                        [45, 1, 0, 149],
+                        [42, 1, 0, 166],
+                        [73, 0, 1, 172],
+                        [94, 0, 1, 168],
+                        [69, 0, 1, 175],
+                        [24, 1, 0, 181],
+                        [18, 1, 0, 190]])
+    y_train = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
+    x_train = pd.DataFrame(x_train, columns=features)
+    y_train = pd.Series(y_train)
+
+    model = DecisionTreeClassifier()
+    model.fit(x_train, y_train)
+    predictions = model.predict(x_train)
+
+    QI = ["age", "gender_M", "gender_F"]
+    QI_slices = [["gender_M", "gender_F"]]
+    target_accuracy = 0.7
+    gen = GeneralizeToRepresentative(model, target_accuracy=target_accuracy, feature_slices=QI_slices,
+                                     features_to_minimize=QI)
+    gen.fit(dataset=ArrayDataset(x_train, predictions))
+    transformed = gen.transform(dataset=ArrayDataset(x_train))
+    gener = gen.generalizations
+    expected_generalizations = {'categories': {}, 'category_representatives': {},
+                                'range_representatives': {'age': [34.5]},
+                                'ranges': {'age': [34.5]}, 'untouched': ['height', 'gender_M', 'gender_F']}
+
+    compare_generalizations(gener, expected_generalizations)
+
+    check_features(features, expected_generalizations, transformed, x_train, True)
+    ncp = gen.ncp.transform_score
+    check_ncp(ncp, expected_generalizations)
+
+    rel_accuracy = model.score(transformed, predictions)
+    assert ((rel_accuracy >= target_accuracy) or (target_accuracy - rel_accuracy) <= ACCURACY_DIFF)
+    transformed_slice = transformed.loc[:, QI_slices[0]]
+    assert ((np.sum(transformed_slice, axis=1) == 1).all())
+    assert ((np.max(transformed_slice, axis=1) == 1).all())
+    assert ((np.min(transformed_slice, axis=1) == 0).all())
 
 
 def test_keras_model():
