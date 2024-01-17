@@ -576,7 +576,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if feature not in feature_data.keys():
                 fd = {}
                 values = list(x.loc[:, feature])
-                if feature not in self.categorical_features:
+                if feature not in self.categorical_features and feature not in self.all_one_hot_features:
                     fd['min'] = min(values)
                     fd['max'] = max(values)
                     fd['range'] = max(values) - min(values)
