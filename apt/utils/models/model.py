@@ -29,7 +29,15 @@ class ScoringMethod(Enum):
 
 
 def is_one_hot(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
-    return len(y.shape) == 2 and y.shape[1] > 1
+    return len(y.shape) == 2 and y.shape[1] > 1 and np.all(np.around(np.sum(y, axis=1), decimals=4) == 1)
+
+
+def is_multi_label(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
+    return len(y.shape) == 2 and y.shape[1] > 1 and not is_one_hot(y)
+
+
+def is_multi_label_binary(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
+    return is_multi_label(y) and np.max(y) <= 1
 
 
 def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE) -> int:
@@ -38,7 +46,7 @@ def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE) -> int:
 
     :param y: The labels
     :type y: numpy array
-    :return: The number of classes as integer
+    :return: The number of classes as integer, or list of integers for multi-label
     """
     if y is None:
         return 0
@@ -48,6 +56,10 @@ def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE) -> int:
 
     if is_one_hot(y):
         return y.shape[1]
+    elif is_multi_label(y):
+        # for now just return the number of labels
+        return y.shape[1]
+        # return [int(np.max(y.T[i]) + 1) for i in range(y.shape[1])]
     else:
         return int(np.max(y) + 1)
 
@@ -61,7 +73,7 @@ def check_correct_model_output(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutp
     :type output_type: ModelOutputType
     :raises: ValueError (in case of mismatch)
     """
-    if not is_one_hot(y):  # 1D array
+    if not is_one_hot(y) and not is_multi_label(y):  # 1D array
         if output_type == ModelOutputType.CLASSIFIER_PROBABILITIES or output_type == ModelOutputType.CLASSIFIER_LOGITS:
             raise ValueError("Incompatible model output types. Model outputs 1D array of categorical scalars while "
                              "output type is set to ", output_type)
@@ -167,7 +179,8 @@ class Model(metaclass=ABCMeta):
 
 class BlackboxClassifier(Model):
     """
-    Wrapper for black-box ML classification models.
+    Wrapper for black-box ML classification models. This is an abstract class and must be instantiated as either
+    BlackboxClassifierPredictFunction or BlackboxClassifierPredictions.
 
     :param model: The training and/or test data along with the model's predictions for the data or a callable predict
                   method.
@@ -266,7 +279,8 @@ class BlackboxClassifier(Model):
         check_correct_model_output(predictions, self.output_type)
         return predictions
 
-    def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.ACCURACY, **kwargs):
+    def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.ACCURACY,
+              binary_threshold: Optional[float] = 0.5, **kwargs):
         """
         Score the model using test data.
 
@@ -274,14 +288,25 @@ class BlackboxClassifier(Model):
         :type train_data: `Dataset`
         :param scoring_method: The method for scoring predictions. Default is ACCURACY.
         :type scoring_method: `ScoringMethod`, optional
+        :param binary_threshold: The threshold to use on binary classification probabilities to assign the positive
+                                 class.
+        :type binary_threshold: float, optional. Default is 0.5.
         :return: the score as float (for classifiers, between 0 and 1)
         """
         if test_data.get_samples() is None or test_data.get_labels() is None:
             raise ValueError('score can only be computed when test data and labels are available')
         predicted = self._art_model.predict(test_data.get_samples())
-        y = check_and_transform_label_format(test_data.get_labels(), nb_classes=self._nb_classes)
+        y = test_data.get_labels()
+        if not is_multi_label(y):
+            y = check_and_transform_label_format(y, nb_classes=self._nb_classes)
         if scoring_method == ScoringMethod.ACCURACY:
-            return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+            if not is_multi_label(y):
+                return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+            else:
+                if is_multi_label_binary(y):
+                    predicted[predicted < binary_threshold] = 0
+                    predicted[predicted >= binary_threshold] = 1
+                return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
         else:
             raise NotImplementedError
 
