@@ -5,7 +5,6 @@ import numpy as np
 from scipy import stats
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
-from pandas.api.types import is_numeric_dtype, is_categorical_dtype
 
 from apt.utils.datasets import ArrayDataset
 
