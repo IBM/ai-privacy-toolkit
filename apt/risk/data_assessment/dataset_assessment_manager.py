@@ -47,7 +47,8 @@ class DatasetAssessmentManager:
                synthetic_data: ArrayDataset, dataset_name: str = DEFAULT_DATASET_NAME, categorical_features: list = [])\
             -> list[DatasetAttackScore]:
         """
-        Do dataset privacy risk assessment by running dataset attacks, and return their scores.
+        Do dataset privacy risk assessment by running dataset attacks, and return their scores. All data is assumed
+        to be encoded and scaled.
 
         :param original_data_members: A container for the training original samples and labels,
             only samples are used in the assessment
