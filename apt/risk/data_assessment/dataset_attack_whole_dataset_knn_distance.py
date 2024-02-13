@@ -77,9 +77,11 @@ class DatasetAttackWholeDatasetKnnDistance(DatasetAttack):
                  config: DatasetAttackConfigWholeDatasetKnnDistance = DatasetAttackConfigWholeDatasetKnnDistance(),
                  dataset_name: str = DEFAULT_DATASET_NAME, categorical_features: list = None, **kwargs):
         """
-        :param original_data_members: A container for the training original samples and labels
-        :param original_data_non_members: A container for the holdout original samples and labels
-        :param synthetic_data: A container for the synthetic samples and labels
+        :param original_data_members: A container for the training original samples and labels. Should be encoded and
+                                      scaled.
+        :param original_data_non_members: A container for the holdout original samples and labels. Should be encoded
+                                          and scaled.
+        :param synthetic_data: A container for the synthetic samples and labels. Should be encoded and scaled.
         :param config: Configuration parameters to guide the assessment process, optional
         :param dataset_name: A name to identify this dataset, optional
         """

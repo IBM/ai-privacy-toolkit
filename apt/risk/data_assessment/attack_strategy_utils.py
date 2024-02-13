@@ -5,7 +5,6 @@ import numpy as np
 from scipy import stats
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
-from pandas.api.types import is_numeric_dtype, is_categorical_dtype
 
 from apt.utils.datasets import ArrayDataset
 
@@ -169,26 +168,15 @@ class KNNAttackStrategyUtils(AttackStrategyUtils):
         differing_columns = []
         df1_samples = df1.get_samples()
         df2_samples = df2.get_samples()
-        if df1.is_pandas:
-            for name, _ in df1_samples.items():
-                is_categorical = name in categorical_features or is_categorical_dtype(df1_samples.dtypes[name])
-                is_numeric = is_numeric_dtype(df1_samples.dtypes[name])
-                KNNAttackStrategyUtils._column_statistical_test(df1_samples[name], df2_samples[name], name,
-                                                                is_categorical, is_numeric,
-                                                                self.distribution_comparison_numeric_test,
-                                                                self.distribution_comparison_categorical_test,
-                                                                self.distribution_comparison_alpha,
-                                                                differing_columns)
-        else:
-            is_numeric = np.issubdtype(df1_samples.dtype, int) or np.issubdtype(df1_samples.dtype, float)
+        is_numeric = np.issubdtype(df1_samples.dtype, int) or np.issubdtype(df1_samples.dtype, float)
 
-            for i, column in enumerate(df1_samples.T):
-                is_categorical = i in categorical_features
-                KNNAttackStrategyUtils._column_statistical_test(df1_samples[:, i], df2_samples[:, i], i,
-                                                                is_categorical, is_numeric,
-                                                                self.distribution_comparison_numeric_test,
-                                                                self.distribution_comparison_categorical_test,
-                                                                self.distribution_comparison_alpha, differing_columns)
+        for i, column in enumerate(df1_samples.T):
+            is_categorical = i in categorical_features
+            KNNAttackStrategyUtils._column_statistical_test(df1_samples[:, i], df2_samples[:, i], i,
+                                                            is_categorical, is_numeric,
+                                                            self.distribution_comparison_numeric_test,
+                                                            self.distribution_comparison_categorical_test,
+                                                            self.distribution_comparison_alpha, differing_columns)
         return differing_columns
 
     def validate_distributions(self, original_data_members: ArrayDataset, original_data_non_members: ArrayDataset,
