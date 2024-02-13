@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from apt.anonymization import Anonymize
@@ -52,6 +53,8 @@ def test_risk_anonymization(name, data, dataset_type, mgr):
         categorical_features = []
     elif "nursery" in name:
         preprocessed_x_train, preprocessed_x_test, categorical_features = preprocess_nursery_x_data(x_train, x_test)
+        preprocessed_x_train = pd.DataFrame(preprocessed_x_train)
+        preprocessed_x_test = pd.DataFrame(preprocessed_x_test)
         QI = list(range(15, 20))
         anonymizer = Anonymize(ANON_K, QI, train_only_QI=True)
     else:
