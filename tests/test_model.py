@@ -179,7 +179,7 @@ def test_blackbox_classifier_predictions_multi_label_cat():
 def test_blackbox_classifier_predictions_multi_label_binary():
     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
 
-    # make multi-label categorical
+    # make multi-label binary
     y_train = np.column_stack((y_train, y_train, y_train))
     y_train[y_train > 1] = 1
     pred_train = y_train.copy().astype(float)
