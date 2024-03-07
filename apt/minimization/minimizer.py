@@ -93,7 +93,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if is_regression:
                 self.estimator = SklearnRegressor(estimator)
             else:
-                self.estimator = SklearnClassifier(estimator, ModelOutputType.CLASSIFIER_PROBABILITIES)
+                self.estimator = SklearnClassifier(estimator,
+                                                   ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
         self.target_accuracy = target_accuracy
         self.cells = cells
         self.categorical_features = []

@@ -266,6 +266,8 @@ class DatasetWithPredictions(Dataset):
     Dataset that is based on arrays (e.g., numpy/pandas/list...). Includes predictions from a model, and possibly also
     features and true labels.
 
+    :param pred: collection of model predictions
+    :type pred: numpy array or pandas DataFrame or list or pytorch Tensor
     :param x: collection of data samples
     :type x: numpy array or pandas DataFrame or list or pytorch Tensor
     :param y: collection of labels

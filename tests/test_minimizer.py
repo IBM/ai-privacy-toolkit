@@ -216,7 +216,7 @@ def test_minimizer_params(cells):
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
 
     expected_generalizations = {'categories': {}, 'category_representatives': {},
@@ -258,7 +258,7 @@ def test_minimizer_params_not_transform(cells):
     samples = ArrayDataset(x, y, features)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
 
     gen = GeneralizeToRepresentative(model, cells=cells, generalize_using_transform=False)
@@ -270,7 +270,7 @@ def test_minimizer_fit(data_two_features):
     x, y, features, _ = data_two_features
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -299,7 +299,7 @@ def test_minimizer_ncp(data_two_features):
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     ad1 = ArrayDataset(x1, features_names=features)
@@ -342,7 +342,7 @@ def test_minimizer_ncp_categorical(data_four_features):
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
     ad = ArrayDataset(x)
     ad1 = ArrayDataset(x1)
@@ -382,7 +382,7 @@ def test_minimizer_fit_not_transform(data_two_features):
     x, y, features, x1 = data_two_features
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -412,7 +412,7 @@ def test_minimizer_fit_pandas(data_four_features):
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
@@ -450,7 +450,7 @@ def test_minimizer_params_categorical(cells_categorical):
     preprocessor, encoded = create_encoder(numeric_features, categorical_features, x)
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
@@ -474,7 +474,7 @@ def test_minimizer_fit_qi(data_three_features):
     qi = ['age', 'weight']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -508,7 +508,7 @@ def test_minimizer_fit_pandas_qi(data_five_features):
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y))
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
@@ -543,7 +543,7 @@ def test_minimize_ndarray_iris():
     qi = ['sepal length (cm)', 'petal length (cm)']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     model.fit(ArrayDataset(x_train, y_train))
     predictions = model.predict(ArrayDataset(x_train))
     if predictions.shape[1] > 1:
@@ -586,7 +586,7 @@ def test_minimize_pandas_adult():
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y_train))
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
@@ -642,7 +642,7 @@ def test_german_credit_pandas():
 
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(encoded, y_train))
     predictions = model.predict(ArrayDataset(encoded))
     if predictions.shape[1] > 1:
@@ -760,7 +760,7 @@ def test_x_y():
     qi = [0, 2]
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -800,7 +800,7 @@ def test_x_y_features_names():
     qi = ['age', 'weight']
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x)
     predictions = model.predict(ad)
@@ -1202,7 +1202,7 @@ def test_keras_model():
 
     base_est.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
-    model = KerasClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = KerasClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(x, y))
     ad = ArrayDataset(x_test)
     predictions = model.predict(ad)
@@ -1269,8 +1269,11 @@ def test_minimizer_pytorch(data_three_features):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(base_est.parameters(), lr=0.01)
 
-    model = PyTorchClassifier(model=base_est, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-                              optimizer=optimizer, input_shape=(3,),
+    model = PyTorchClassifier(model=base_est,
+                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(3,),
                               nb_classes=2)
     model.fit(PytorchData(x, y), save_entire_model=False, nb_epochs=10)
 
@@ -1308,8 +1311,11 @@ def test_minimizer_pytorch_iris():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(base_est.parameters(), lr=0.01)
 
-    model = PyTorchClassifier(model=base_est, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-                              optimizer=optimizer, input_shape=(4,),
+    model = PyTorchClassifier(model=base_est,
+                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(4,),
                               nb_classes=3)
     model.fit(PytorchData(x_train, y_train), save_entire_model=False, nb_epochs=10)
 
@@ -1362,7 +1368,7 @@ def test_errors():
     y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0])
     base_est = DecisionTreeClassifier(random_state=0, min_samples_split=2,
                                       min_samples_leaf=1)
-    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_PROBABILITIES)
+    model = SklearnClassifier(base_est, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     model.fit(ArrayDataset(X, y))
     ad = ArrayDataset(X)
     predictions = model.predict(ad)

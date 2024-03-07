@@ -4,7 +4,7 @@ import numpy as np
 
 from sklearn.metrics import mean_squared_error
 
-from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output
+from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output, is_logits
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.utils import check_and_transform_label_format
@@ -39,9 +39,7 @@ class KerasClassifier(KerasModel):
     def __init__(self, model: "keras.models.Model", output_type: ModelOutputType, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
-        logits = False
-        if output_type == ModelOutputType.CLASSIFIER_LOGITS:
-            logits = True
+        logits = is_logits(output_type)
         self._art_model = ArtKerasClassifier(model, use_logits=logits)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:

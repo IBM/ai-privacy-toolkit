@@ -1,7 +1,7 @@
 import numpy as np
-from torch import nn, optim, sigmoid, where
+from torch import nn, optim, sigmoid, where, from_numpy
 from torch.nn import functional
-# from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 from scipy.special import expit
 
 from apt.utils.datasets.datasets import PytorchData
@@ -56,8 +56,11 @@ def test_pytorch_nursery_state_dict():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
-    model = PyTorchClassifier(model=inner_model, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-                              optimizer=optimizer, input_shape=(24,),
+    model = PyTorchClassifier(model=inner_model,
+                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(24,),
                               nb_classes=4)
     model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=False, nb_epochs=10)
     model.load_latest_state_dict_checkpoint()
@@ -66,7 +69,7 @@ def test_pytorch_nursery_state_dict():
     assert (0 <= score <= 1)
     # python pytorch numpy
     model.load_best_state_dict_checkpoint()
-    score = model.score(PytorchData(x_test.astype(np.float32), y_test))
+    score = model.score(PytorchData(x_test.astype(np.float32), y_test), apply_non_linearity=expit)
     print('best model accuracy: ', score)
     assert (0 <= score <= 1)
 
@@ -86,8 +89,11 @@ def test_pytorch_nursery_save_entire_model():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-    art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-                                  optimizer=optimizer, input_shape=(24,),
+    art_model = PyTorchClassifier(model=model,
+                                  output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                                  loss=criterion,
+                                  optimizer=optimizer,
+                                  input_shape=(24,),
                                   nb_classes=4)
     art_model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True, nb_epochs=10)
 
@@ -95,7 +101,7 @@ def test_pytorch_nursery_save_entire_model():
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
     art_model.load_best_model_checkpoint()
-    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test))
+    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test), apply_non_linearity=expit)
     print('best model accuracy: ', score)
     assert (0 <= score <= 1)
 
@@ -126,7 +132,7 @@ def test_pytorch_nursery_save_entire_model():
 #     # make multi-label categorical
 #     y_train = np.column_stack((y_train, y_train, y_train))
 #     y_test = np.column_stack((y_test, y_test, y_test))
-#     test = PytorchData(x_test, y_test)
+#     test = PytorchData(x_test.astype(np.float32), y_test.astype(np.float32))
 #
 #     model = multi_label_cat_model(3, 4)
 #     criterion = nn.CrossEntropyLoss()
@@ -154,8 +160,11 @@ def test_pytorch_nursery_save_entire_model():
 #
 #             optimizer.step()
 #
-#     art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-#                                   optimizer=optimizer, input_shape=(24,),
+#     art_model = PyTorchClassifier(model=model,
+#                                   output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
+#                                   loss=criterion,
+#                                   optimizer=optimizer,
+#                                   input_shape=(24,),
 #                                   nb_classes=3)
 #
 #     pred = art_model.predict(test)
@@ -211,8 +220,11 @@ def test_pytorch_predictions_multi_label_binary():
     criterion = FocalLoss()
     optimizer = optim.RMSprop(model.parameters(), lr=0.01)
 
-    art_model = PyTorchClassifier(model=model, output_type=ModelOutputType.CLASSIFIER_LOGITS, loss=criterion,
-                                  optimizer=optimizer, input_shape=(24,),
+    art_model = PyTorchClassifier(model=model,
+                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
+                                  loss=criterion,
+                                  optimizer=optimizer,
+                                  input_shape=(24,),
                                   nb_classes=3)
     art_model.fit(PytorchData(x_train.astype(np.float32), y_train.astype(np.float32)), save_entire_model=False,
                   nb_epochs=10)

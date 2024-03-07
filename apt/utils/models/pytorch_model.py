@@ -7,9 +7,10 @@ from typing import Optional, Tuple, Union, List, Callable
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
+from collections.abc import Iterable
 
 from art.utils import check_and_transform_label_format
-from apt.utils.datasets.datasets import PytorchData
+from apt.utils.datasets.datasets import PytorchData, DatasetWithPredictions, ArrayDataset
 from apt.utils.models import Model, ModelOutputType, is_multi_label, is_multi_label_binary
 from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE
 from art.estimators.classification.pytorch import PyTorchClassifier as ArtPyTorchClassifier
@@ -36,6 +37,7 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             loss: "torch.nn.modules.loss._Loss",
             input_shape: Tuple[int, ...],
             nb_classes: int,
+            output_type: ModelOutputType,
             optimizer: Optional["torch.optim.Optimizer"] = None,  # type: ignore
             use_amp: bool = False,
             opt_level: str = "O1",
@@ -50,9 +52,10 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         super().__init__(model, loss, input_shape, nb_classes, optimizer, use_amp, opt_level, loss_scale,
                          channels_first, clip_values, preprocessing_defences, postprocessing_defences, preprocessing,
                          device_type)
-        self._is_single_binary = None
-        self._is_multi_label = None
-        self._is_multi_label_binary = None
+        self._is_single_binary = (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES or
+                                  output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS)
+        self._is_multi_label = is_multi_label(output_type)
+        self._is_multi_label_binary = is_multi_label_binary(output_type)
 
     def get_step_correct(self, outputs, targets) -> int:
         """
@@ -122,9 +125,6 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         :param kwargs: Dictionary of framework-specific arguments. This parameter is not currently
                        supported for PyTorch and providing it takes no effect.
         """
-        self._is_single_binary = self.nb_classes == 2 and (len(y.shape) == 1 or y.shape[1] == 1)
-        self._is_multi_label = is_multi_label(y)
-        self._is_multi_label_binary = is_multi_label_binary(y)
 
         # Put the model in the training mode
         self._model.train()
@@ -188,6 +188,58 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
                     self.save_checkpoint_model(is_best=best_acc <= val_acc, path=path)
                 else:
                     self.save_checkpoint_state_dict(is_best=best_acc <= val_acc, path=path)
+
+    def predict(
+            self, x: np.ndarray, batch_size: int = 128, training_mode: bool = False, **kwargs
+    ) -> np.ndarray:
+        """
+        Perform prediction for a batch of inputs.
+
+        :param x: Input samples.
+        :param batch_size: Size of batches.
+        :param training_mode: `True` for model set to training mode and `'False` for model set to evaluation mode.
+        :return: Array of predictions of shape `(nb_inputs, nb_classes)`.
+        """
+        import torch
+
+        # Set model mode
+        self._model.train(mode=training_mode)
+
+        # Apply preprocessing
+        x_preprocessed, _ = self._apply_preprocessing(x, y=None, fit=False)
+
+        results_list = []
+
+        # Run prediction with batch processing
+        num_batch = int(np.ceil(len(x_preprocessed) / float(batch_size)))
+        for m in range(num_batch):
+            # Batch indexes
+            begin, end = (
+                m * batch_size,
+                min((m + 1) * batch_size, x_preprocessed.shape[0]),
+            )
+
+            with torch.no_grad():
+                model_outputs = self._model(torch.from_numpy(x_preprocessed[begin:end]).to(self._device))
+            output = model_outputs[-1]
+            if isinstance(output, Iterable):
+                for i, o in enumerate(output):
+                    o = o.detach().cpu().numpy().astype(np.float32)
+                    # if len(output.shape) == 1:
+                    #     o = np.expand_dims(o, axis=1).astype(np.float32)
+            else:
+                output = output.detach().cpu().numpy().astype(np.float32)
+                if len(output.shape) == 1:
+                    output = np.expand_dims(output, axis=1).astype(np.float32)
+
+            results_list.append(output)
+
+        results = np.vstack(results_list)
+
+        # Apply postprocessing
+        predictions = self._apply_postprocessing(preds=results, fit=False)
+
+        return predictions
 
     def save_checkpoint_state_dict(self, is_best: bool, path=os.getcwd(), filename="latest.tar") -> None:
         """
@@ -352,7 +404,8 @@ class PyTorchClassifier(PyTorchModel):
         super().__init__(model, output_type, black_box_access, unlimited_queries, **kwargs)
         self._loss = loss
         self._optimizer = optimizer
-        self._art_model = PyTorchClassifierWrapper(model, loss, input_shape, nb_classes, optimizer)
+        self._nb_classes = nb_classes
+        self._art_model = PyTorchClassifierWrapper(model, loss, input_shape, nb_classes, output_type, optimizer)
 
     @property
     def loss(self):
@@ -433,8 +486,7 @@ class PyTorchClassifier(PyTorchModel):
         """
         return self._art_model.predict(x.get_samples(), **kwargs)
 
-    def score(self, test_data: PytorchData, binary_threshold: Optional[float] = 0.5,
-              apply_non_linearity: Optional[Callable] = None, **kwargs):
+    def score(self, test_data: PytorchData, **kwargs):
         """
         Score the model using test data.
 
@@ -452,23 +504,26 @@ class PyTorchClassifier(PyTorchModel):
         # numpy arrays
         y = test_data.get_labels()
         predicted = self.predict(test_data)
-        if apply_non_linearity:
-            predicted = apply_non_linearity(predicted)
-        # binary classification, single column of probabilities
-        if self._art_model.nb_classes == 2 and (len(predicted.shape) == 1 or predicted.shape[1] == 1):
-            if len(predicted.shape) > 1:
-                y = check_and_transform_label_format(y, self._art_model.nb_classes, return_one_hot=False)
-            return np.count_nonzero(y == (predicted > binary_threshold)) / predicted.shape[0]
-        # multi column
-        else:
-            if not is_multi_label(y):
-                y = check_and_transform_label_format(y, self._art_model.nb_classes)
-                return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
-            else:
-                if is_multi_label_binary(y):
-                    predicted[predicted < binary_threshold] = 0
-                    predicted[predicted >= binary_threshold] = 1
-                return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
+        kwargs['predictions'] = DatasetWithPredictions(pred=predicted)
+        kwargs['nb_classes'] = self._nb_classes
+        return super().score(ArrayDataset(test_data.get_samples(), test_data.get_labels()), **kwargs)
+        # if apply_non_linearity:
+        #     predicted = apply_non_linearity(predicted)
+        # # binary classification, single column of probabilities
+        # if self._art_model.nb_classes == 2 and (len(predicted.shape) == 1 or predicted.shape[1] == 1):
+        #     if len(predicted.shape) > 1:
+        #         y = check_and_transform_label_format(y, self._art_model.nb_classes, return_one_hot=False)
+        #     return np.count_nonzero(y == (predicted > binary_threshold)) / predicted.shape[0]
+        # # multi column
+        # else:
+        #     if not is_multi_label(y):
+        #         y = check_and_transform_label_format(y, self._art_model.nb_classes)
+        #         return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+        #     else:
+        #         if is_multi_label_binary(y):
+        #             predicted[predicted < binary_threshold] = 0
+        #             predicted[predicted >= binary_threshold] = 1
+        #         return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
 
 
     def load_checkpoint_state_dict_by_path(self, model_name: str, path: str = None):
