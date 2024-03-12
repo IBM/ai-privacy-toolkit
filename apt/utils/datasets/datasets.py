@@ -233,7 +233,7 @@ class ArrayDataset(Dataset):
                 raise ValueError("The supplied features are not the same as in the data features")
             self.features_names = x.columns.to_list()
 
-        if self._y is not None and len(self._x) != len(self._y):
+        if self._y is not None and self._x.shape[0] != self._y.shape[0]:
             raise ValueError("Non equivalent lengths of x and y")
 
     def get_samples(self) -> OUTPUT_DATA_ARRAY_TYPE:
