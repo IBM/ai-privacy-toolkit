@@ -3,16 +3,15 @@ import os
 import shutil
 import logging
 
-from typing import Optional, Tuple, Union, List, Callable
+from typing import Optional, Tuple, Union, List
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from collections.abc import Iterable
 
 from art.utils import check_and_transform_label_format
 from apt.utils.datasets.datasets import PytorchData, DatasetWithPredictions, ArrayDataset
 from apt.utils.models import Model, ModelOutputType, is_multi_label, is_multi_label_binary
-from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE
+from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE, array2numpy
 from art.estimators.classification.pytorch import PyTorchClassifier as ArtPyTorchClassifier
 
 
@@ -222,17 +221,20 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
             with torch.no_grad():
                 model_outputs = self._model(torch.from_numpy(x_preprocessed[begin:end]).to(self._device))
             output = model_outputs[-1]
-            if isinstance(output, Iterable):
-                for i, o in enumerate(output):
+
+            if isinstance(output, tuple):
+                output_list = []
+                for o in output:
                     o = o.detach().cpu().numpy().astype(np.float32)
-                    # if len(output.shape) == 1:
-                    #     o = np.expand_dims(o, axis=1).astype(np.float32)
+                    output_list.append(o)
+                output_np = np.array(output_list)
+                output_np = np.swapaxes(output_np, 0, 1)
+                results_list.append(output_np)
             else:
                 output = output.detach().cpu().numpy().astype(np.float32)
                 if len(output.shape) == 1:
                     output = np.expand_dims(output, axis=1).astype(np.float32)
-
-            results_list.append(output)
+                results_list.append(output)
 
         results = np.vstack(results_list)
 
@@ -484,7 +486,7 @@ class PyTorchClassifier(PyTorchModel):
         :type x: `np.ndarray` or `pandas.DataFrame`
         :return: Predictions from the model (class probabilities, if supported).
         """
-        return self._art_model.predict(x.get_samples(), **kwargs)
+        return array2numpy(self._art_model.predict(x.get_samples(), **kwargs))
 
     def score(self, test_data: PytorchData, **kwargs):
         """

@@ -212,6 +212,19 @@ class Model(metaclass=ABCMeta):
                     self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL):
                 # categorical has been 1-hot encoded by check_and_transform_label_format
                 return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+            elif (self.output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS or
+                  self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES):
+                if predicted.shape != y.shape:
+                    raise ValueError('Do not know how to compare arrays with different shapes')
+                elif len(predicted.shape) < 3:
+                    raise ValueError('Do not know how to compare 2-D arrays for multi-output non-binary case')
+                else:
+                    sum = 0
+                    count = 0
+                    for i in range(predicted.shape[1]):
+                        count += np.count_nonzero(np.argmax(y[:, i], axis=1) == np.argmax(predicted[:, i], axis=1))
+                        sum += predicted.shape[0] * predicted.shape[-1]
+                    return count / sum
             elif is_binary(self.output_type):
                 if is_logits(self.output_type):
                     if apply_non_linearity:

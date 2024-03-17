@@ -4,6 +4,7 @@ from torch.nn import functional
 from torch.utils.data import DataLoader, TensorDataset
 from scipy.special import expit
 
+from art.utils import check_and_transform_label_format
 from apt.utils.datasets.datasets import PytorchData
 from apt.utils.models import ModelOutputType
 from apt.utils.models.pytorch_model import PyTorchClassifier
@@ -106,72 +107,74 @@ def test_pytorch_nursery_save_entire_model():
     assert (0 <= score <= 1)
 
 
-# def test_pytorch_predictions_multi_label_cat():
-#     # This kind of model requires special training and will not be supported using the 'fit' method.
-#     class multi_label_cat_model(nn.Module):
-#
-#         def __init__(self, num_classes, num_features):
-#             super(multi_label_cat_model, self).__init__()
-#
-#             self.fc1 = nn.Sequential(
-#                 nn.Linear(num_features, 256),
-#                 nn.Tanh(), )
-#
-#             self.classifier1 = nn.Linear(256, num_classes)
-#             self.classifier2 = nn.Linear(256, num_classes)
-#             self.classifier3 = nn.Linear(256, num_classes)
-#
-#         def forward(self, x):
-#             out1 = self.classifier1(self.fc1(x))
-#             out2 = self.classifier2(self.fc1(x))
-#             out3 = self.classifier3(self.fc1(x))
-#             return out1, out2, out3
-#
-#     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
-#
-#     # make multi-label categorical
-#     y_train = np.column_stack((y_train, y_train, y_train))
-#     y_test = np.column_stack((y_test, y_test, y_test))
-#     test = PytorchData(x_test.astype(np.float32), y_test.astype(np.float32))
-#
-#     model = multi_label_cat_model(3, 4)
-#     criterion = nn.CrossEntropyLoss()
-#     optimizer = optim.Adam(model.parameters(), lr=0.01)
-#
-#     # train model
-#     train_dataset = TensorDataset(from_numpy(x_train.astype(np.float32)), from_numpy(y_train.astype(np.float32)))
-#     train_loader = DataLoader(train_dataset, batch_size=100, shuffle=True)
-#
-#     for epoch in range(5):
-#         # Train for one epoch
-#         for inputs, targets in train_loader:
-#             # Zero the parameter gradients
-#             optimizer.zero_grad()
-#
-#             # Perform prediction
-#             model_outputs = model(inputs)[-1]
-#
-#             # Form the loss function
-#             loss = 0
-#             for i, o in enumerate(model_outputs):
-#                 loss += criterion(o, targets[i])
-#
-#             loss.backward()
-#
-#             optimizer.step()
-#
-#     art_model = PyTorchClassifier(model=model,
-#                                   output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
-#                                   loss=criterion,
-#                                   optimizer=optimizer,
-#                                   input_shape=(24,),
-#                                   nb_classes=3)
-#
-#     pred = art_model.predict(test)
-#     assert (pred.shape[0] == x_test.shape[0])
-#
-#     score = art_model.score(test, apply_non_linearity=expit)
-#     assert (score == 1.0)
+def test_pytorch_predictions_multi_label_cat():
+    # This kind of model requires special training and will not be supported using the 'fit' method.
+    class multi_label_cat_model(nn.Module):
+
+        def __init__(self, num_classes, num_features):
+            super(multi_label_cat_model, self).__init__()
+
+            self.fc1 = nn.Sequential(
+                nn.Linear(num_features, 256),
+                nn.Tanh(), )
+
+            self.classifier1 = nn.Linear(256, num_classes)
+            self.classifier2 = nn.Linear(256, num_classes)
+
+        def forward(self, x):
+            out1 = self.classifier1(self.fc1(x))
+            out2 = self.classifier2(self.fc1(x))
+            return out1, out2
+
+    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+
+    # make multi-label categorical
+    num_classes = 3
+    y_train = check_and_transform_label_format(y_train, nb_classes=num_classes)
+    y_test = check_and_transform_label_format(y_test, nb_classes=num_classes)
+    y_train = np.column_stack((y_train, y_train))
+    y_test = np.stack([y_test, y_test], axis=1)
+    test = PytorchData(x_test.astype(np.float32), y_test.astype(np.float32))
+
+    model = multi_label_cat_model(num_classes, 4)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+
+    # train model
+    train_dataset = TensorDataset(from_numpy(x_train.astype(np.float32)), from_numpy(y_train.astype(np.float32)))
+    train_loader = DataLoader(train_dataset, batch_size=100, shuffle=True)
+
+    for epoch in range(5):
+        # Train for one epoch
+        for inputs, targets in train_loader:
+            # Zero the parameter gradients
+            optimizer.zero_grad()
+
+            # Perform prediction
+            model_outputs = model(inputs)
+
+            # Form the loss function
+            loss = 0
+            for i, o in enumerate(model_outputs):
+                t = targets[:, i*num_classes:(i+1)*num_classes]
+                loss += criterion(o, t)
+
+            loss.backward()
+
+            optimizer.step()
+
+    art_model = PyTorchClassifier(model=model,
+                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
+                                  loss=criterion,
+                                  optimizer=optimizer,
+                                  input_shape=(24,),
+                                  nb_classes=3)
+
+    pred = art_model.predict(test)
+    assert (pred.shape[0] == x_test.shape[0])
+
+    score = art_model.score(test, apply_non_linearity=expit)
+    assert (0 < score <= 1.0)
 
 
 def test_pytorch_predictions_multi_label_binary():
