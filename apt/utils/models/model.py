@@ -37,7 +37,9 @@ class ScoringMethod(Enum):
 
 
 def is_one_hot(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
-    return len(y.shape) == 2 and y.shape[1] > 1 and np.all(np.around(np.sum(y, axis=1), decimals=4) == 1)
+    if not isinstance(y, list):
+        return len(y.shape) == 2 and y.shape[1] > 1 and np.all(np.around(np.sum(y, axis=1), decimals=4) == 1)
+    return False
 
 
 def is_multi_label(output_type: ModelOutputType) -> bool:
