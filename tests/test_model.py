@@ -189,7 +189,7 @@ def test_blackbox_classifier_predictions_multi_label_cat():
     train = DatasetWithPredictions(y_train, x_train, y_train)
     test = DatasetWithPredictions(y_test, x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -333,6 +333,23 @@ def test_blackbox_classifier_probabilities():
 
     score = model.score(train)
     assert (score == 1.0)
+
+
+def test_blackbox_classifier_multi_label_probabilities():
+    (x_train, _), (_, _) = dataset_utils.get_iris_dataset_np()
+    y_train = np.array([[0.23, 0.56, 0.21] for i in range(105)])
+
+    # make multi-label categorical
+    y_train = np.column_stack((y_train, y_train, y_train))
+
+    train = ArrayDataset(x_train, y_train)
+
+    data = Data(train)
+    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES)
+    pred = model.predict(train)
+    assert (pred.shape[0] == x_train.shape[0])
+    assert (0.0 < pred).all()
+    assert (pred < 1.0).all()
 
 
 def test_blackbox_classifier_predict():

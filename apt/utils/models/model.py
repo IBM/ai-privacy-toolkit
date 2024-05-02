@@ -227,6 +227,8 @@ class Model(metaclass=ABCMeta):
                         count += np.count_nonzero(np.argmax(y[:, i], axis=1) == np.argmax(predicted[:, i], axis=1))
                         sum += predicted.shape[0] * predicted.shape[-1]
                     return count / sum
+            elif self.output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL:
+                return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
             elif is_binary(self.output_type):
                 if is_logits(self.output_type):
                     if apply_non_linearity:
