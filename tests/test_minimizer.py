@@ -291,6 +291,7 @@ def test_minimizer_fit(data_two_features):
 
     compare_generalizations(gener, expected_generalizations)
     check_features(features, expected_generalizations, transformed, x)
+    assert (np.equal(x, transformed).all())
     ncp = gen.ncp.transform_score
     check_ncp(ncp, expected_generalizations)
 
