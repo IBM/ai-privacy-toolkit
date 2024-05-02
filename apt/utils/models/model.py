@@ -4,7 +4,7 @@ from enum import Enum, auto
 import numpy as np
 from scipy.special import expit
 
-from apt.utils.datasets import Dataset, Data, DatasetWithPredictions, array2numpy, OUTPUT_DATA_ARRAY_TYPE
+from apt.utils.datasets import Dataset, Data, array2numpy, OUTPUT_DATA_ARRAY_TYPE
 from art.estimators.classification import BlackBoxClassifier
 from art.utils import check_and_transform_label_format
 
@@ -43,40 +43,40 @@ def is_one_hot(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
 
 
 def is_multi_label(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS)
+    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS)
 
 
 def is_multi_label_binary(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS)
+    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS)
 
 
 def is_binary(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS or
-            output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS)
+    return (output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
+            or output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS)
 
 
 def is_categorical(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL)
+    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL)
 
 
 def is_probabilities(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES)
+    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES)
 
 
 def is_logits(output_type: ModelOutputType) -> bool:
-    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS or
-            output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS or
-            output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS)
+    return (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS
+            or output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS
+            or output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS)
 
 
 def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutputType) -> int:
@@ -114,10 +114,10 @@ def check_correct_model_output(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutp
     :type output_type: ModelOutputType
     :raises: ValueError (in case of mismatch)
     """
-    if not is_one_hot(y) and (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES or
-                              output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS):
-            raise ValueError("Incompatible model output types. Model outputs 1D array of categorical scalars while "
-                             "output type is set to ", output_type)
+    if not is_one_hot(y) and (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES
+                              or output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS):
+        raise ValueError("Incompatible model output types. Model outputs 1D array of categorical scalars while "
+                         "output type is set to ", output_type)
 
 
 class Model(metaclass=ABCMeta):
@@ -209,13 +209,13 @@ class Model(metaclass=ABCMeta):
         if scoring_method == ScoringMethod.ACCURACY:
             if not is_multi_label(self.output_type) and not is_binary(self.output_type) and nb_classes is not None:
                 y = check_and_transform_label_format(y, nb_classes=nb_classes)
-            if (self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES or
-                    self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS or
-                    self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL):
+            if (self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES
+                    or self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS
+                    or self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL):
                 # categorical has been 1-hot encoded by check_and_transform_label_format
                 return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
-            elif (self.output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS or
-                  self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES):
+            elif (self.output_type == ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS
+                  or self.output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES):
                 if predicted.shape != y.shape:
                     raise ValueError('Do not know how to compare arrays with different shapes')
                 elif len(predicted.shape) < 3:
@@ -372,7 +372,7 @@ class BlackboxClassifier(Model):
         """
         Score the model using test data.
         """
-        kwargs ['nb_classes'] = self.nb_classes
+        kwargs['nb_classes'] = self.nb_classes
         return super().score(test_data, **kwargs)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:

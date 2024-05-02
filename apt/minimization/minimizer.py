@@ -93,7 +93,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if is_regression:
                 self.estimator = SklearnRegressor(estimator)
             else:
-                #TODO: maybe we should get model output type from user in this case
+                # TODO: maybe we should get model output type from user in this case
                 self.estimator = SklearnClassifier(estimator,
                                                    ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
         self.target_accuracy = target_accuracy
@@ -813,14 +813,11 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
 
     def _calculate_level_cell_label(self, left_cell, right_cell, new_cell):
         new_cell['hist'] = left_cell['hist'] + right_cell['hist']
-            # [x + y for x, y in
-            #                 zip(left_cell['hist'], right_cell['hist'])] if not self.is_regression else []
         if isinstance(self._dt.classes_, list):
             new_cell['label'] = [self._dt.classes_[output][class_index]
                                  for output, class_index in enumerate(np.argmax(new_cell['hist'], axis=1))]
         else:
             new_cell['label'] = [self._dt.classes_[np.argmax(new_cell['hist'][0])]]
-
 
     def _get_nodes_level(self, level):
         # level = distance from lowest leaf

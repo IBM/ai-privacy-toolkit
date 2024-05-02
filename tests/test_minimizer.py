@@ -20,7 +20,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
 from apt.utils.datasets.datasets import PytorchData
-from apt.utils.models import ModelOutputType
 from apt.utils.models.pytorch_model import PyTorchClassifier
 from apt.minimization import GeneralizeToRepresentative
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_german_credit_dataset_pd
@@ -1365,9 +1364,9 @@ def test_minimizer_pytorch_multi_label_binary():
             bce_loss = functional.binary_cross_entropy_with_logits(input, target, reduction='none')
 
             p = sigmoid(input)
-            p = where(target >= 0.5, p, 1-p)
+            p = where(target >= 0.5, p, 1 - p)
 
-            modulating_factor = (1 - p)**self.gamma
+            modulating_factor = (1 - p) ** self.gamma
             alpha = self.alpha * target + (1 - self.alpha) * (1 - target)
             focal_loss = alpha * modulating_factor * bce_loss
 
@@ -1388,13 +1387,12 @@ def test_minimizer_pytorch_multi_label_binary():
     optimizer = optim.RMSprop(orig_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=orig_model,
-                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
-                                  loss=criterion,
-                                  optimizer=optimizer,
-                                  input_shape=(24,),
-                                  nb_classes=3)
-    model.fit(PytorchData(x_train, y_train), save_entire_model=False,
-                  nb_epochs=10)
+                              output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(24,),
+                              nb_classes=3)
+    model.fit(PytorchData(x_train, y_train), save_entire_model=False, nb_epochs=10)
     predictions = model.predict(PytorchData(x_train, y_train))
     predictions = expit(predictions)
     predictions[predictions < 0.5] = 0

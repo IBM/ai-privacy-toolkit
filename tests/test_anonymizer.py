@@ -218,9 +218,9 @@ def test_anonymize_pytorch_multi_label_binary():
             bce_loss = functional.binary_cross_entropy_with_logits(input, target, reduction='none')
 
             p = sigmoid(input)
-            p = where(target >= 0.5, p, 1-p)
+            p = where(target >= 0.5, p, 1 - p)
 
-            modulating_factor = (1 - p)**self.gamma
+            modulating_factor = (1 - p) ** self.gamma
             alpha = self.alpha * target + (1 - self.alpha) * (1 - target)
             focal_loss = alpha * modulating_factor * bce_loss
 

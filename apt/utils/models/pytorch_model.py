@@ -3,7 +3,7 @@ import os
 import shutil
 import logging
 
-from typing import Optional, Tuple, Union, List
+from typing import Optional, Tuple, Union, List, TYPE_CHECKING
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -13,6 +13,11 @@ from apt.utils.datasets.datasets import PytorchData, DatasetWithPredictions, Arr
 from apt.utils.models import Model, ModelOutputType, is_multi_label, is_multi_label_binary
 from apt.utils.datasets import OUTPUT_DATA_ARRAY_TYPE, array2numpy
 from art.estimators.classification.pytorch import PyTorchClassifier as ArtPyTorchClassifier
+
+if TYPE_CHECKING:
+    from art.utils import CLIP_VALUES_TYPE, PREPROCESSING_TYPE
+    from art.defences.preprocessor import Preprocessor
+    from art.defences.postprocessor import Postprocessor
 
 
 logger = logging.getLogger(__name__)
@@ -51,8 +56,8 @@ class PyTorchClassifierWrapper(ArtPyTorchClassifier):
         super().__init__(model, loss, input_shape, nb_classes, optimizer, use_amp, opt_level, loss_scale,
                          channels_first, clip_values, preprocessing_defences, postprocessing_defences, preprocessing,
                          device_type)
-        self._is_single_binary = (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES or
-                                  output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS)
+        self._is_single_binary = (output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES
+                                  or output_type == ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS)
         self._is_multi_label = is_multi_label(output_type)
         self._is_multi_label_binary = is_multi_label_binary(output_type)
 
@@ -504,29 +509,10 @@ class PyTorchClassifier(PyTorchModel):
         :return: the score as float (between 0 and 1)
         """
         # numpy arrays
-        y = test_data.get_labels()
         predicted = self.predict(test_data)
         kwargs['predictions'] = DatasetWithPredictions(pred=predicted)
         kwargs['nb_classes'] = self._nb_classes
         return super().score(ArrayDataset(test_data.get_samples(), test_data.get_labels()), **kwargs)
-        # if apply_non_linearity:
-        #     predicted = apply_non_linearity(predicted)
-        # # binary classification, single column of probabilities
-        # if self._art_model.nb_classes == 2 and (len(predicted.shape) == 1 or predicted.shape[1] == 1):
-        #     if len(predicted.shape) > 1:
-        #         y = check_and_transform_label_format(y, self._art_model.nb_classes, return_one_hot=False)
-        #     return np.count_nonzero(y == (predicted > binary_threshold)) / predicted.shape[0]
-        # # multi column
-        # else:
-        #     if not is_multi_label(y):
-        #         y = check_and_transform_label_format(y, self._art_model.nb_classes)
-        #         return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
-        #     else:
-        #         if is_multi_label_binary(y):
-        #             predicted[predicted < binary_threshold] = 0
-        #             predicted[predicted >= binary_threshold] = 1
-        #         return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
-
 
     def load_checkpoint_state_dict_by_path(self, model_name: str, path: str = None):
         """

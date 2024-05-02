@@ -105,9 +105,9 @@ class FocalLoss(nn.Module):
         bce_loss = functional.binary_cross_entropy_with_logits(input, target, reduction='none')
 
         p = sigmoid(input)
-        p = where(target >= 0.5, p, 1-p)
+        p = where(target >= 0.5, p, 1 - p)
 
-        modulating_factor = (1 - p)**self.gamma
+        modulating_factor = (1 - p) ** self.gamma
         alpha = self.alpha * target + (1 - self.alpha) * (1 - target)
         focal_loss = alpha * modulating_factor * bce_loss
 
@@ -161,11 +161,11 @@ def test_pytorch_nursery_save_entire_model():
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                                  output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
-                                  loss=criterion,
-                                  optimizer=optimizer,
-                                  input_shape=(24,),
-                                  nb_classes=4)
+                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(24,),
+                              nb_classes=4)
     model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True, nb_epochs=10)
 
     score = model.score(PytorchData(x_test.astype(np.float32), y_test))
@@ -250,7 +250,6 @@ def test_pytorch_predictions_single_label_binary_prob():
     assert (0 < score <= 1.0)
 
 
-
 def test_pytorch_predictions_multi_label_cat():
     # This kind of model requires special training and will not be supported using the 'fit' method.
     class multi_label_cat_model(nn.Module):
@@ -300,7 +299,7 @@ def test_pytorch_predictions_multi_label_cat():
             # Form the loss function
             loss = 0
             for i, o in enumerate(model_outputs):
-                t = targets[:, i*num_classes:(i+1)*num_classes]
+                t = targets[:, i * num_classes:(i + 1) * num_classes]
                 loss += criterion(o, t)
 
             loss.backward()
@@ -308,11 +307,11 @@ def test_pytorch_predictions_multi_label_cat():
             optimizer.step()
 
     model = PyTorchClassifier(model=inner_model,
-                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
-                                  loss=criterion,
-                                  optimizer=optimizer,
-                                  input_shape=(24,),
-                                  nb_classes=3)
+                              output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(24,),
+                              nb_classes=3)
 
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
@@ -349,13 +348,13 @@ def test_pytorch_predictions_multi_label_binary():
     optimizer = optim.RMSprop(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
-                                  loss=criterion,
-                                  optimizer=optimizer,
-                                  input_shape=(24,),
-                                  nb_classes=3)
+                              output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer,
+                              input_shape=(24,),
+                              nb_classes=3)
     model.fit(PytorchData(x_train.astype(np.float32), y_train.astype(np.float32)), save_entire_model=False,
-                  nb_epochs=10)
+              nb_epochs=10)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
