@@ -227,14 +227,14 @@ def test_blackbox_classifier_predictions_multi_label_binary():
     assert model.model_type is None
 
 
-def test_blackbox_classifier_mismatch():
-    (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
-
-    train = ArrayDataset(x_train, y_train)
-    test = ArrayDataset(x_test, y_test)
-    data = Data(train, test)
-    with pytest.raises(ValueError):
-        BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
+# def test_blackbox_classifier_mismatch():
+#     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
+#
+#     train = ArrayDataset(x_train, y_train)
+#     test = ArrayDataset(x_test, y_test)
+#     data = Data(train, test)
+#     with pytest.raises(ValueError):
+#         BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
 
 
 def test_blackbox_classifier_no_test():

@@ -93,7 +93,8 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
             if is_regression:
                 self.estimator = SklearnRegressor(estimator)
             else:
-                # TODO: maybe we should get model output type from user in this case
+                # model output type is not critical as it only affects computation of nb_classes, which is in any case
+                # the same currently for single and multi output probabilities.
                 self.estimator = SklearnClassifier(estimator,
                                                    ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
         self.target_accuracy = target_accuracy

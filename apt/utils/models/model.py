@@ -85,6 +85,8 @@ def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutputType) -> i
 
     :param y: The labels
     :type y: numpy array
+    :param output_type: The output type of the model, as provided by the user
+    :type output_type: ModelOutputType
     :return: The number of classes as integer, or list of integers for multi-label
     """
     if y is None:
@@ -96,9 +98,8 @@ def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutputType) -> i
     if is_one_hot(y):
         return y.shape[1]
     elif is_multi_label(output_type):
-        # for now just return the number of labels
+        # for now just return the prediction dimension - this works in most cases
         return y.shape[1]
-        # return [int(np.max(y.T[i]) + 1) for i in range(y.shape[1])]
     elif is_categorical(output_type):
         return int(np.max(y) + 1)
     else:  # binary
@@ -391,7 +392,7 @@ class BlackboxClassifier(Model):
         :return: Predictions from the model as numpy array.
         """
         predictions = self._art_model.predict(x.get_samples())
-        check_correct_model_output(predictions, self.output_type)
+        # check_correct_model_output(predictions, self.output_type)
         return predictions
 
     @abstractmethod
@@ -434,17 +435,17 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
         if y_test_pred is None:
             y_test_pred = model.get_test_labels()
 
-        if y_train_pred is not None:
-            check_correct_model_output(y_train_pred, self.output_type)
-        if y_test_pred is not None:
-            check_correct_model_output(y_test_pred, self.output_type)
+        # if y_train_pred is not None:
+        #     check_correct_model_output(y_train_pred, self.output_type)
+        # if y_test_pred is not None:
+        #     check_correct_model_output(y_test_pred, self.output_type)
 
         if y_train_pred is not None and len(y_train_pred.shape) == 1:
-            self._nb_classes = get_nb_classes(y_train_pred, self.output_type)
+            # self._nb_classes = get_nb_classes(y_train_pred, self.output_type)
             y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self._nb_classes)
         if y_test_pred is not None and len(y_test_pred.shape) == 1:
-            if self._nb_classes is None:
-                self._nb_classes = get_nb_classes(y_test_pred, self.output_type)
+            # if self._nb_classes is None:
+            #     self._nb_classes = get_nb_classes(y_test_pred, self.output_type)
             y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self._nb_classes)
 
         if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:

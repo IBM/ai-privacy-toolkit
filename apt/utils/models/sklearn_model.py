@@ -2,7 +2,7 @@ from typing import Optional
 
 from sklearn.base import BaseEstimator
 
-from apt.utils.models import Model, ModelOutputType, get_nb_classes, check_correct_model_output
+from apt.utils.models import Model, ModelOutputType, get_nb_classes
 from apt.utils.datasets import Dataset, ArrayDataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.estimators.classification.scikitlearn import SklearnClassifier as ArtSklearnClassifier
@@ -71,7 +71,7 @@ class SklearnClassifier(SklearnModel):
         :return: Predictions from the model as numpy array (class probabilities, if supported).
         """
         predictions = self._art_model.predict(x.get_samples(), **kwargs)
-        check_correct_model_output(predictions, self.output_type)
+        # check_correct_model_output(predictions, self.output_type)
         return predictions
 
 

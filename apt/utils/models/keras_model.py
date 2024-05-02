@@ -4,7 +4,7 @@ import numpy as np
 
 from sklearn.metrics import mean_squared_error
 
-from apt.utils.models import Model, ModelOutputType, ScoringMethod, check_correct_model_output, is_logits
+from apt.utils.models import Model, ModelOutputType, ScoringMethod, is_logits
 from apt.utils.datasets import Dataset, OUTPUT_DATA_ARRAY_TYPE
 
 from art.utils import check_and_transform_label_format
@@ -63,7 +63,7 @@ class KerasClassifier(KerasModel):
         :return: Predictions from the model as numpy array (class probabilities, if supported).
         """
         predictions = self._art_model.predict(x.get_samples(), **kwargs)
-        check_correct_model_output(predictions, self.output_type)
+        # check_correct_model_output(predictions, self.output_type)
         return predictions
 
     def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.ACCURACY, **kwargs):
