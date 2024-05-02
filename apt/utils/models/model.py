@@ -235,7 +235,10 @@ class Model(metaclass=ABCMeta):
                         predicted = expit(predicted)
                 predicted[predicted < binary_threshold] = 0
                 predicted[predicted >= binary_threshold] = 1
-                return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
+                if len(y.shape) > 1:
+                    return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
+                else:
+                    return np.count_nonzero(y == predicted.reshape(-1)) / (predicted.shape[0])
             else:
                 raise NotImplementedError('score method not implemented for output type: ', self.output_type)
         else:

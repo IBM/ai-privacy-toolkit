@@ -12,10 +12,10 @@ from art.utils import load_nursery
 from apt.utils import dataset_utils
 
 
-class pytorch_model(nn.Module):
+class PytorchModel(nn.Module):
 
     def __init__(self, num_classes, num_features):
-        super(pytorch_model, self).__init__()
+        super(PytorchModel, self).__init__()
 
         self.fc1 = nn.Sequential(
             nn.Linear(num_features, 1024),
@@ -44,6 +44,76 @@ class pytorch_model(nn.Module):
         return self.classifier(out)
 
 
+class PytorchModelBinary(nn.Module):
+
+    def __init__(self, num_features):
+        super(PytorchModelBinary, self).__init__()
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.Tanh(), )
+
+        self.fc3 = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.Tanh(), )
+
+        self.fc4 = nn.Sequential(
+            nn.Linear(128, 1),
+            nn.Tanh(),
+        )
+
+    def forward(self, x):
+        out = self.fc2(x)
+        out = self.fc3(out)
+        return self.fc4(out)
+
+
+class PytorchModelBinarySigmoid(nn.Module):
+
+    def __init__(self, num_features):
+        super(PytorchModelBinarySigmoid, self).__init__()
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.Tanh(), )
+
+        self.fc3 = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.Tanh(), )
+
+        self.fc4 = nn.Sequential(
+            nn.Linear(128, 1),
+            nn.Tanh(),
+        )
+
+        self.classifier = nn.Sigmoid()
+
+    def forward(self, x):
+        out = self.fc2(x)
+        out = self.fc3(out)
+        out = self.fc4(out)
+        return self.classifier(out)
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=2, alpha=0.5):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+
+    def forward(self, input, target):
+        bce_loss = functional.binary_cross_entropy_with_logits(input, target, reduction='none')
+
+        p = sigmoid(input)
+        p = where(target >= 0.5, p, 1-p)
+
+        modulating_factor = (1 - p)**self.gamma
+        alpha = self.alpha * target + (1 - self.alpha) * (1 - target)
+        focal_loss = alpha * modulating_factor * bce_loss
+
+        return focal_loss.mean()
+
+
 def test_pytorch_nursery_state_dict():
     (x_train, y_train), (x_test, y_test), _, _ = load_nursery(test_set=0.5)
     # reduce size of training set to make attack slightly better
@@ -53,7 +123,7 @@ def test_pytorch_nursery_state_dict():
     x_test = x_test[:train_set_size]
     y_test = y_test[:train_set_size]
 
-    inner_model = pytorch_model(4, 24)
+    inner_model = PytorchModel(4, 24)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
@@ -85,26 +155,100 @@ def test_pytorch_nursery_save_entire_model():
     x_test = x_test[:train_set_size]
     y_test = y_test[:train_set_size]
 
-    model = pytorch_model(4, 24)
+    inner_model = PytorchModel(4, 24)
     # model = torch.nn.DataParallel(model)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
-    art_model = PyTorchClassifier(model=model,
+    model = PyTorchClassifier(model=inner_model,
                                   output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
                                   loss=criterion,
                                   optimizer=optimizer,
                                   input_shape=(24,),
                                   nb_classes=4)
-    art_model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True, nb_epochs=10)
+    model.fit(PytorchData(x_train.astype(np.float32), y_train), save_entire_model=True, nb_epochs=10)
 
-    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test))
+    score = model.score(PytorchData(x_test.astype(np.float32), y_test))
     print('Base model accuracy: ', score)
     assert (0 <= score <= 1)
-    art_model.load_best_model_checkpoint()
-    score = art_model.score(PytorchData(x_test.astype(np.float32), y_test), apply_non_linearity=expit)
+    model.load_best_model_checkpoint()
+    score = model.score(PytorchData(x_test.astype(np.float32), y_test), apply_non_linearity=expit)
     print('best model accuracy: ', score)
     assert (0 <= score <= 1)
+
+
+def test_pytorch_predictions_single_label_binary():
+    x = np.array([[23, 165, 70, 10],
+                  [45, 158, 67, 11],
+                  [56, 123, 65, 58],
+                  [67, 154, 90, 12],
+                  [45, 149, 67, 56],
+                  [42, 166, 58, 50],
+                  [73, 172, 68, 10],
+                  [94, 168, 69, 11],
+                  [69, 175, 80, 61],
+                  [24, 181, 95, 10],
+                  [18, 190, 102, 53],
+                  [22, 161, 95, 10],
+                  [24, 181, 103, 10],
+                  [28, 184, 108, 10]])
+    x = from_numpy(x)
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1])
+    y = from_numpy(y)
+    data = PytorchData(x, y)
+
+    inner_model = PytorchModelBinary(4)
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
+
+    model = PyTorchClassifier(model=inner_model, output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS,
+                              loss=criterion,
+                              optimizer=optimizer, input_shape=(4,),
+                              nb_classes=2)
+    model.fit(data, save_entire_model=False, nb_epochs=1)
+
+    pred = model.predict(data)
+    assert (pred.shape[0] == x.shape[0])
+    score = model.score(data)
+    assert (0 < score <= 1.0)
+
+
+def test_pytorch_predictions_single_label_binary_prob():
+    x = np.array([[23, 165, 70, 10],
+                  [45, 158, 67, 11],
+                  [56, 123, 65, 58],
+                  [67, 154, 90, 12],
+                  [45, 149, 67, 56],
+                  [42, 166, 58, 50],
+                  [73, 172, 68, 10],
+                  [94, 168, 69, 11],
+                  [69, 175, 80, 61],
+                  [24, 181, 95, 10],
+                  [18, 190, 102, 53],
+                  [22, 161, 95, 10],
+                  [24, 181, 103, 10],
+                  [28, 184, 108, 10]])
+    x = from_numpy(x)
+    y = np.array([1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1])
+    y = from_numpy(y)
+    data = PytorchData(x, y)
+
+    inner_model = PytorchModelBinarySigmoid(4)
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
+
+    model = PyTorchClassifier(model=inner_model,
+                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES,
+                              loss=criterion,
+                              optimizer=optimizer, input_shape=(4,),
+                              nb_classes=2)
+    model.fit(data, save_entire_model=False, nb_epochs=1)
+
+    pred = model.predict(data)
+    assert (pred.shape[0] == x.shape[0])
+    score = model.score(data)
+    assert (0 < score <= 1.0)
+
 
 
 def test_pytorch_predictions_multi_label_cat():
@@ -136,9 +280,9 @@ def test_pytorch_predictions_multi_label_cat():
     y_test = np.stack([y_test, y_test], axis=1)
     test = PytorchData(x_test.astype(np.float32), y_test.astype(np.float32))
 
-    model = multi_label_cat_model(num_classes, 4)
+    inner_model = multi_label_cat_model(num_classes, 4)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
     # train model
     train_dataset = TensorDataset(from_numpy(x_train.astype(np.float32)), from_numpy(y_train.astype(np.float32)))
@@ -151,7 +295,7 @@ def test_pytorch_predictions_multi_label_cat():
             optimizer.zero_grad()
 
             # Perform prediction
-            model_outputs = model(inputs)
+            model_outputs = inner_model(inputs)
 
             # Form the loss function
             loss = 0
@@ -163,17 +307,17 @@ def test_pytorch_predictions_multi_label_cat():
 
             optimizer.step()
 
-    art_model = PyTorchClassifier(model=model,
+    model = PyTorchClassifier(model=inner_model,
                                   output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
                                   loss=criterion,
                                   optimizer=optimizer,
                                   input_shape=(24,),
                                   nb_classes=3)
 
-    pred = art_model.predict(test)
+    pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
-    score = art_model.score(test, apply_non_linearity=expit)
+    score = model.score(test, apply_non_linearity=expit)
     assert (0 < score <= 1.0)
 
 
@@ -190,25 +334,6 @@ def test_pytorch_predictions_multi_label_binary():
 
         def forward(self, x):
             return self.classifier1(self.fc1(x))
-            # missing sigmoid on each output
-
-    class FocalLoss(nn.Module):
-        def __init__(self, gamma=2, alpha=0.5):
-            super(FocalLoss, self).__init__()
-            self.gamma = gamma
-            self.alpha = alpha
-
-        def forward(self, input, target):
-            bce_loss = functional.binary_cross_entropy_with_logits(input, target, reduction='none')
-
-            p = sigmoid(input)
-            p = where(target >= 0.5, p, 1-p)
-
-            modulating_factor = (1 - p)**self.gamma
-            alpha = self.alpha * target + (1 - self.alpha) * (1 - target)
-            focal_loss = alpha * modulating_factor * bce_loss
-
-            return focal_loss.mean()
 
     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
 
@@ -219,20 +344,20 @@ def test_pytorch_predictions_multi_label_binary():
     y_test[y_test > 1] = 1
     test = PytorchData(x_test.astype(np.float32), y_test)
 
-    model = multi_label_binary_model(3, 4)
+    inner_model = multi_label_binary_model(3, 4)
     criterion = FocalLoss()
-    optimizer = optim.RMSprop(model.parameters(), lr=0.01)
+    optimizer = optim.RMSprop(inner_model.parameters(), lr=0.01)
 
-    art_model = PyTorchClassifier(model=model,
+    model = PyTorchClassifier(model=inner_model,
                                   output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
                                   loss=criterion,
                                   optimizer=optimizer,
                                   input_shape=(24,),
                                   nb_classes=3)
-    art_model.fit(PytorchData(x_train.astype(np.float32), y_train.astype(np.float32)), save_entire_model=False,
+    model.fit(PytorchData(x_train.astype(np.float32), y_train.astype(np.float32)), save_entire_model=False,
                   nb_epochs=10)
-    pred = art_model.predict(test)
+    pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
-    score = art_model.score(test, apply_non_linearity=expit)
+    score = model.score(test, apply_non_linearity=expit)
     assert (score == 1.0)
