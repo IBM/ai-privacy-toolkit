@@ -252,10 +252,10 @@ def test_pytorch_predictions_single_label_binary_prob():
 
 def test_pytorch_predictions_multi_label_cat():
     # This kind of model requires special training and will not be supported using the 'fit' method.
-    class multi_label_cat_model(nn.Module):
+    class MultiLabelCatModel(nn.Module):
 
         def __init__(self, num_classes, num_features):
-            super(multi_label_cat_model, self).__init__()
+            super(MultiLabelCatModel, self).__init__()
 
             self.fc1 = nn.Sequential(
                 nn.Linear(num_features, 256),
@@ -279,7 +279,7 @@ def test_pytorch_predictions_multi_label_cat():
     y_test = np.stack([y_test, y_test], axis=1)
     test = PytorchData(x_test.astype(np.float32), y_test.astype(np.float32))
 
-    inner_model = multi_label_cat_model(num_classes, 4)
+    inner_model = MultiLabelCatModel(num_classes, 4)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
@@ -321,9 +321,9 @@ def test_pytorch_predictions_multi_label_cat():
 
 
 def test_pytorch_predictions_multi_label_binary():
-    class multi_label_binary_model(nn.Module):
+    class MultiLabelBinaryModel(nn.Module):
         def __init__(self, num_labels, num_features):
-            super(multi_label_binary_model, self).__init__()
+            super(MultiLabelBinaryModel, self).__init__()
 
             self.fc1 = nn.Sequential(
                 nn.Linear(num_features, 256),
@@ -343,7 +343,7 @@ def test_pytorch_predictions_multi_label_binary():
     y_test[y_test > 1] = 1
     test = PytorchData(x_test.astype(np.float32), y_test)
 
-    inner_model = multi_label_binary_model(3, 4)
+    inner_model = MultiLabelBinaryModel(3, 4)
     criterion = FocalLoss()
     optimizer = optim.RMSprop(inner_model.parameters(), lr=0.01)
 

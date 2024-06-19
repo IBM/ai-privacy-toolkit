@@ -63,7 +63,6 @@ class KerasClassifier(KerasModel):
         :return: Predictions from the model as numpy array (class probabilities, if supported).
         """
         predictions = self._art_model.predict(x.get_samples(), **kwargs)
-        # check_correct_model_output(predictions, self.output_type)
         return predictions
 
     def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.ACCURACY, **kwargs):
