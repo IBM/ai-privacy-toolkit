@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, Optional, Callable, Tuple, Union, TYPE_CHECKING
-from enum import Enum, auto
+from enum import Enum, Flag, auto
 import numpy as np
+from scipy.special import expit
 
-from apt.utils.datasets import Dataset, Data, OUTPUT_DATA_ARRAY_TYPE
+from apt.utils.datasets import Dataset, Data, array2numpy, OUTPUT_DATA_ARRAY_TYPE
 from art.estimators.classification import BlackBoxClassifier
 from art.utils import check_and_transform_label_format
 
@@ -11,11 +12,40 @@ if TYPE_CHECKING:
     import torch
 
 
-class ModelOutputType(Enum):
-    CLASSIFIER_PROBABILITIES = auto()  # vector of probabilities
-    CLASSIFIER_LOGITS = auto()  # vector of logits
-    CLASSIFIER_SCALAR = auto()  # label only
-    REGRESSOR_SCALAR = auto()  # value
+class ModelOutputType(Flag):
+    CLASSIFIER = auto()
+    MULTI_OUTPUT = auto()
+    BINARY = auto()
+    LOGITS = auto()
+    PROBABILITIES = auto()
+    REGRESSION = auto()
+
+
+# class labels
+CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL = ModelOutputType.CLASSIFIER
+# single binary probability
+CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES = ModelOutputType.CLASSIFIER | ModelOutputType.BINARY | \
+    ModelOutputType.PROBABILITIES
+# vector of class probabilities
+CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES = ModelOutputType.CLASSIFIER | ModelOutputType.PROBABILITIES
+# single binary logit
+CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS = ModelOutputType.CLASSIFIER | ModelOutputType.BINARY | ModelOutputType.LOGITS
+# vector of logits
+CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS = ModelOutputType.CLASSIFIER | ModelOutputType.LOGITS
+# vector of class labels
+CLASSIFIER_MULTI_OUTPUT_CATEGORICAL = ModelOutputType.MULTI_OUTPUT | ModelOutputType.CLASSIFIER
+# vector of binary probabilities, 1 per output
+CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES = ModelOutputType.MULTI_OUTPUT | ModelOutputType.CLASSIFIER | \
+    ModelOutputType.BINARY | ModelOutputType.PROBABILITIES
+# vector of class probabilities for multiple outputs
+CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES = ModelOutputType.MULTI_OUTPUT | ModelOutputType.CLASSIFIER | \
+    ModelOutputType.PROBABILITIES
+# vector of binary logits
+CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS = ModelOutputType.MULTI_OUTPUT | ModelOutputType.CLASSIFIER | \
+    ModelOutputType.BINARY | ModelOutputType.LOGITS
+# vector of logits for multiple outputs
+CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS = ModelOutputType.MULTI_OUTPUT | ModelOutputType.CLASSIFIER | \
+    ModelOutputType.LOGITS
 
 
 class ModelType(Enum):
@@ -29,16 +59,52 @@ class ScoringMethod(Enum):
 
 
 def is_one_hot(y: OUTPUT_DATA_ARRAY_TYPE) -> bool:
-    return len(y.shape) == 2 and y.shape[1] > 1
+    if not isinstance(y, list):
+        return len(y.shape) == 2 and y.shape[1] > 1 and np.all(np.around(np.sum(y, axis=1), decimals=4) == 1)
+    return False
 
 
-def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE) -> int:
+def is_multi_label(output_type: ModelOutputType) -> bool:
+    return ModelOutputType.MULTI_OUTPUT in output_type
+
+
+def is_multi_label_binary(output_type: ModelOutputType) -> bool:
+    return (ModelOutputType.MULTI_OUTPUT in output_type
+            and ModelOutputType.BINARY in output_type)
+
+
+def is_binary(output_type: ModelOutputType) -> bool:
+    return ModelOutputType.BINARY in output_type
+
+
+def is_categorical(output_type: ModelOutputType) -> bool:
+    return (ModelOutputType.CLASSIFIER in output_type
+            and ModelOutputType.BINARY not in output_type
+            and ModelOutputType.PROBABILITIES not in output_type
+            and ModelOutputType.LOGITS not in output_type)
+
+
+def is_probabilities(output_type: ModelOutputType) -> bool:
+    return ModelOutputType.PROBABILITIES in output_type
+
+
+def is_logits(output_type: ModelOutputType) -> bool:
+    return ModelOutputType.LOGITS in output_type
+
+
+def is_logits_or_probabilities(output_type: ModelOutputType) -> bool:
+    return is_probabilities(output_type) or is_logits(output_type)
+
+
+def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutputType) -> int:
     """
     Get the number of classes from an array of labels
 
     :param y: The labels
     :type y: numpy array
-    :return: The number of classes as integer
+    :param output_type: The output type of the model, as provided by the user
+    :type output_type: ModelOutputType
+    :return: The number of classes as integer, or list of integers for multi-label
     """
     if y is None:
         return 0
@@ -48,8 +114,13 @@ def get_nb_classes(y: OUTPUT_DATA_ARRAY_TYPE) -> int:
 
     if is_one_hot(y):
         return y.shape[1]
-    else:
+    elif is_multi_label(output_type):
+        # for now just return the prediction dimension - this works in most cases
+        return y.shape[1]
+    elif is_categorical(output_type):
         return int(np.max(y) + 1)
+    else:  # binary
+        return 2
 
 
 def check_correct_model_output(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutputType):
@@ -61,10 +132,9 @@ def check_correct_model_output(y: OUTPUT_DATA_ARRAY_TYPE, output_type: ModelOutp
     :type output_type: ModelOutputType
     :raises: ValueError (in case of mismatch)
     """
-    if not is_one_hot(y):  # 1D array
-        if output_type == ModelOutputType.CLASSIFIER_PROBABILITIES or output_type == ModelOutputType.CLASSIFIER_LOGITS:
-            raise ValueError("Incompatible model output types. Model outputs 1D array of categorical scalars while "
-                             "output type is set to ", output_type)
+    if not is_one_hot(y) and not is_multi_label(output_type) and is_categorical(output_type):
+        raise ValueError("Incompatible model output types. Model outputs 1D array of categorical scalars while "
+                         "output type is set to ", output_type)
 
 
 class Model(metaclass=ABCMeta):
@@ -115,16 +185,81 @@ class Model(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def score(self, test_data: Dataset, **kwargs):
         """
         Score the model using test data.
 
         :param test_data: Test data.
-        :type train_data: `Dataset`
+        :type test_data: `Dataset`
+        :keyword predictions: Model predictions to score. If provided, these will be used instead of calling the model's
+                            `predict` method.
+        :type predictions: `DatasetWithPredictions` with the `pred` field filled.
+        :keyword scoring_method: The method for scoring predictions. Default is ACCURACY.
+        :type scoring_method: `ScoringMethod`, optional
+        :keyword binary_threshold: The threshold to use on binary classification probabilities to assign the positive
+                                 class.
+        :type binary_threshold: float, optional. Default is 0.5.
+        :keyword apply_non_linearity: A non-linear function to apply to the result of the 'predict' method, in case the
+                                    model outputs logits (e.g., sigmoid).
+        :type apply_non_linearity: Callable, should be possible to apply directly to the numpy output of the 'predict'
+                                   method, optional.
+        :keyword nb_classes: number of classes (for classification models).
+        :type nb_classes: int, optional.
         :return: the score as float (for classifiers, between 0 and 1)
         """
-        raise NotImplementedError
+        predictions = kwargs.get('predictions')
+        nb_classes = kwargs.get('nb_classes')
+        scoring_method = kwargs.get('scoring_method', ScoringMethod.ACCURACY)
+        binary_threshold = kwargs.get('binary_threshold', 0.5)
+        apply_non_linearity = kwargs.get('apply_non_linearity', expit)
+
+        if test_data.get_samples() is None and predictions is None:
+            raise ValueError('score can only be computed when test data or predictions are available')
+        if test_data.get_labels() is None:
+            raise ValueError('score can only be computed when labels are available')
+        if predictions:
+            predicted = predictions.get_predictions()
+        else:
+            predicted = self.predict(test_data)
+        y = array2numpy(test_data.get_labels())
+
+        if scoring_method == ScoringMethod.ACCURACY:
+            if not is_multi_label(self.output_type) and not is_binary(self.output_type):
+                if nb_classes is not None:
+                    y = check_and_transform_label_format(y, nb_classes=nb_classes)
+                # categorical has been 1-hot encoded by check_and_transform_label_format
+                return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
+            elif (is_multi_label(self.output_type) and not is_binary(self.output_type)
+                  and is_logits_or_probabilities(self.output_type)):
+                if predicted.shape != y.shape:
+                    raise ValueError('Do not know how to compare arrays with different shapes')
+                elif len(predicted.shape) < 3:
+                    raise ValueError('Do not know how to compare 2-D arrays for multi-output non-binary case')
+                else:
+                    sum = 0
+                    count = 0
+                    for i in range(predicted.shape[1]):
+                        count += np.count_nonzero(np.argmax(y[:, i], axis=1) == np.argmax(predicted[:, i], axis=1))
+                        sum += predicted.shape[0] * predicted.shape[-1]
+                    return count / sum
+            elif is_multi_label(self.output_type) and is_categorical(self.output_type):
+                return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
+            elif is_binary(self.output_type):
+                if is_logits(self.output_type):
+                    if apply_non_linearity:
+                        predicted = apply_non_linearity(predicted)
+                    else:  # apply sigmoid
+                        predicted = expit(predicted)
+                predicted[predicted < binary_threshold] = 0
+                predicted[predicted >= binary_threshold] = 1
+                if len(y.shape) > 1:
+                    return np.count_nonzero(y == predicted) / (predicted.shape[0] * y.shape[1])
+                else:
+                    return np.count_nonzero(y == predicted.reshape(-1)) / (predicted.shape[0])
+            else:
+                raise NotImplementedError('score method not implemented for output type: ', self.output_type)
+        else:
+            raise NotImplementedError('scoring method not implemented: ', scoring_method)
 
     @property
     def model(self) -> Any:
@@ -167,7 +302,8 @@ class Model(metaclass=ABCMeta):
 
 class BlackboxClassifier(Model):
     """
-    Wrapper for black-box ML classification models.
+    Wrapper for black-box ML classification models. This is an abstract class and must be instantiated as either
+    BlackboxClassifierPredictFunction or BlackboxClassifierPredictions.
 
     :param model: The training and/or test data along with the model's predictions for the data or a callable predict
                   method.
@@ -247,6 +383,13 @@ class BlackboxClassifier(Model):
         """
         return self._optimizer
 
+    def score(self, test_data: Dataset, **kwargs):
+        """
+        Score the model using test data.
+        """
+        kwargs['nb_classes'] = self.nb_classes
+        return super().score(test_data, **kwargs)
+
     def fit(self, train_data: Dataset, **kwargs) -> None:
         """
         A blackbox model cannot be fit.
@@ -263,27 +406,7 @@ class BlackboxClassifier(Model):
         :return: Predictions from the model as numpy array.
         """
         predictions = self._art_model.predict(x.get_samples())
-        check_correct_model_output(predictions, self.output_type)
         return predictions
-
-    def score(self, test_data: Dataset, scoring_method: Optional[ScoringMethod] = ScoringMethod.ACCURACY, **kwargs):
-        """
-        Score the model using test data.
-
-        :param test_data: Test data.
-        :type train_data: `Dataset`
-        :param scoring_method: The method for scoring predictions. Default is ACCURACY.
-        :type scoring_method: `ScoringMethod`, optional
-        :return: the score as float (for classifiers, between 0 and 1)
-        """
-        if test_data.get_samples() is None or test_data.get_labels() is None:
-            raise ValueError('score can only be computed when test data and labels are available')
-        predicted = self._art_model.predict(test_data.get_samples())
-        y = check_and_transform_label_format(test_data.get_labels(), nb_classes=self._nb_classes)
-        if scoring_method == ScoringMethod.ACCURACY:
-            return np.count_nonzero(np.argmax(y, axis=1) == np.argmax(predicted, axis=1)) / predicted.shape[0]
-        else:
-            raise NotImplementedError
 
     @abstractmethod
     def get_predictions(self) -> Union[Callable, Tuple[OUTPUT_DATA_ARRAY_TYPE, OUTPUT_DATA_ARRAY_TYPE]]:
@@ -325,17 +448,9 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
         if y_test_pred is None:
             y_test_pred = model.get_test_labels()
 
-        if y_train_pred is not None:
-            check_correct_model_output(y_train_pred, self.output_type)
-        if y_test_pred is not None:
-            check_correct_model_output(y_test_pred, self.output_type)
-
         if y_train_pred is not None and len(y_train_pred.shape) == 1:
-            self._nb_classes = get_nb_classes(y_train_pred)
             y_train_pred = check_and_transform_label_format(y_train_pred, nb_classes=self._nb_classes)
         if y_test_pred is not None and len(y_test_pred.shape) == 1:
-            if self._nb_classes is None:
-                self._nb_classes = get_nb_classes(y_test_pred)
             y_test_pred = check_and_transform_label_format(y_test_pred, nb_classes=self._nb_classes)
 
         if x_train_pred is not None and y_train_pred is not None and x_test_pred is not None and y_test_pred is not None:
@@ -353,7 +468,7 @@ class BlackboxClassifierPredictions(BlackboxClassifier):
         else:
             raise NotImplementedError("Invalid data - None")
 
-        self._nb_classes = get_nb_classes(y_pred)
+        self._nb_classes = get_nb_classes(y_pred, self.output_type)
         self._input_shape = x_pred.shape[1:]
         self._x_pred = x_pred
         self._y_pred = y_pred

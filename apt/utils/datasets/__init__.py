@@ -4,4 +4,4 @@ Implementation of datasets utility components for datasets creation, load, and s
 """
 
 from apt.utils.datasets.datasets import Dataset, StoredDataset, DatasetFactory, Data, ArrayDataset, \
-    DatasetWithPredictions, OUTPUT_DATA_ARRAY_TYPE, DATA_PANDAS_NUMPY_TYPE
+    DatasetWithPredictions, array2numpy, OUTPUT_DATA_ARRAY_TYPE, DATA_PANDAS_NUMPY_TYPE
