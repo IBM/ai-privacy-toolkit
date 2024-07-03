@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, KerasRegressor, \
+from apt.utils.models import SklearnClassifier, SklearnRegressor, KerasClassifier, KerasRegressor, \
     BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes, XGBoostClassifier, \
     CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL, CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES, \
     CLASSIFIER_MULTI_OUTPUT_CATEGORICAL, CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES, \
