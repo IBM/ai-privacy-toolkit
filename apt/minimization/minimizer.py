@@ -16,7 +16,8 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 from apt.utils.datasets import ArrayDataset, DATA_PANDAS_NUMPY_TYPE
-from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnClassifier
+from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnClassifier, \
+    CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES
 
 
 @dataclass
@@ -96,7 +97,7 @@ class GeneralizeToRepresentative(BaseEstimator, MetaEstimatorMixin, TransformerM
                 # model output type is not critical as it only affects computation of nb_classes, which is in any case
                 # the same currently for single and multi output probabilities.
                 self.estimator = SklearnClassifier(estimator,
-                                                   ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
+                                                   CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
         self.target_accuracy = target_accuracy
         self.cells = cells
         self.categorical_features = []

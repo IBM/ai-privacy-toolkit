@@ -93,7 +93,7 @@ class SklearnRegressor(SklearnModel):
     """
     def __init__(self, model: BaseEstimator, black_box_access: Optional[bool] = True,
                  unlimited_queries: Optional[bool] = True, **kwargs):
-        super().__init__(model, ModelOutputType.REGRESSOR_SCALAR, black_box_access, unlimited_queries, **kwargs)
+        super().__init__(model, ModelOutputType.REGRESSION, black_box_access, unlimited_queries, **kwargs)
         self._art_model = ScikitlearnRegressor(model)
 
     def fit(self, train_data: Dataset, **kwargs) -> None:

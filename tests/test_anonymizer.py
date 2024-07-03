@@ -13,7 +13,7 @@ from torch.nn import functional
 from scipy.special import expit
 
 from apt.utils.datasets.datasets import PytorchData
-from apt.utils.models import ModelOutputType
+from apt.utils.models import CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
 from apt.utils.models.pytorch_model import PyTorchClassifier
 from apt.anonymization import Anonymize
 from apt.utils.dataset_utils import get_iris_dataset_np, get_adult_dataset_pd, get_nursery_dataset_pd
@@ -237,7 +237,7 @@ def test_anonymize_pytorch_multi_label_binary():
     optimizer = optim.RMSprop(model.parameters(), lr=0.01)
 
     art_model = PyTorchClassifier(model=model,
-                                  output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
+                                  output_type=CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
                                   loss=criterion,
                                   optimizer=optimizer,
                                   input_shape=(24,),

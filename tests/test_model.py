@@ -2,7 +2,12 @@ import pytest
 import numpy as np
 
 from apt.utils.models import SklearnClassifier, SklearnRegressor, ModelOutputType, KerasClassifier, KerasRegressor, \
-    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes, XGBoostClassifier
+    BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes, XGBoostClassifier, \
+    CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL, CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES, \
+    CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES, CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS, \
+    CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS, CLASSIFIER_MULTI_OUTPUT_CATEGORICAL, \
+    CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES, CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES, \
+    CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS, CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS
 from apt.utils.datasets import ArrayDataset, Data, DatasetWithPredictions
 from apt.utils import dataset_utils
 
@@ -24,7 +29,7 @@ tf.compat.v1.disable_eager_execution()
 def test_sklearn_classifier():
     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
     underlying_model = RandomForestClassifier()
-    model = SklearnClassifier(underlying_model, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = SklearnClassifier(underlying_model, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     model.fit(train)
@@ -81,7 +86,7 @@ def test_keras_classifier():
 
     underlying_model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
-    model = KerasClassifier(underlying_model, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = KerasClassifier(underlying_model, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
 
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
@@ -119,7 +124,7 @@ def test_xgboost_classifier():
     (x_train, y_train), (x_test, y_test) = dataset_utils.get_iris_dataset_np()
     underlying_model = XGBClassifier()
     underlying_model.fit(x_train, y_train)
-    model = XGBoostClassifier(underlying_model, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL,
+    model = XGBoostClassifier(underlying_model, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL,
                               input_shape=(4,), nb_classes=3)
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
@@ -138,7 +143,7 @@ def test_blackbox_classifier():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -154,7 +159,7 @@ def test_blackbox_classifier_predictions():
     train = DatasetWithPredictions(y_train, x_train)
     test = DatasetWithPredictions(y_test, x_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
     assert model.model_type is None
@@ -169,7 +174,7 @@ def test_blackbox_classifier_predictions_y():
     train = DatasetWithPredictions(y_train, x_train, y_train)
     test = DatasetWithPredictions(y_test, x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -189,7 +194,7 @@ def test_blackbox_classifier_predictions_multi_label_cat():
     train = DatasetWithPredictions(y_train, x_train, y_train)
     test = DatasetWithPredictions(y_test, x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_MULTI_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -217,7 +222,7 @@ def test_blackbox_classifier_predictions_multi_label_binary():
     train = DatasetWithPredictions(pred_train, x_train, y_train)
     test = DatasetWithPredictions(pred_test, x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -243,7 +248,7 @@ def test_blackbox_classifier_no_test():
     train = ArrayDataset(x_train, y_train)
 
     data = Data(train)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
 
@@ -260,7 +265,7 @@ def test_blackbox_classifier_no_train():
 
     test = ArrayDataset(x_test, y_test)
     data = Data(test=test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -278,7 +283,7 @@ def test_blackbox_classifier_no_test_y():
     train = ArrayDataset(x_train, y_train)
     test = ArrayDataset(x_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
 
@@ -301,7 +306,7 @@ def test_blackbox_classifier_no_train_y():
     train = ArrayDataset(x_train)
     test = ArrayDataset(x_test, y_test)
     data = Data(train, test)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL)
     pred = model.predict(test)
     assert (pred.shape[0] == x_test.shape[0])
 
@@ -325,7 +330,7 @@ def test_blackbox_classifier_probabilities():
     train = ArrayDataset(x_train, y_train)
 
     data = Data(train)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
     assert (0.0 < pred).all()
@@ -345,7 +350,7 @@ def test_blackbox_classifier_multi_label_probabilities():
     train = ArrayDataset(x_train, y_train)
 
     data = Data(train)
-    model = BlackboxClassifierPredictions(data, ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES)
+    model = BlackboxClassifierPredictions(data, CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
     assert (0.0 < pred).all()
@@ -361,7 +366,7 @@ def test_blackbox_classifier_predict():
 
     train = ArrayDataset(x_train, y_train)
 
-    model = BlackboxClassifierPredictFunction(predict, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES,
+    model = BlackboxClassifierPredictFunction(predict, CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES,
                                               (4,), 3)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
@@ -381,7 +386,7 @@ def test_blackbox_classifier_predict_scalar():
 
     train = ArrayDataset(x_train, y_train)
 
-    model = BlackboxClassifierPredictFunction(predict, ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES,
+    model = BlackboxClassifierPredictFunction(predict, CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES,
                                               (4,), 3)
     pred = model.predict(train)
     assert (pred.shape[0] == x_train.shape[0])
@@ -400,7 +405,7 @@ def test_is_one_hot():
 
 def test_get_nb_classes():
     (_, y_train), (_, y_test) = dataset_utils.get_iris_dataset_np()
-    output_type = ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL
+    output_type = CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL
     # shape: (x,) - not 1-hot
     nb_classes_test = get_nb_classes(y_test, output_type)
     nb_classes_train = get_nb_classes(y_train, output_type)

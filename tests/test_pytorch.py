@@ -6,7 +6,9 @@ from scipy.special import expit
 
 from art.utils import check_and_transform_label_format
 from apt.utils.datasets.datasets import PytorchData
-from apt.utils.models import ModelOutputType
+from apt.utils.models import CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS, CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS, \
+    CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES, CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS, \
+    CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
 from apt.utils.models.pytorch_model import PyTorchClassifier
 from art.utils import load_nursery
 from apt.utils import dataset_utils
@@ -128,7 +130,7 @@ def test_pytorch_nursery_state_dict():
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              output_type=CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
                               loss=criterion,
                               optimizer=optimizer,
                               input_shape=(24,),
@@ -161,7 +163,7 @@ def test_pytorch_nursery_save_entire_model():
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
+                              output_type=CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS,
                               loss=criterion,
                               optimizer=optimizer,
                               input_shape=(24,),
@@ -201,7 +203,7 @@ def test_pytorch_predictions_single_label_binary():
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
-    model = PyTorchClassifier(model=inner_model, output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS,
+    model = PyTorchClassifier(model=inner_model, output_type=CLASSIFIER_SINGLE_OUTPUT_BINARY_LOGITS,
                               loss=criterion,
                               optimizer=optimizer, input_shape=(4,),
                               nb_classes=2)
@@ -238,7 +240,7 @@ def test_pytorch_predictions_single_label_binary_prob():
     optimizer = optim.Adam(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                              output_type=ModelOutputType.CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES,
+                              output_type=CLASSIFIER_SINGLE_OUTPUT_BINARY_PROBABILITIES,
                               loss=criterion,
                               optimizer=optimizer, input_shape=(4,),
                               nb_classes=2)
@@ -307,7 +309,7 @@ def test_pytorch_predictions_multi_label_cat():
             optimizer.step()
 
     model = PyTorchClassifier(model=inner_model,
-                              output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
+                              output_type=CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS,
                               loss=criterion,
                               optimizer=optimizer,
                               input_shape=(24,),
@@ -348,7 +350,7 @@ def test_pytorch_predictions_multi_label_binary():
     optimizer = optim.RMSprop(inner_model.parameters(), lr=0.01)
 
     model = PyTorchClassifier(model=inner_model,
-                              output_type=ModelOutputType.CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
+                              output_type=CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS,
                               loss=criterion,
                               optimizer=optimizer,
                               input_shape=(24,),
