@@ -16,7 +16,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 
 from apt.utils.datasets import ArrayDataset, DATA_PANDAS_NUMPY_TYPE
-from apt.utils.models import Model, SklearnRegressor, ModelOutputType, SklearnClassifier, \
+from apt.utils.models import Model, SklearnRegressor, SklearnClassifier, \
     CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES
 
 
