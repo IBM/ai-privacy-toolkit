@@ -15,7 +15,6 @@ from torch import nn, optim, sigmoid, where
 from torch.nn import functional
 from scipy.special import expit
 
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
