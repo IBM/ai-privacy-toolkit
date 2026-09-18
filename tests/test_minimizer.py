@@ -27,7 +27,6 @@ from apt.utils.datasets import ArrayDataset
 from apt.utils.models import SklearnClassifier, SklearnRegressor, KerasClassifier, \
     CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL, \
     CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS, CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
-tf.compat.v1.disable_eager_execution()
 
 
 ACCURACY_DIFF = 0.05
