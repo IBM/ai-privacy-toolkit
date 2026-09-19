@@ -72,7 +72,7 @@ class Anonymize:
         if dataset.get_samples().shape[1] != 0:
             self.features = [i for i in range(dataset.get_samples().shape[1])]
         else:
-            raise ValueError('No data provided')
+            raise ValueError(f'Dataset is empty. Shape of provided data: {dataset.get_samples().shape}')
 
         if dataset.features_names is not None:
             self.features_names = dataset.features_names
