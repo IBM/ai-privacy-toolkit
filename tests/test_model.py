@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from apt.utils.models import SklearnClassifier, SklearnRegressor, KerasClassifier, KerasRegressor, \
+from apt.utils.models import SklearnClassifier, SklearnRegressor, KerasClassifier, \
     BlackboxClassifierPredictions, BlackboxClassifierPredictFunction, is_one_hot, get_nb_classes, XGBoostClassifier, \
     CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL, CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES, \
     CLASSIFIER_MULTI_OUTPUT_CATEGORICAL, CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES, \
@@ -13,15 +13,12 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
 from art.utils import check_and_transform_label_format
 
 from art.utils import to_categorical
-
-tf.compat.v1.disable_eager_execution()
 
 
 def test_sklearn_classifier():
@@ -94,28 +91,6 @@ def test_keras_classifier():
 
     score = model.score(test)
     assert (0.0 <= score <= 1.0)
-
-
-def test_keras_regressor():
-    (x_train, y_train), (x_test, y_test) = dataset_utils.get_diabetes_dataset_np()
-
-    underlying_model = Sequential()
-    underlying_model.add(Input(shape=(10,)))
-    underlying_model.add(Dense(100, activation="relu"))
-    underlying_model.add(Dense(10, activation="relu"))
-    underlying_model.add(Dense(1))
-
-    underlying_model.compile(loss="mean_squared_error", optimizer="adam", metrics=["accuracy"])
-
-    model = KerasRegressor(underlying_model)
-
-    train = ArrayDataset(x_train, y_train)
-    test = ArrayDataset(x_test, y_test)
-    model.fit(train)
-    pred = model.predict(test)
-    assert (pred.shape[0] == x_test.shape[0])
-
-    model.score(test)
 
 
 def test_xgboost_classifier():

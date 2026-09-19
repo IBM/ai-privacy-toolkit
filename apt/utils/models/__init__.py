@@ -7,5 +7,5 @@ from apt.utils.models.model import Model, BlackboxClassifier, ModelOutputType, S
     CLASSIFIER_MULTI_OUTPUT_BINARY_PROBABILITIES, CLASSIFIER_MULTI_OUTPUT_CLASS_PROBABILITIES, \
     CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS, CLASSIFIER_MULTI_OUTPUT_CLASS_LOGITS
 from apt.utils.models.sklearn_model import SklearnModel, SklearnClassifier, SklearnRegressor
-from apt.utils.models.keras_model import KerasClassifier, KerasRegressor
+from apt.utils.models.keras_model import KerasClassifier
 from apt.utils.models.xgboost_model import XGBoostClassifier

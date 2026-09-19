@@ -15,7 +15,6 @@ from torch import nn, optim, sigmoid, where
 from torch.nn import functional
 from scipy.special import expit
 
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
 
@@ -27,7 +26,6 @@ from apt.utils.datasets import ArrayDataset
 from apt.utils.models import SklearnClassifier, SklearnRegressor, KerasClassifier, \
     CLASSIFIER_SINGLE_OUTPUT_CLASS_PROBABILITIES, CLASSIFIER_SINGLE_OUTPUT_CATEGORICAL, \
     CLASSIFIER_SINGLE_OUTPUT_CLASS_LOGITS, CLASSIFIER_MULTI_OUTPUT_BINARY_LOGITS
-tf.compat.v1.disable_eager_execution()
 
 
 ACCURACY_DIFF = 0.05
